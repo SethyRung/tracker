@@ -1,6 +1,36 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+@font-face {
+  font-family: "Geist Pixel Grid";
+  src: url("/fonts/GeistPixel/GeistPixel-Grid.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Pixel Line";
+  src: url("/fonts/GeistPixel/GeistPixel-Line.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Pixel Circle";
+  src: url("/fonts/GeistPixel/GeistPixel-Circle.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Pixel Square";
+  src: url("/fonts/GeistPixel/GeistPixel-Square.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Pixel Triangle";
+  src: url("/fonts/GeistPixel/GeistPixel-Triangle.ttf") format("truetype");
+  font-display: swap;
+}
+
 @theme static {
   --color-primary-50: #f2f8ed;
   --color-primary-100: #e6f0dd;
@@ -16,6 +46,11 @@
 
   --font-sans: "Geist", sans-serif;
   --font-mono: "Geist Mono", sans-serif;
+  --font-pixel-circle: "Geist Pixel Circle", sans-serif;
+  --font-pixel-grid: "Geist Pixel Grid", sans-serif;
+  --font-pixel-line: "Geist Pixel Line", sans-serif;
+  --font-pixel-square: "Geist Pixel Square", sans-serif;
+  --font-pixel-triangle: "Geist Pixel Triangle", sans-serif;
 }
 
 @utility no-scrollbar {

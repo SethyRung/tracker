@@ -43,4 +43,12 @@ export default defineNuxtConfig({
       logout: "/sign-in",
     },
   },
+
+  fonts: {
+    families: [
+      { name: "Geist", provider: "local" },
+      { name: "Geist Mono", provider: "local" },
+      { name: "Geist Pixel", provider: "local" },
+    ],
+  },
 });
