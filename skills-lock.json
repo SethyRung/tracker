@@ -7,6 +7,13 @@
       "skillPath": "skills/agent-browser/SKILL.md",
       "computedHash": "a674b7d81066e3cc471a7512ddb4ae724418cbfefa75cbb050b0dc430e4d57a0"
     },
+    "nuxt-better-auth": {
+      "source": "better-auth.nuxt.dev",
+      "sourceUrl": "https://better-auth.nuxt.dev/",
+      "sourceType": "well-known",
+      "computedHash": "cb62a8ac1df0559044ed654baac9e8d8b0f093e5b4c6ae7fea2fda8a13a612d8",
+      "wellKnownDigest": "sha256:23d5ed74ec87bf7e093fb25ed7f337262964ee39521d0823b66825a2fafb6aa1"
+    },
     "nuxt-ui": {
       "source": "nuxt/ui",
       "sourceType": "github",
