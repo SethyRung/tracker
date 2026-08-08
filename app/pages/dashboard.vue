@@ -23,8 +23,8 @@ const { user, signOut } = useUserSession();
         color="info"
         variant="subtle"
         icon="i-lucide-info"
-        title="No room yet"
-        description="Create or join a household to start tracking shared bills. Room management ships in the next phase."
+        title="Rooms and members"
+        description="The bills + payments modules ship in Phase 5+."
       />
     </UCard>
   </UContainer>

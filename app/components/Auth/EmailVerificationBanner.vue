@@ -2,15 +2,16 @@
 const { user } = useUserSession();
 
 const dismissed = ref(false);
+const resending = ref(false);
 const resent = ref(false);
 
 const resendVerification = useAuthClientAction((client) => client.sendVerificationEmail);
 
+const pending = computed(() => resendVerification.status.value === "pending");
+
 const visible = computed(
   () => !!user.value && user.value.emailVerified === false && !dismissed.value,
 );
-
-const pending = computed(() => resendVerification.status.value === "pending");
 
 async function onResend() {
   if (!user.value) return;
@@ -23,17 +24,18 @@ async function onResend() {
 </script>
 
 <template>
-  <UNotification
+  <UAlert
     v-if="visible"
     color="warning"
+    variant="subtle"
     icon="i-lucide-alert-triangle"
-    :close="() => (dismissed = true)"
     :title="resent ? 'Verification email sent' : 'Verify your email to invite members'"
     :description="
       resent
         ? 'Check your inbox for the verification link.'
         : 'You can use Tricker, but invites and some features are locked until your email is verified.'
     "
+    :close="{ onClick: () => (dismissed = true) }"
   >
     <template #actions>
       <UButton
@@ -48,5 +50,5 @@ async function onResend() {
         Resend link
       </UButton>
     </template>
-  </UNotification>
+  </UAlert>
 </template>
