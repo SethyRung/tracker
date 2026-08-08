@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { roomMemberships } from "hub:db:schema";
-import { promoteAdminOnDeparture, requireRoomAdmin } from "~~/server/utils/room";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

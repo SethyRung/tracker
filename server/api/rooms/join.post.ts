@@ -1,10 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
-import { inviteLinks, roomMemberships } from "../../db/schema";
-import { nextMemberColor } from "../../../shared/types/member-color";
-import { joinRoomSchema } from "../../../shared/schemas/room";
-import { hashToken } from "../../../shared/utils/invite-token";
-import { newId } from "../../utils/room";
+import { inviteLinks, roomMemberships } from "hub:db:schema";
+import { joinRoomSchema } from "~~/shared/schemas/room";
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event);
@@ -29,7 +26,10 @@ export default defineEventHandler(async (event) => {
     });
   }
   if (row.expiresAt.getTime() < Date.now()) {
-    throw createError({ statusCode: 410, statusMessage: "This invite link has expired." });
+    throw createError({
+      statusCode: 410,
+      statusMessage: "This invite link has expired.",
+    });
   }
 
   const existing = await db

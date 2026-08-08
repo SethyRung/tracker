@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, roomMemberships, rooms } from "hub:db:schema";
 import { createRoomSchema } from "~~/shared/schemas/room";
-import { newId } from "~~/server/utils/room";
 
 const DEFAULT_CATEGORIES = [
   { name: "Rent", sortOrder: 0 },

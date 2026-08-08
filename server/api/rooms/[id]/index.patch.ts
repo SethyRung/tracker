@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { rooms } from "hub:db:schema";
 import { updateRoomSchema } from "~~/shared/schemas/room";
-import { requireRoomAdmin } from "~~/server/utils/room";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
