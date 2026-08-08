@@ -42,3 +42,21 @@ export const categories = pgTable("categories", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const inviteLinks = pgTable("invite_links", {
+  // Token is sent in the URL as the raw 8-char base62 string. The hash is
+  // what's stored — the raw token is never persisted.
+  tokenHash: text("token_hash").primaryKey(),
+  roomId: text("room_id")
+    .notNull()
+    .references(() => rooms.id, { onDelete: "cascade" }),
+  createdByMembershipId: text("created_by_membership_id")
+    .notNull()
+    .references(() => roomMemberships.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  usedByMembershipId: text("used_by_membership_id").references(() => roomMemberships.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
