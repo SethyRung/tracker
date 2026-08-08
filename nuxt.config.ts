@@ -15,12 +15,18 @@ export default defineNuxtConfig({
     "@nuxthub/core",
     "@onmax/nuxt-better-auth",
     "@nuxt/test-utils/module",
+    "~/../modules/dayjs",
   ],
+
+  dayjs: {
+    plugins: ["timezone", "utc"],
+    defaultTimezone: "Asia/Phnom_Penh",
+  },
 
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["better-auth/client/plugins"],
+      include: ["better-auth/client/plugins", "dayjs", "dayjs/plugin/utc", "dayjs/plugin/timezone"],
     },
   },
 
