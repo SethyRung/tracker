@@ -1,7 +1,7 @@
 <script lang="ts" setup></script>
 
 <template>
-  <div>
-    <slot></slot>
+  <div class="min-h-screen flex flex-col font-sans">
+    <slot />
   </div>
 </template>
