@@ -1,7 +1,12 @@
 <script setup lang="ts">
-definePageMeta({
-  auth: { only: "guest", redirectTo: "/dashboard" },
-});
+const { loggedIn, fetchSession } = useUserSession();
+
+if (!loggedIn.value) {
+  await fetchSession({ force: true });
+}
+if (loggedIn.value) {
+  await navigateTo("/dashboard");
+}
 
 useHead({
   title: "Tricker — Shared bills, settled simply",
