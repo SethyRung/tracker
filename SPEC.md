@@ -1,0 +1,311 @@
+# Tricker — Specification
+
+Multi-tenant household bill tracker. Each "room" is an independent household with its own members, categories, bills, payments, and ledger. Users sign up, create or join a room, log shared expenses, and settle up at month-end.
+
+This spec supersedes any partial decisions in `README.md` (notably: dates, month lifecycle, settlement model).
+
+---
+
+## 1. Stack
+
+- **App**: Nuxt 4 + `@nuxt/ui` + Tailwind v4 (Vite plugin)
+- **Auth**: Better-Auth (email + password, session cookies)
+- **DB**: Neon serverless Postgres
+- **Hosting**: NuxtHub
+- **Validation**: Zod everywhere (server + client)
+- **Package manager**: Bun
+- **Tests**: Vitest (unit + nuxt projects)
+- **Lint/Format**: oxlint + oxfmt
+
+## 2. Money & Currency
+
+- All amounts stored as **integers in minor units** (`amount_minor`). No floats. No JS `Number` for money.
+- Two currencies supported per room: **USD** (cents) and **KHR** (riel, no subunit).
+- Display:
+  - USD: `$1,234.56`
+  - KHR: `៛1,234,567`
+- **No conversion** between USD and KHR. They live in two parallel ledgers.
+- Settlement produces two independent settlement plans per month — one for USD, one for KHR — each with its own minimum-transfer graph.
+
+## 3. Time & Dates
+
+- All timestamps stored as **UTC**.
+- All user-facing times rendered in **Asia/Phnom_Penh** (UTC+7, no DST).
+- **Entry dates**: any historical date is allowed. No "today/yesterday only" restriction. The constraint in README is superseded.
+- Months are calendar months in Phnom Penh time. "August 2026" = 2026-08-01T00:00:00+07:00 → 2026-09-01T00:00:00+07:00.
+
+## 4. Tenancy & Identity
+
+- **One user belongs to at most one room at a time.** A user can leave a room and join another (their old memberships remain visible in history but the account is deactivated in that room).
+- A user is identified by email (Better-Auth account).
+- Within a room, a user has a **Member** record (their membership in this room).
+- A user can hold only one membership at a time globally.
+
+## 4b. Authentication
+
+**Better-Auth** is the authentication framework. It manages user accounts, sessions, password hashing, and email verification.
+
+### Methods (v1)
+
+- **Email + password** — primary method
+- **No social login** in v1 (Google/Apple deferred)
+
+### Email verification
+
+- Required on sign-up
+- Better-Auth sends a verification email with a one-time link
+- Unverified users can sign in but see a banner: "Verify your email to invite members"
+- Verification token expires in 24h
+
+### Password reset
+
+- Forgot-password flow: user enters email → Better-Auth sends reset link → user sets new password
+- Reset token expires in 1h, single-use
+- Reset emails sent via the same transport as verification emails
+
+### Sessions
+
+- HTTP-only, Secure, SameSite=Lax cookies
+- Session lifetime: 30 days, sliding (extends on activity)
+- Logout clears the session cookie and invalidates the server-side session
+
+### Server integration
+
+- Better-Auth mounted at `/api/auth/*` via a Nuxt server handler
+- Uses the same Neon Postgres DB as the rest of the app
+- Better-Auth manages these tables: `user`, `session`, `account`, `verification`
+
+### Client integration
+
+- `@better-auth/vue` (or equivalent) on the Nuxt client
+- Auth state exposed via `useAuth()` composable
+- Server middleware redirects unauthenticated users to `/sign-in?redirect=...`
+- Server middleware redirects users with no room to `/onboarding/room`
+
+### Routes requiring auth
+
+All routes except `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` require a valid session.
+
+## 5. Roles & Permissions
+
+- **Admin**: creator of the room. Can invite/remove members, edit room settings, manage categories, edit/delete any bill or payment, and **close months**.
+- **Member**: can log bills and payments (own or others'), edit their own entries, and view the full room ledger.
+- **Admin succession**: if the only admin leaves/is removed, the **oldest active member** (by `joined_at`) is auto-promoted to admin. Multiple admins not allowed.
+
+## 6. Member Profile
+
+- `display_name` (required, e.g., "Sethyrung")
+- `nickname` (optional, e.g., "Seth")
+- `avatar` (optional — uploaded image or auto-generated initial-avatar fallback)
+- `share_percent` (decimal 0–100, e.g., 22.0 for 22%; **informational only**, not used to compute entry splits)
+- `color` (auto-assigned hex from a fixed palette; editable)
+- `joined_at` (timestamp; set on join, used for pro-rating and admin succession)
+- `left_at` (nullable; set on removal/departure for pro-rating cutoff)
+
+## 7. Categories
+
+**Categories are pure labels** for grouping and filtering. They do NOT carry split rules — all categories share the same split logic.
+
+Pre-seeded on room creation (admin can rename/add/remove):
+
+- **Rent** — recurring monthly housing cost
+- **Utilities** — water, electricity, internet
+- **Food** — groceries, shared meals
+- **Supplies** — household items, consumables
+
+Categories can be freely renamed, added, or deleted. The split logic (§7b) is uniform across all categories.
+
+## 7b. Split Logic (uniform across all entries)
+
+Every bill and payment follows the same split model.
+
+### Step 1 — Attendees
+
+- User selects which members attended / participated in this entry
+- Default: all active members checked
+- At least one attendee required
+
+### Step 2 — Shares
+
+- Each selected attendee gets a weight in basis points (`weight_bps`, 10000 = 100.00%)
+- Default: `10000 / N` for each selected attendee (equal split among attendees)
+- **Weights are user-editable per entry** — user can override any weight
+- Editing one weight does NOT auto-redistribute the others; user is responsible for the total reaching 10000
+- Sum must equal 10000 across attendees (validated client + server); save is disabled otherwise
+
+### Pro-rating
+
+- Applies to all entries uniformly
+- `effective_weight = entry_weight * (effective_days / days_in_month)` where `effective_days` is days the member was active during the entry's month
+- Rounding remainder is assigned to the longest-tenured member at the time of the entry
+
+## 8. Bills vs Payments
+
+The product uses two top-level entry types. Both share `amount_minor`, `currency`, `date`, `category`, `paid_by_member_id`, `notes`, `created_by`, `created_at`, `updated_at`.
+
+### Bill
+
+- Monthly expense (rent, water bill, electricity bill).
+- **Recurring**: backed by a `RecurringTemplate`. Template has `amount_minor`, `currency`, `category_id`, `day_of_month` (when drafts materialize). Templates store the **member snapshot** (which members are included), not per-member weights.
+- **One-time**: standalone, no template.
+- **Draft lifecycle**: on the 1st of each month (Phnom Penh time), a scheduled task creates **draft** Bill entries from all active templates. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
+- **Per-month override (amount)**: admin can edit a published bill's amount for that month without changing the template.
+- **Per-month override (attendees + weights)**: each draft pre-fills with all active members and their profile `share_percent`. Admin edits before publishing. Published entries' attendees and weights are saved on the entry only — they do not propagate back to the template or to other drafts.
+- Status: `draft` → `published`. Published bills are immutable for amount/attendees/weights unless admin edits (creates an audit-free change; see §15 Out of Scope).
+
+### Payment
+
+- Ad-hoc shared expense (groceries, drinking water delivery, household items).
+- Always one-time. No template.
+- Status: `published` immediately on create.
+- Has `attendees: member_id[]` and `weights` per attendee. Defaults to all active members with profile `share_percent`; admin can override.
+
+## 9. Month Lifecycle
+
+- Each month is either **open** or **closed**.
+- **Open**: any active member can add/edit/delete their own entries. Admin can edit/delete any entry.
+- **Closed** (admin action): no further edits or deletes. Settlement is locked.
+- **Auto-creation**: drafts materialize on the 1st at 00:00 Phnom Penh time.
+- **Settlement view** is always available (live balance recalc) regardless of open/closed.
+- **Re-opening**: admin can re-open a closed month (rare; e.g., dispute resolution). Re-closing re-takes the snapshot.
+
+## 10. Settlement
+
+Computed per (room, month, currency). Produces two independent settlement plans per month — one for USD, one for KHR.
+
+### Inputs per entry
+
+- `amount_minor`, `currency`
+- `paid_by_member_id` (who actually paid)
+- `category` (label only, no split rule)
+- `date` (for pro-rating)
+- `attendees[]` and `weights[]` (per-entry, may override profile share_percent)
+
+### Per-member owed amount
+
+For each entry, compute each attendee's owed using their entry weight (after pro-rating). Then:
+
+```
+balance[m] = sum(paid_by[m]) − sum(owed[m])
+```
+
+`balance[m] > 0` means m is owed money; `< 0` means m owes money.
+
+### Minimum-transfer algorithm
+
+Compute the minimum number of transfers to settle all non-zero balances:
+
+1. Split members into creditors (`balance > 0`) and debtors (`balance < 0`).
+2. Greedy match largest creditor with largest debtor, transfer `min(creditor, |debtor|)`, repeat.
+3. Result: a list of `{from, to, amount_minor}` transfers per currency, per month.
+
+This produces ≤ N−1 transfers where N is the count of non-zero balances (typical case).
+
+Settlement is shown side-by-side for both currencies in the UI.
+
+## 11. Pro-rating
+
+When a member joins or leaves mid-month, their weight on every entry in that month is pro-rated by day.
+
+- Effective days = days the member was active during the entry's month, inclusive of both endpoints.
+- `effective_weight = entry_weight * (effective_days / days_in_month)`
+- Sum of `effective_weight` across members may not equal `entry_weight` exactly due to rounding. Any rounding remainder is assigned to the longest-tenured member of the room at the time of the entry.
+- If a member is NOT in the entry's attendee list, they get nothing (pro-rating is moot).
+
+## 12. First-Run UX
+
+1. User signs up (email + password) → lands on empty dashboard with "Create a room" CTA.
+2. Creates a room with name + currency (USD, KHR, or both — default both).
+3. Room is auto-seeded with the 4 default categories (Rent, Utilities, Food, Supplies).
+4. Admin invites members by link (each link is single-use, expires in 7 days).
+5. Invitee opens link → if signed in, joins immediately; if not, prompted to sign up then joins.
+6. Admin (or members) edits members to set `share_percent` (required for Rent; defaults to equal for others).
+7. Admin (optionally) creates recurring bill templates (Rent already has a suggested starter).
+8. Members start logging bills and payments. The next month's draft auto-materializes on the 1st.
+
+No historical backfill. The room starts on its creation date; past months are not represented.
+
+## 13. Routes (high-level)
+
+- `/` — landing / auth state
+- `/sign-in`, `/sign-up`
+- `/dashboard` — current month view (entries, balances, drafts-to-publish)
+- `/month/[yyyy-mm]` — historical month view (read-only when closed)
+- `/bills/new`, `/bills/[id]/edit`
+- `/payments/new`, `/payments/[id]/edit`
+- `/members` — list, invite, remove
+- `/categories` — list, edit, add, remove
+- `/recurring` — recurring templates list
+- `/settle/[yyyy-mm]` — settlement plan (USD + KHR side-by-side)
+
+## 14. Data Model (sketch)
+
+```
+users               (id, email, password_hash, created_at)
+                    — Better-Auth managed
+
+rooms               (id, name, created_by_user_id, created_at,
+                     usd_enabled, khr_enabled)
+
+room_memberships    (id, room_id, user_id, role, display_name,
+                     nickname, avatar_url, color, share_percent,
+                     joined_at, left_at NULL, is_active)
+
+categories          (id, room_id, name, sort_order, created_at)
+                     -- pure labels; no split rule columns
+
+recurring_templates (id, room_id, name, category_id, currency,
+                     amount_minor, day_of_month, is_active)
+
+bills               (id, room_id, category_id, currency, amount_minor,
+                     date, paid_by_membership_id, notes,
+                     status 'draft'|'published', template_id NULL,
+                     created_by, created_at, updated_at)
+
+bill_weights        (bill_id, membership_id, weight_bps)
+                     -- weight_bps is integer basis points (2500 = 25.00%);
+                     -- sum per bill must equal 10000;
+                     -- absent rows mean the member was not an attendee
+
+payments            (id, room_id, category_id, currency, amount_minor,
+                     date, paid_by_membership_id, notes,
+                     created_by, created_at, updated_at)
+
+payment_weights     (payment_id, membership_id, weight_bps)
+                     -- same semantics as bill_weights
+
+month_snapshots     (id, room_id, yyyymm, status 'open'|'closed',
+                     closed_at NULL, closed_by NULL)
+```
+
+Money columns use `BIGINT` (Postgres) since `amount_minor` can exceed `INT4` for KHR.
+
+## 15. Out of Scope (deferred)
+
+These were discussed and explicitly deferred. Do not implement in v1.
+
+- Audit log (no edit history, no "who changed what")
+- Notifications (no email digest, no push, no in-app feed)
+- Data export (CSV/PDF)
+- Account deletion / GDPR
+- Receipt photo attachments
+- Multi-admin rooms
+- Search/filter across months
+- Mobile app (web is responsive; no native)
+- Per-member audit of closed-month reopens
+- Currency conversion display
+
+## 16. Validation Rules (Zod, server-enforced)
+
+- `amount_minor > 0` (no zero/negative)
+- `currency ∈ {'USD', 'KHR'}`
+- `date` ∈ valid range (no future dates allowed, but any past date)
+- `share_percent` per member: 0–100, sum across active members in the room must equal 100 (validated on member create/update)
+- For each entry: at least one attendee required; attendees must be active members
+- For each entry: weights (sum of `weight_bps`) must equal 10000 across attendees
+- A bill's `category_id` must belong to the same room as the bill
+
+---
+
+**Document version**: 1.0 — produced from /grilling session
+**Supersedes**: README.md sections on month closure, date entry restriction
