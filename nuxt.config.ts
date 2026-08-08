@@ -9,9 +9,38 @@ export default defineNuxtConfig({
 
   css: ["~/assets/css/main.css"],
 
-  modules: ["@nuxt/ui", "@vueuse/nuxt", "@nuxt/test-utils/module"],
+  modules: [
+    "@nuxt/ui",
+    "@vueuse/nuxt",
+    "@nuxthub/core",
+    "@onmax/nuxt-better-auth",
+    "@nuxt/test-utils/module",
+  ],
 
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ["better-auth/client/plugins"],
+    },
+  },
+
+  hub: {
+    db: {
+      dialect: "postgresql",
+      driver: process.env.DATABASE_DRIVER as any,
+      casing: "snake_case",
+    },
+  },
+
+  auth: {
+    schema: {
+      casing: "snake_case",
+    },
+    redirects: {
+      login: "/sign-in",
+      guest: "/",
+      authenticated: "/dashboard",
+      logout: "/sign-in",
+    },
   },
 });
