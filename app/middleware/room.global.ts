@@ -12,8 +12,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const { loggedIn } = useUserSession();
     if (!loggedIn.value) return;
     try {
-      const res = await $fetch<{ room: { id: string } | null }>("/api/rooms/current");
-      if (!res.room) {
+      const res = await $fetch("/api/rooms/current");
+      if (isSuccessResponse(res) && !res.data.room) {
         return navigateTo("/onboarding/room");
       }
     } catch {

@@ -29,13 +29,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   submitting.value = true;
   error.value = null;
   try {
-    const res = await $fetch<{ room: { id: string } }>("/api/rooms", {
+    const res = await $fetch("/api/rooms", {
       method: "POST",
       body: event.data,
     });
-    await navigateTo(`/dashboard?roomId=${res.room.id}`);
+
+    if (!isSuccessResponse(res)) {
+      throw new Error(res.status.message);
+    }
+
+    await navigateTo(`/dashboard?roomId=${res.data.room?.id}`);
   } catch (e) {
-    error.value = (e as { statusMessage?: string })?.statusMessage ?? "Could not create room.";
+    error.value = e instanceof Error ? e.message : "Could not join this room.";
   } finally {
     submitting.value = false;
   }

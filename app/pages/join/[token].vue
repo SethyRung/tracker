@@ -19,7 +19,7 @@ async function onAccept() {
   submitting.value = true;
   error.value = null;
   try {
-    const res = await $fetch<{ roomId: string }>("/api/rooms/join", {
+    const res = await $fetch("/api/rooms/join", {
       method: "POST",
       body: {
         token: token.value,
@@ -27,11 +27,15 @@ async function onAccept() {
         color: color.value ?? undefined,
       },
     });
+    if (!isSuccessResponse(res)) {
+      throw new Error(res.status.message);
+    }
+
     success.value = true;
     await fetchSession({ force: true });
-    await navigateTo(`/dashboard?roomId=${res.roomId}`);
+    await navigateTo(`/dashboard?roomId=${res.data.roomId}`);
   } catch (e) {
-    error.value = (e as { statusMessage?: string })?.statusMessage ?? "Could not join this room.";
+    error.value = e instanceof Error ? e.message : "Could not join this room.";
   } finally {
     submitting.value = false;
   }

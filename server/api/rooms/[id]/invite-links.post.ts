@@ -5,7 +5,12 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   const ctx = await requireRoomAdmin(event, roomId);
 
@@ -20,5 +25,5 @@ export default defineEventHandler(async (event) => {
     expiresAt,
   });
 
-  return { token, expiresAt };
+  return createResponse({ code: ApiResponseCode.Success }, { token, expiresAt });
 });

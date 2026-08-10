@@ -46,5 +46,6 @@ export default defineEventHandler(async (event) => {
   });
 
   const created = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
-  return { room: created[0] };
+  const room = created[0];
+  return createResponse({ code: ApiResponseCode.Success }, { room });
 });

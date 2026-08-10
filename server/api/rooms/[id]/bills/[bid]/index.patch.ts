@@ -1,12 +1,40 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "hub:db";
 import { billWeights, bills, roomMemberships } from "hub:db:schema";
+import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
 import { updateBillSchema } from "~~/shared/schemas/bill";
 
-export default defineEventHandler(async (event) => {
+interface BillShape {
+  id: string;
+  roomId: string;
+  categoryId: string | null;
+  currency: "USD" | "KHR";
+  amountMinor: number;
+  date: Date;
+  paidByMembershipId: string;
+  notes: string | null;
+  status: "draft" | "published";
+  templateId: string | null;
+  createdByUserId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface BillWithWeights extends BillShape {
+  weights: { billId: string; membershipId: string; weightBps: number }[];
+}
+interface UpdateBillResponse {
+  bill: BillWithWeights;
+}
+
+export default defineEventHandler(async (event): Promise<ApiResponse<UpdateBillResponse>> => {
   const roomId = getRouterParam(event, "id");
   const bid = getRouterParam(event, "bid");
-  if (!roomId || !bid) throw createError({ statusCode: 400, statusMessage: "Missing id" });
+  if (!roomId || !bid) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing id",
+    });
+  }
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, updateBillSchema.parse);
@@ -16,16 +44,21 @@ export default defineEventHandler(async (event) => {
     .from(bills)
     .where(and(eq(bills.id, bid), eq(bills.roomId, roomId)))
     .limit(1);
-  if (current.length === 0) throw createError({ statusCode: 404, statusMessage: "Bill not found" });
+  if (current.length === 0) {
+    return createResponse({
+      code: ApiResponseCode.NotFound,
+      message: "Bill not found",
+    });
+  }
   const bill = current[0]!;
 
   const isAdmin = ctx.role === "admin";
   const isDraft = bill.status === "draft";
   const isOwner = bill.createdByUserId === ctx.userId;
   if (!isAdmin && !(isDraft && isOwner)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Only the creator can edit a draft; only admins can edit a published bill.",
+    return createResponse({
+      code: ApiResponseCode.Forbidden,
+      message: "Only the creator can edit a draft; only admins can edit a published bill.",
     });
   }
 
@@ -42,9 +75,9 @@ export default defineEventHandler(async (event) => {
         ),
       );
     if (active.length !== attendeeIds.size) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "One or more attendees are not active members of this room.",
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "One or more attendees are not active members of this room.",
       });
     }
   }
@@ -76,5 +109,6 @@ export default defineEventHandler(async (event) => {
 
   const updated = await db.select().from(bills).where(eq(bills.id, bid)).limit(1);
   const weights = await db.select().from(billWeights).where(eq(billWeights.billId, bid));
-  return { bill: { ...updated[0], weights } };
+  const result = { ...updated[0], weights } as BillWithWeights;
+  return createResponse({ code: ApiResponseCode.Success }, { bill: result });
 });

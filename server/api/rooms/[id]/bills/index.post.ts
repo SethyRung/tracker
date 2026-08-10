@@ -5,7 +5,12 @@ import { createBillSchema } from "~~/shared/schemas/bill";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, createBillSchema.parse);
@@ -22,9 +27,9 @@ export default defineEventHandler(async (event) => {
       ),
     );
   if (active.length !== attendeeIds.size) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "One or more attendees are not active members of this room.",
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "One or more attendees are not active members of this room.",
     });
   }
 
@@ -55,5 +60,6 @@ export default defineEventHandler(async (event) => {
 
   const created = await db.select().from(bills).where(eq(bills.id, id)).limit(1);
   const weights = await db.select().from(billWeights).where(eq(billWeights.billId, id));
-  return { bill: { ...created[0], weights } };
+  const bill = { ...created[0], weights };
+  return createResponse({ code: ApiResponseCode.Success }, { bill });
 });

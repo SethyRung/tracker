@@ -280,6 +280,78 @@ month_snapshots     (id, room_id, yyyymm, status 'open'|'closed',
 
 Money columns use `BIGINT` (Postgres) since `amount_minor` can exceed `INT4` for KHR.
 
+## 14b. API Response Format
+
+Every server endpoint returns a single envelope so the client can branch on `status.code` without parsing `e.message`. The wire format is shared between server and client (defined in `shared/types/response.ts` and emitted by `server/utils/response.ts`).
+
+```ts
+{
+  status: {
+    code: ApiResponseCode;          // "SUCCESS" | "NOT_FOUND" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "FORBIDDEN" | "INVALID_REQUEST" | "INTERNAL_ERROR"
+    message: string;                 // human-readable, may be empty on success
+    requestId: string;                // crypto.randomUUID() per request, for log correlation
+    requestTime: number;              // Date.now() per request
+  };
+  data: T | null;                     // null on error; T extends any for endpoint-specific shapes
+  meta?: {                            // present on paginated list endpoints
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+```
+
+### Codes
+
+Every endpoint declares one of these status codes. The client uses `isSuccessResponse(res)` to narrow. Each code has a documented client-side intent:
+
+| Code               | Meaning                                                                                           | HTTP status field |
+| ------------------ | ------------------------------------------------------------------------------------------------- | ----------------- |
+| `SUCCESS`          | The request succeeded; `data` is the resource shape (or array for list endpoints).                | 200               |
+| `NOT_FOUND`        | The requested resource doesn't exist (or the user can't see it).                                  | 404               |
+| `VALIDATION_ERROR` | The request body failed Zod validation. The client should show the message as a form-level error. | 422               |
+| `UNAUTHORIZED`     | No valid session. Client should redirect to sign-in.                                              | 401               |
+| `FORBIDDEN`        | The user is signed in but lacks the role/permission for this room.                                | 403               |
+| `INVALID_REQUEST`  | Missing required params, bad query string, etc.                                                   | 400               |
+| `INTERNAL_ERROR`   | Server-side bug. Client should show a generic error and offer retry.                              | 500               |
+
+### Conventions
+
+- **Errors never use HTTP 200**. The wire code is the source of truth (`status.code`), not the HTTP status. (Some endpoints may still set HTTP 200 for symmetry; status.code is what the client reads.)
+- **Validation errors surface at the form level** (`useToast` or top-of-form alert) — not as per-field errors. Per-field validation is handled by Nuxt UI's built-in Zod schema on the client.
+- **`requestId`** is included on every response for log correlation. The server logs include the same `requestId` so a support request can be traced end-to-end.
+- **Timestamps in `data` are ISO 8601 strings** (e.g. `createdAt: "2026-08-08T13:45:58.774Z"`). The client parses with `new Date(...)`.
+- **Currency-typed money fields** are integers in `amount_minor` (USD cents or KHR riel). The wire format never includes floats.
+
+### Examples
+
+```ts
+// Success — single resource
+return {
+  status: { code: "SUCCESS", message: "", requestId: "...", requestTime: 1723123456789 },
+  data: { id: "abc", name: "Seth's Place", ... },
+};
+
+// Success — list with pagination
+return {
+  status: { code: "SUCCESS", message: "", requestId: "...", requestTime: ... },
+  data: [{ id: "bill-1", ... }, { id: "bill-2", ... }],
+  meta: { total: 42, limit: 20, offset: 0 },
+};
+
+// Validation error
+return {
+  status: { code: "VALIDATION_ERROR", message: "Amount must be greater than 0", requestId: "...", requestTime: ... },
+  data: null,
+};
+
+// Not found
+return {
+  status: { code: "NOT_FOUND", message: "Room not found", requestId: "...", requestTime: ... },
+  data: null,
+};
+```
+
 ## 15. Out of Scope (deferred)
 
 These were discussed and explicitly deferred. Do not implement in v1.

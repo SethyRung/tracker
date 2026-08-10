@@ -2,11 +2,15 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { billWeights, bills } from "hub:db:schema";
 import { billListQuerySchema } from "~~/shared/schemas/bill";
-import { monthRange } from "~~/shared/types/date";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   await requireRoomContext(event, roomId);
   const query = await getValidatedQuery(event, billListQuerySchema.parse);
@@ -37,10 +41,9 @@ export default defineEventHandler(async (event) => {
     weightsByBill.get(w.billId)!.push(w);
   }
 
-  return {
-    bills: rows.map((b) => ({
-      ...b,
-      weights: weightsByBill.get(b.id) ?? [],
-    })),
-  };
+  const billsData = rows.map((b) => ({
+    ...b,
+    weights: weightsByBill.get(b.id) ?? [],
+  }));
+  return createResponse({ code: ApiResponseCode.Success }, { bills: billsData });
 });

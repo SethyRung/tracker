@@ -5,7 +5,12 @@ import { updateRoomSchema } from "~~/shared/schemas/room";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, updateRoomSchema.parse);
@@ -20,5 +25,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const updated = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
-  return { room: updated[0] };
+  const room = updated[0];
+  return createResponse({ code: ApiResponseCode.Success }, { room });
 });

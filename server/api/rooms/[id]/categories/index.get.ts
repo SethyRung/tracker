@@ -4,7 +4,12 @@ import { categories } from "hub:db:schema";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   await requireRoomContext(event, roomId);
 
@@ -14,5 +19,5 @@ export default defineEventHandler(async (event) => {
     .where(eq(categories.roomId, roomId))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
-  return { categories: rows };
+  return createResponse({ code: ApiResponseCode.Success }, { categories: rows });
 });

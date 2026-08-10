@@ -15,20 +15,23 @@ export default defineEventHandler(async (event) => {
     .limit(1);
 
   if (link.length === 0) {
-    throw createError({ statusCode: 404, statusMessage: "This invite link is no longer valid." });
+    return createResponse({
+      code: ApiResponseCode.NotFound,
+      message: "This invite link is no longer valid.",
+    });
   }
   const row = link[0]!;
 
   if (row.usedAt !== null) {
-    throw createError({
-      statusCode: 410,
-      statusMessage: "This invite link has already been used.",
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "This invite link has already been used.",
     });
   }
   if (row.expiresAt.getTime() < Date.now()) {
-    throw createError({
-      statusCode: 410,
-      statusMessage: "This invite link has expired.",
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "This invite link has expired.",
     });
   }
 
@@ -44,7 +47,10 @@ export default defineEventHandler(async (event) => {
     )
     .limit(1);
   if (existing.length > 0) {
-    throw createError({ statusCode: 409, statusMessage: "Already a member of this room." });
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Already a member of this room.",
+    });
   }
 
   const usedColors = await db
@@ -72,5 +78,5 @@ export default defineEventHandler(async (event) => {
       .where(eq(inviteLinks.tokenHash, tokenHash));
   });
 
-  return { roomId: row.roomId, membershipId };
+  return createResponse({ code: ApiResponseCode.Success }, { roomId: row.roomId, membershipId });
 });

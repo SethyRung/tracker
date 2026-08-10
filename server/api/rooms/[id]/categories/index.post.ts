@@ -5,7 +5,12 @@ import { createCategorySchema, normalizeCategoryName } from "~~/shared/schemas/c
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
-  if (!roomId) throw createError({ statusCode: 400, statusMessage: "Missing room id" });
+  if (!roomId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Missing room id",
+    });
+  }
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, createCategorySchema.parse);
@@ -18,9 +23,9 @@ export default defineEventHandler(async (event) => {
     .where(and(eq(categories.roomId, roomId), sql`lower(trim(${categories.name})) = ${normalized}`))
     .limit(1);
   if (existing.length > 0) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: "A category with this name already exists in this room.",
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "A category with this name already exists in this room.",
     });
   }
 
@@ -33,5 +38,6 @@ export default defineEventHandler(async (event) => {
   });
 
   const created = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
-  return { category: created[0] };
+  const category = created[0];
+  return createResponse({ code: ApiResponseCode.Success }, { category });
 });

@@ -1,5 +1,5 @@
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event);
-  const room = await getActiveRoomForUser(session.user.id);
-  return { room: room ?? null };
+  const fetched = await getActiveRoomForUser(session.user.id);
+  return createResponse({ code: ApiResponseCode.Success }, { room: fetched });
 });
