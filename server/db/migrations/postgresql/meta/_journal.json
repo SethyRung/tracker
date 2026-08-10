@@ -15,6 +15,13 @@
       "when": 1786196333243,
       "tag": "0001_rainy_black_widow",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786210425441,
+      "tag": "0002_spicy_khan",
+      "breakpoints": true
     }
   ]
 }

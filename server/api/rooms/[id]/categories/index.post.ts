@@ -15,12 +15,7 @@ export default defineEventHandler(async (event) => {
   const existing = await db
     .select({ id: categories.id })
     .from(categories)
-    .where(
-      and(
-        eq(categories.roomId, roomId),
-        sql`lower(trim(${categories.name})) = ${normalized}`,
-      ),
-    )
+    .where(and(eq(categories.roomId, roomId), sql`lower(trim(${categories.name})) = ${normalized}`))
     .limit(1);
   if (existing.length > 0) {
     throw createError({

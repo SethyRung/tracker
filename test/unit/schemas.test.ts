@@ -56,34 +56,34 @@ describe("schemas", () => {
 
   describe("weightEntrySchema", () => {
     it("accepts a valid entry", () => {
-      expect(weightEntrySchema.parse({ membership_id: "m1", weight_bps: 5000 })).toEqual({
+      expect(weightEntrySchema.parse({ membership_id: "m1", weight_bps: 0.5 })).toEqual({
         membership_id: "m1",
-        weight_bps: 5000,
+        weight_bps: 0.5,
       });
     });
 
     it("rejects out-of-range weights", () => {
-      expect(() => weightEntrySchema.parse({ membership_id: "m1", weight_bps: -1 })).toThrow();
-      expect(() => weightEntrySchema.parse({ membership_id: "m1", weight_bps: 10001 })).toThrow();
+      expect(() => weightEntrySchema.parse({ membership_id: "m1", weight_bps: -0.1 })).toThrow();
+      expect(() => weightEntrySchema.parse({ membership_id: "m1", weight_bps: 1.5 })).toThrow();
     });
 
     it("rejects empty membership_id", () => {
-      expect(() => weightEntrySchema.parse({ membership_id: "", weight_bps: 5000 })).toThrow();
+      expect(() => weightEntrySchema.parse({ membership_id: "", weight_bps: 0.5 })).toThrow();
     });
   });
 
   describe("attendanceSchema", () => {
     it("accepts a single-attendee 100% entry", () => {
-      expect(attendanceSchema.parse([{ membership_id: "m1", weight_bps: 10000 }])).toEqual([
-        { membership_id: "m1", weight_bps: 10000 },
+      expect(attendanceSchema.parse([{ membership_id: "m1", weight_bps: 1 }])).toEqual([
+        { membership_id: "m1", weight_bps: 1 },
       ]);
     });
 
     it("accepts a balanced split", () => {
       expect(
         attendanceSchema.parse([
-          { membership_id: "m1", weight_bps: 5000 },
-          { membership_id: "m2", weight_bps: 5000 },
+          { membership_id: "m1", weight_bps: 0.5 },
+          { membership_id: "m2", weight_bps: 0.5 },
         ]),
       ).toHaveLength(2);
     });
@@ -92,10 +92,10 @@ describe("schemas", () => {
       expect(() => attendanceSchema.parse([])).toThrow();
     });
 
-    it("rejects sum != 10000", () => {
+    it("rejects sum != 1", () => {
       const result = attendanceSchema.safeParse([
-        { membership_id: "m1", weight_bps: 5000 },
-        { membership_id: "m2", weight_bps: 4000 },
+        { membership_id: "m1", weight_bps: 0.5 },
+        { membership_id: "m2", weight_bps: 0.4 },
       ]);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -105,23 +105,23 @@ describe("schemas", () => {
 
     it("rejects duplicate attendees", () => {
       const result = attendanceSchema.safeParse([
-        { membership_id: "m1", weight_bps: 5000 },
-        { membership_id: "m1", weight_bps: 5000 },
+        { membership_id: "m1", weight_bps: 0.5 },
+        { membership_id: "m1", weight_bps: 0.5 },
       ]);
       expect(result.success).toBe(false);
     });
   });
 
   describe("sharePercentSchema", () => {
-    it("accepts 0–100", () => {
+    it("accepts 0–1", () => {
       expect(sharePercentSchema.parse(0)).toBe(0);
-      expect(sharePercentSchema.parse(100)).toBe(100);
-      expect(sharePercentSchema.parse(25.5)).toBe(25.5);
+      expect(sharePercentSchema.parse(1)).toBe(1);
+      expect(sharePercentSchema.parse(0.5)).toBe(0.5);
     });
 
     it("rejects out-of-range values", () => {
-      expect(() => sharePercentSchema.parse(-1)).toThrow();
-      expect(() => sharePercentSchema.parse(101)).toThrow();
+      expect(() => sharePercentSchema.parse(-0.1)).toThrow();
+      expect(() => sharePercentSchema.parse(1.1)).toThrow();
     });
   });
 });

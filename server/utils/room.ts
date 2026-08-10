@@ -12,6 +12,7 @@ export interface RoomContext {
   room: Room;
   membership: RoomMembership;
   role: RoomRole;
+  userId: string;
 }
 
 export async function requireRoomContext(event: H3Event, roomId: string): Promise<RoomContext> {
@@ -43,6 +44,7 @@ export async function requireRoomContext(event: H3Event, roomId: string): Promis
     room: room[0]!,
     membership: membership[0]!,
     role: membership[0]!.role as RoomRole,
+    userId,
   };
 }
 

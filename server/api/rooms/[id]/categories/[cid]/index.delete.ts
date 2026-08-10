@@ -9,9 +9,7 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomAdmin(event, roomId);
 
-  await db
-    .delete(categories)
-    .where(and(eq(categories.id, cid), eq(categories.roomId, roomId)));
+  await db.delete(categories).where(and(eq(categories.id, cid), eq(categories.roomId, roomId)));
 
   return { ok: true };
 });

@@ -13,7 +13,7 @@ export const monthKeySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Month
 
 export const weightEntrySchema = z.object({
   membership_id: z.string().min(1),
-  weight_bps: z.number().int().min(0).max(BPS_TOTAL),
+  weight_bps: z.number().min(0).max(BPS_TOTAL),
 });
 
 export const attendanceSchema = z
@@ -21,10 +21,10 @@ export const attendanceSchema = z
   .min(1, "At least one attendee is required")
   .superRefine((entries, ctx) => {
     const total = entries.reduce((sum, e) => sum + e.weight_bps, 0);
-    if (total !== BPS_TOTAL) {
+    if (Math.abs(total - BPS_TOTAL) > 0.0001) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Weights sum to ${total}, expected ${BPS_TOTAL}`,
+        message: `Weights sum to ${total.toFixed(4)}, expected ${BPS_TOTAL.toFixed(4)}`,
         params: { code: "sum_mismatch", total, expected: BPS_TOTAL },
       });
     }
@@ -41,7 +41,7 @@ export const attendanceSchema = z
     }
   });
 
-export const sharePercentSchema = z.number().min(0).max(100);
+export const sharePercentSchema = z.number().min(0).max(1);
 
 export const nowIsoSchema = z
   .string()
