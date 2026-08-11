@@ -2,10 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { entries } from "hub:db:schema";
 import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
+import { assertMonthOpen, monthKeyFromDate } from "~~/server/utils/month";
 
 interface EntryShape {
   id: string;
   roomId: string;
+  date: Date;
   status: "draft" | "published";
   createdByUserId: string;
 }
@@ -50,6 +52,16 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ ok: true 
         entry.status === "draft"
           ? "Only an admin can delete a draft entry."
           : "Only the creator or an admin can delete this entry.",
+    });
+  }
+
+  // Phase 8: closed months block all mutations including delete.
+  try {
+    await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
+  } catch (e) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: e instanceof Error ? e.message : "Month is closed.",
     });
   }
 

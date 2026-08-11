@@ -3,6 +3,7 @@ import { db } from "hub:db";
 import { entries, entryWeights, roomMemberships } from "hub:db:schema";
 import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
 import { updateEntrySchema } from "~~/shared/schemas/entry";
+import { assertMonthOpen, monthKeyFromDate } from "~~/server/utils/month";
 
 interface EntryShape {
   id: string;
@@ -69,6 +70,19 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntry
         entry.status === "draft"
           ? "Only an admin can edit a draft entry."
           : "Only the creator or an admin can edit this entry.",
+    });
+  }
+
+  // Phase 8: closed months block all mutations. Check both the existing
+  // entry's month AND the new date (if changed) so a date move can't sneak
+  // past.
+  try {
+    await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
+    if (body.date) await assertMonthOpen(roomId, monthKeyFromDate(body.date));
+  } catch (e) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: e instanceof Error ? e.message : "Month is closed.",
     });
   }
 

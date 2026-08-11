@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { entries } from "hub:db:schema";
 import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
+import { assertMonthOpen, monthKeyFromDate } from "~~/server/utils/month";
 
 interface EntryShape {
   id: string;
@@ -59,6 +60,17 @@ export default defineEventHandler(async (event): Promise<ApiResponse<PublishEntr
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
       message: "This entry is already published.",
+    });
+  }
+
+  // Phase 8: publishing a draft moves the entry into settlement; refuse on
+  // a closed month so the locked totals don't drift.
+  try {
+    await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
+  } catch (e) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: e instanceof Error ? e.message : "Month is closed.",
     });
   }
 

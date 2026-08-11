@@ -7,6 +7,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 import { user } from "#auth/schema";
 
@@ -49,9 +50,6 @@ export const categories = pgTable("categories", {
     .references(() => rooms.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
-  // Drives Phase 7 recurring templates + the once-per-month create limit.
-  // 'unlimited' = multiple entries/month; 'once' = one entry/month (enforced);
-  // 'recurring' = auto-draft monthly with a default amount.
   recurringType: text("recurring_type", { enum: ["unlimited", "once", "recurring"] })
     .notNull()
     .default("unlimited"),
@@ -59,8 +57,6 @@ export const categories = pgTable("categories", {
 });
 
 export const inviteLinks = pgTable("invite_links", {
-  // Token is sent in the URL as the raw 8-char base62 string. The hash is
-  // what's stored — the raw token is never persisted.
   tokenHash: text("token_hash").primaryKey(),
   roomId: text("room_id")
     .notNull()
@@ -116,9 +112,6 @@ export const entryWeights = pgTable(
   (t) => [primaryKey({ columns: [t.entryId, t.membershipId] })],
 );
 
-// One per category with recurring_type='recurring'. The member snapshot freezes
-// the attendee list at template-create time so future weight changes don't
-// retroactively rewrite past drafts (Phase 7 / SPEC §8).
 export const recurringTemplates = pgTable("recurring_templates", {
   id: text("id").primaryKey(),
   roomId: text("room_id")
@@ -137,3 +130,24 @@ export const recurringTemplates = pgTable("recurring_templates", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const monthSnapshots = pgTable(
+  "month_snapshots",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    yyyymm: text("yyyymm").notNull(),
+    status: text("status", { enum: ["open", "closed"] })
+      .notNull()
+      .default("open"),
+    closedAt: timestamp("closed_at"),
+    closedByUserId: text("closed_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [unique("month_snapshots_room_yyyymm_unique").on(t.roomId, t.yyyymm)],
+);

@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
 import { createEntrySchema } from "~~/shared/schemas/entry";
+import { assertMonthOpenForDate } from "~~/server/utils/month";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
@@ -14,6 +15,17 @@ export default defineEventHandler(async (event) => {
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, createEntrySchema.parse);
+
+  // Phase 8: refuse if the target month is closed. SPEC §9: closed blocks
+  // ALL edits including admin; reopen to mutate.
+  try {
+    await assertMonthOpenForDate(roomId, body.date);
+  } catch (e) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: e instanceof Error ? e.message : "Month is closed.",
+    });
+  }
 
   // User-created entries are always published (instant). Drafts are only
   // materialized by recurring templates (Phase 7), not via this route.

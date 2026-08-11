@@ -10,6 +10,14 @@ const { data: roomId } = await useFetch("/api/rooms/current", {
   transform: (res) => res?.data?.room?.id,
 });
 
+const toast = useToast();
+
+interface MonthSnapshot {
+  status: "open" | "closed";
+  closedAt: string | null;
+  closedByUserId: string | null;
+}
+
 interface EntryRow {
   id: string;
   currency: string;
@@ -24,40 +32,89 @@ interface EntryRow {
 
 interface MemberRow {
   id: string;
+  userId: string;
   displayName: string;
   nickname: string | null;
   color: string | null;
   role: string;
 }
 
-const entries = ref<EntryRow[]>([]);
-const members = ref<MemberRow[]>([]);
-const categories = ref<Array<{ id: string; name: string }>>([]);
-
-const fetchWithCookies = useRequestFetch();
-
-async function refreshAll() {
-  if (!roomId.value) return;
-  const [e, m, c] = await Promise.all([
-    fetchWithCookies(`/api/rooms/${roomId.value}/entries`),
-    fetchWithCookies(`/api/rooms/${roomId.value}/members`),
-    fetchWithCookies(`/api/rooms/${roomId.value}/categories`),
-  ]);
-  entries.value = (e.data?.entries ?? []) as unknown as EntryRow[];
-  members.value = m.data?.members ?? [];
-  categories.value = c.data?.categories ?? [];
+interface CategoryRow {
+  id: string;
+  name: string;
 }
 
-if (roomId.value) await refreshAll();
-watch(roomId, () => refreshAll());
+const { data: entries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
+  transform: (r) => (r?.data?.entries ?? []) as EntryRow[],
+  default: () => [] as EntryRow[],
+});
+const { data: members } = await useFetch(() => `/api/rooms/${roomId.value}/members`, {
+  transform: (r) => (r?.data?.members ?? []) as MemberRow[],
+  default: () => [] as MemberRow[],
+});
+const { data: categories } = await useFetch(() => `/api/rooms/${roomId.value}/categories`, {
+  transform: (r) => (r?.data?.categories ?? []) as CategoryRow[],
+  default: () => [] as CategoryRow[],
+});
 
-const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));
+const thisMonthKey = computed(() => currentMonthKey());
+
+const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
+  () => `/api/rooms/${roomId.value}/months/${thisMonthKey.value}`,
+  {
+    transform: (r) => (r?.data?.snapshot ?? null) as MonthSnapshot | null,
+    default: () => null as MonthSnapshot | null,
+  },
+);
+
+const closingMonth = ref(false);
+
+const isAdmin = computed(() =>
+  (members.value ?? []).some((m) => m.userId === user.value?.id && m.role === "admin"),
+);
+const monthClosed = computed(() => monthSnapshot.value?.status === "closed");
+
+async function toggleMonth() {
+  if (!roomId.value || !isAdmin.value) return;
+  const action = monthClosed.value ? "reopen" : "close";
+  if (action === "close") {
+    if (
+      !confirm(
+        `Close ${thisMonthKey.value}? Entries will be locked — no edits, deletes, or publishes until you reopen.`,
+      )
+    ) {
+      return;
+    }
+  }
+  closingMonth.value = true;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/months/${thisMonthKey.value}/${action}`, {
+      method: "POST",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    await refreshMonth();
+    toast.add({
+      icon: "i-lucide:circle-check",
+      title: action === "close" ? "Month closed" : "Month reopened",
+    });
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide:circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not update month.",
+    });
+  } finally {
+    closingMonth.value = false;
+  }
+}
+
+const memberById = computed(() => new Map((members.value ?? []).map((m) => [m.id, m])));
 const catName = (id: string | null) =>
-  id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
+  id ? ((categories.value ?? []).find((c) => c.id === id)?.name ?? "—") : "—";
 const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
 
-const drafts = computed(() => entries.value.filter((e) => e.status === "draft"));
-const published = computed(() => entries.value.filter((e) => e.status === "published"));
+const drafts = computed(() => (entries.value ?? []).filter((e) => e.status === "draft"));
+const published = computed(() => (entries.value ?? []).filter((e) => e.status === "published"));
 
 // Drafts aren't counted in settlement until published (SPEC §8), so the totals
 // preview sums published entries only.
@@ -71,7 +128,7 @@ const totalsByCurrency = computed(() => {
 
 const thisMonthEntries = computed(() => {
   const key = currentMonthKey();
-  return entries.value
+  return (entries.value ?? [])
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))
     .filter((e) => monthKey(new Date(e.date)) === key);
@@ -106,7 +163,7 @@ function avatarColor(memberId: string) {
 }
 
 function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
-  const active = members.value.length;
+  const active = (members.value ?? []).length;
   const n = e.weights.length;
   if (n === 0) return "—";
   if (n === active) return "split: all (equal)";
@@ -129,6 +186,37 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
     </div>
 
     <template v-else>
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <div>
+          <h1 class="font-pixel-circle text-2xl text-primary">{{ thisMonthKey }}</h1>
+          <p class="text-xs text-toned mt-1">
+            <UBadge :color="monthClosed ? 'neutral' : 'primary'" variant="subtle" size="xs">
+              {{ monthClosed ? "Closed" : "Open" }}
+            </UBadge>
+            <span v-if="monthClosed" class="ml-2">No edits allowed this month.</span>
+          </p>
+        </div>
+        <UButton
+          v-if="isAdmin"
+          :icon="monthClosed ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+          :label="monthClosed ? 'Reopen' : 'Close month'"
+          :color="monthClosed ? 'neutral' : 'primary'"
+          variant="outline"
+          :loading="closingMonth"
+          @click="toggleMonth"
+        />
+      </div>
+
+      <UAlert
+        v-if="monthClosed"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-lock"
+        title="Month closed"
+        description="No edits, deletes, or publishes until an admin reopens this month."
+        class="mb-4"
+      />
+
       <UCard class="mb-4">
         <template #header>
           <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
