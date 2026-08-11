@@ -27,10 +27,10 @@ Full spec: [SPEC.md](./SPEC.md) · UI wireframes: [MOCKS.md](./MOCKS.md) · Agen
 - **Unified split model**: every entry uses the same split logic — pick attendees (default all) → set shares (default `100/N` equal). User-editable per entry. See `SPEC.md §7b`.
 - **Categories**: pure labels for filtering/reporting (Rent, Utilities, Food, Supplies pre-seeded). They do **not** carry split rules.
 - **Month lifecycle**: open → admin-closes. Closed months lock edits and snapshot settlement.
-- **Recurring bills**: templates auto-materialize as drafts on the 1st of each month. Admin confirms/publishes.
+- **Recurring bills**: templates auto-materialize as published entries on the 1st of each month (and immediately when a template is created mid-month).
 - **Settlement**: minimum-transfer algorithm per (room, month, currency). Two side-by-side panels (USD + KHR).
 - **Roles**: Admin + Member. Admin auto-succeeds to oldest active member on departure.
-- **Pro-rating**: applies uniformly to all entries. Members joining/leaving mid-month are pro-rated by day.
+- **Splits**: an entry is split purely by the per-entry attendee weights. No tenure pro-rating — see `SPEC.md §11`.
 - **Auth**: email + password with mandatory email verification, password reset, 30-day sliding session cookies.
 - **Out of scope (v1)**: audit log, notifications, data export, account deletion, receipts, multi-admin, currency conversion. See `SPEC.md §15`.
 

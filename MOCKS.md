@@ -315,14 +315,14 @@ Route: `/members`. Slim list view; the invite flow lives on its own dedicated pa
 │  Remove Bouy?                ✕  │
 ├──────────────────────────────────┤
 │                                  │
-│  Bouy will be pro-rated out of   │
+│  Bouy will be removed from       │
 │  August 2026. They'll keep      │
 │  access to past months but the   │
 │  account will be deactivated in  │
 │  this room.                      │
 │                                  │
-│  Pro-rated share: 14/31 days     │
-│  = 45% of August activity.       │
+│  Entries they already attend     │
+│  keep their existing share.      │
 │                                  │
 │  ⚠ Past months are NOT changed. │
 │                                  │

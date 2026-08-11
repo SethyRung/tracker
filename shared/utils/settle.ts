@@ -1,18 +1,22 @@
 import { BPS_TOTAL } from "../types/weight";
-import { proRatedWeights } from "./pro-rate";
 
-// Settlement algorithm (Phase 10 / SPEC §10). Pure — takes pre-loaded
-// entries + members, returns balances + a minimum-transfer list. The DB-
-// using wrapper lives in server/utils/settle.ts.
+// Settlement algorithm (SPEC §10). Pure — takes pre-loaded entries + members,
+// returns balances + a minimum-transfer list. The DB-using wrapper lives in
+// server/utils/settle.ts.
 //
 // Settlement is per (room, yyyymm, currency). Each call processes ONE
 // currency; the API route runs the algorithm twice (USD, KHR) for the
 // side-by-side display.
+//
+// Entry weights are used exactly as stored. There is no tenure pro-rating:
+// an attendee's share of an entry is the weight set on that entry, whether
+// they joined the room last year or last week.
 
 export interface SettlementEntry {
   // Pre-loaded entry fields the algorithm needs.
   amountMinor: number;
-  paidByMembershipId: string;
+  // Who put money down, and how much. Sums to amountMinor.
+  payers: ReadonlyArray<{ membershipId: string; amountMinor: number }>;
   weights: ReadonlyArray<{ membershipId: string; weightBps: number }>;
 }
 
@@ -44,13 +48,12 @@ export interface SettlementResult {
 }
 
 // Compute per-member net positions, then the minimum-transfer list.
-// `members` is the full active+inactive set so pro-rating can resolve
-// joinedAt/leftAt for departed members (their effective weight may still
-// be > 0 if the entry was created while they were active).
+// `members` is the full active+inactive set so departed members referenced by
+// an entry's weights still resolve (and so rounding remainders can be
+// assigned deterministically to the longest-tenured attendee).
 export function settle(
   entries: ReadonlyArray<SettlementEntry>,
   members: ReadonlyArray<SettlementMember>,
-  yyyymm: string,
 ): SettlementResult {
   const paidByMember = new Map<string, number>();
   const owedByMember = new Map<string, number>();
@@ -61,27 +64,22 @@ export function settle(
 
   for (const entry of entries) {
     // Defensive: an entry may reference a payer that has since been removed.
-    if (!paidByMember.has(entry.paidByMembershipId)) {
-      paidByMember.set(entry.paidByMembershipId, 0);
-      owedByMember.set(entry.paidByMembershipId, 0);
+    for (const p of entry.payers) {
+      if (!paidByMember.has(p.membershipId)) {
+        paidByMember.set(p.membershipId, 0);
+        owedByMember.set(p.membershipId, 0);
+      }
     }
 
-    const proRated = proRatedWeights({
-      weights: entry.weights,
-      yyyymm,
-      members,
-    });
-
-    // Integer math with explicit remainder distribution. Pro-rated weights
-    // sum to BPS_TOTAL exactly (Phase 9 invariant), so
+    // Integer math with explicit remainder distribution. Entry weights sum
+    // to BPS_TOTAL (validated on write), so
     //   sum(floor(M * w / BPS_TOTAL)) + remainder == M
-    // We add the rounding remainder to the longest-tenured attendee in the
-    // entry — same convention as Phase 9's pro-rate algorithm — so totals
-    // stay exact and reproducible.
+    // We add the rounding remainder to the longest-tenured attendee so
+    // totals stay exact and reproducible.
     const floorOwed = new Map<string, number>();
     let sumFloor = 0;
     const orderedMids: string[] = [];
-    for (const [membershipId, weightBps] of proRated) {
+    for (const { membershipId, weightBps } of entry.weights) {
       const owed = Math.floor((entry.amountMinor * weightBps) / BPS_TOTAL);
       floorOwed.set(membershipId, owed);
       sumFloor += owed;
@@ -89,10 +87,9 @@ export function settle(
     }
     const remainder = entry.amountMinor - sumFloor;
 
-    paidByMember.set(
-      entry.paidByMembershipId,
-      (paidByMember.get(entry.paidByMembershipId) ?? 0) + entry.amountMinor,
-    );
+    for (const p of entry.payers) {
+      paidByMember.set(p.membershipId, (paidByMember.get(p.membershipId) ?? 0) + p.amountMinor);
+    }
 
     if (remainder > 0 && orderedMids.length > 0) {
       // Longest-tenured among attendees that owed something. Falls back to

@@ -99,8 +99,8 @@ All routes except `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` 
 - `avatar` (optional — uploaded image or auto-generated initial-avatar fallback)
 - `share_percent` (decimal 0–100, e.g., 22.0 for 22%; **informational only**, not used to compute entry splits)
 - `color` (auto-assigned hex from a fixed palette; editable)
-- `joined_at` (timestamp; set on join, used for pro-rating and admin succession)
-- `left_at` (nullable; set on removal/departure for pro-rating cutoff)
+- `joined_at` (timestamp; set on join, used for admin succession and default attendee selection)
+- `left_at` (nullable; set on removal/departure)
 
 ## 7. Categories
 
@@ -108,7 +108,7 @@ All routes except `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` 
 
 - `unlimited` — standalone; entries are logged one-off as needed, any number per month.
 - `once` — **at most one entry per month** in this category (server-enforced on POST; the existing entry is editable). The amount is provided by the user on each entry.
-- `recurring` — a `RecurringTemplate` exists for this category (Phase 7): the system auto-creates a **draft** entry each month with a stored default amount; your admin reviews and tweaks the amount before publishing.
+- `recurring` — a `RecurringTemplate` exists for this category (Phase 7): the system auto-creates a **published** entry each month with a stored default amount; admins can edit the amount while the month is open.
 
 Pre-seeded on room creation (admin can rename/add/remove; recurring type is editable):
 
@@ -137,15 +137,32 @@ Every entry follows the same split model.
 - Editing one weight does NOT auto-redistribute the others; user is responsible for the total reaching 10000
 - Sum must equal 10000 across attendees (validated client + server); save is disabled otherwise
 
-### Pro-rating
+### No pro-rating
 
-- Applies to all entries uniformly
-- `effective_weight = entry_weight * (effective_days / days_in_month)` where `effective_days` is days the member was active during the entry's month
-- Rounding remainder is assigned to the longest-tenured member at the time of the entry
+- An entry splits by the weights stored on that entry, always. A member's tenure in the room does not scale their share.
+- Joining or leaving mid-month has no effect on entries the member is an attendee of; it only affects which entries they are added to by default.
+- Rounding remainder (from integer division) is assigned to the longest-tenured attendee on the entry.
 
 ## 8. Entries
 
-Household expenses live in a single `entries` table. There is no bill/payment `type` — every entry is just an entry, with `amount_minor`, `currency`, `date` (datetime), `category_id`, `paid_by_membership_id`, `notes`, `attendees` + `weights`, `created_by`, `created_at`, `updated_at`, plus `status` and `template_id`. (An earlier revision split bills and payments into a `type` field; the distinction duplicated ~90% of the columns/routes/forms for no modeling gain, so it was dropped — see DECISIONS.md.)
+Household expenses live in a single `entries` table. There is no bill/payment `type` — every entry is just an entry, with `amount_minor`, `currency`, `date` (datetime), `category_id`, `notes`, `attendees` + `weights`, `payers`, `created_by`, `created_at`, `updated_at`, plus `status` and `template_id`. (An earlier revision split bills and payments into a `type` field; the distinction duplicated ~90% of the columns/routes/forms for no modeling gain, so it was dropped — see DECISIONS.md.)
+
+## 8b. Payers
+
+Who actually put money down is recorded in `entry_payers (entry_id, membership_id, amount_minor)`. This replaces the earlier single `entries.paid_by_membership_id`, which could not express a room where everyone pays the landlord separately.
+
+Three shapes, all the same table:
+
+- **One person fronted it** — a single row for the full entry amount. The payer is owed back by the other attendees. This is the common case and stays a one-click choice in the form.
+- **Everyone paid their own share** — one row per attendee, each matching their share of the split. Every member's paid equals their owed, so the entry nets to zero and creates **no debt between members**. It still counts toward category totals and monthly spend.
+- **Uneven co-payment** — arbitrary rows (e.g. one member covered $80 of a $100 bill, another $20).
+
+Rules:
+
+- At least one payer row per entry.
+- `sum(entry_payers.amount_minor) == entries.amount_minor` exactly — validated client-side and server-side, on both create and update. The PATCH route re-checks against stored values when only the amount or only the payers is being changed.
+- Every payer must be an active member of the room.
+- Payers and attendees are independent: someone can pay without attending (they are simply owed), and attend without paying.
 
 ### User entries
 
@@ -153,18 +170,18 @@ Household expenses live in a single `entries` table. There is no bill/payment `t
 - `attendees` + `weights` per attendee; defaults to all active members with profile `share_percent`; the creator (or an admin) can override.
 - One entry form covers everything. An entry carries **no recurring flag** — recurrence is a property of the chosen **category** (§7), not the entry.
 
-### Recurring drafts (Phase 7)
+### Recurring entries (Phase 7)
 
 - Recurring is a property of the **category** (`recurring_type`), not the entry. The category recurring type is `unlimited | once | recurring` (§7):
-  - `unlimited` — no auto-draft; entries are logged manually, any number per month.
-  - `once` — no auto-draft; a once-per-month limit is enforced at entry POST (you log the single monthly entry manually; the server blocks a second). Edits to the existing entry are allowed.
-  - `recurring` — a `RecurringTemplate` exists for this category, holding `currency`, `day_of_month` (when drafts materialize), the **member snapshot** (which members are included), and the default `amount_minor` (editable before publishing).
-- On the 1st of each month (Phnom Penh time), a scheduled task creates **draft** entries from every active `recurring` template. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
-- `template_id` links a materialized draft back to its template. Per-month overrides (amount / attendees / weights) are saved on the entry only — they do not propagate back to the template or to other drafts.
+  - `unlimited` — no auto-post; entries are logged manually, any number per month.
+  - `once` — no auto-post; a once-per-month limit is enforced at entry POST (you log the single monthly entry manually; the server blocks a second). Edits to the existing entry are allowed.
+  - `recurring` — a `RecurringTemplate` exists for this category, holding `currency`, `day_of_month` (when entries materialize), the **member snapshot** (which members are included), and the default `amount_minor`.
+- On the 1st of each month (Phnom Penh time), a scheduled task creates **published** entries from every active `recurring` template. They count toward settlement immediately; there is no review-before-publish gate. Admins edit the amount/weights/attendees in place while the month is open.
+- `template_id` links a materialized entry back to its template. Per-month overrides (amount / attendees / weights) are saved on the entry only — they do not propagate back to the template or to other months.
 
 ### Lifecycle & permissions
 
-- `entries.status`: `draft` | `published`. User entries are created `published`; drafts come only from recurring-template materialization.
+- `entries.status`: `draft` | `published`. User entries are created `published`; recurring-template materializations are also created `published`. The `draft` status is retained for historical rows created before this change and for manual admin use.
 - **Edit / delete rules**:
   - `published`: creator or admin.
   - `draft`: admin only (drafts are template materializations up for review).
@@ -179,7 +196,7 @@ Household expenses live in a single `entries` table. There is no bill/payment `t
 - Each month is either **open** or **closed**.
 - **Open**: any active member can add/edit/delete their own entries. Admin can edit/delete any entry.
 - **Closed** (admin action): no further edits or deletes. Settlement is locked.
-- **Auto-creation**: drafts materialize on the 1st at 00:00 Phnom Penh time.
+- **Auto-creation**: recurring entries materialize on the 1st at 00:00 Phnom Penh time.
 - **Settlement view** is always available (live balance recalc) regardless of open/closed.
 - **Re-opening**: admin can re-open a closed month (rare; e.g., dispute resolution). Re-closing re-takes the snapshot.
 
@@ -190,18 +207,20 @@ Computed per (room, month, currency). Produces two independent settlement plans 
 ### Inputs per entry
 
 - `amount_minor`, `currency`
-- `paid_by_member_id` (who actually paid)
+- `payers[]` (who put money down, and how much — §8b)
 - `category` (label only, no split rule)
-- `date` (for pro-rating)
+- `date` (informational; does not affect the split)
 - `attendees[]` and `weights[]` (per-entry, may override profile share_percent)
 
 ### Per-member owed amount
 
-For each entry, compute each attendee's owed using their entry weight (after pro-rating). Then:
+For each entry, compute each attendee's owed using their entry weight. Then:
 
 ```
 balance[m] = sum(paid_by[m]) − sum(owed[m])
 ```
+
+where `sum(paid_by[m])` is the total of that member's `entry_payers` rows.
 
 `balance[m] > 0` means m is owed money; `< 0` means m owes money.
 
@@ -217,14 +236,16 @@ This produces ≤ N−1 transfers where N is the count of non-zero balances (typ
 
 Settlement is shown side-by-side for both currencies in the UI.
 
-## 11. Pro-rating
+## 11. Mid-Month Join / Leave
 
-When a member joins or leaves mid-month, their weight on every entry in that month is pro-rated by day.
+Joining or leaving mid-month does **not** scale a member's share of any entry. An entry is split purely by the `weight_bps` stored on it.
 
-- Effective days = days the member was active during the entry's month, inclusive of both endpoints.
-- `effective_weight = entry_weight * (effective_days / days_in_month)`
-- Sum of `effective_weight` across members may not equal `entry_weight` exactly due to rounding. Any rounding remainder is assigned to the longest-tenured member of the room at the time of the entry.
-- If a member is NOT in the entry's attendee list, they get nothing (pro-rating is moot).
+- A member who is an attendee on an entry owes their full stored weight, regardless of when they joined or left.
+- A member who is not an attendee owes nothing.
+- To charge a new member less for their first month, set their weights accordingly on the individual entries (or omit them as an attendee).
+- `joined_at` / `left_at` remain used for admin succession (§5), default attendee selection, and deterministic rounding-remainder assignment — not for scaling weights.
+
+An earlier revision pro-rated `effective_weight = entry_weight * (effective_days / days_in_month)` across every entry in the month. It was removed: it silently overrode the explicit per-entry weights users set in the form, and it dumped the entire rounding shortfall on the single longest-tenured member rather than redistributing it.
 
 ## 12. First-Run UX
 
@@ -272,23 +293,32 @@ categories          (id, room_id, name, sort_order,
                      -- recurring_type:
                      --   'unlimited' = multiple entries/month (manual)
                      --   'once'      = one entry/month max (server-enforced)
-                     --   'recurring' = auto-draft monthly with default amount
+                     --   'recurring' = auto-post monthly with default amount
                      -- default 'unlimited'
 
 recurring_templates (id, room_id, category_id, currency,
-                     amount_minor, day_of_month, is_active)
+                     amount_minor, day_of_month, is_active,
+                     payer_snapshot JSONB NULL)
                      -- one per category with recurring_type = 'recurring';
-                     -- amount_minor is the stored default (editable before
-                     -- publishing). Categories with 'once' are guarded at
-                     -- entry POST and don't need a template; 'unlimited' is
-                     -- manual.
+                     -- amount_minor is the stored default, copied onto each
+                     -- materialized entry (editable on the entry while the
+                     -- month is open). payer_snapshot holds payer shares in
+                     -- basis points (summing to 10000) and materializes into
+                     -- entry_payers rows; NULL falls back to the longest-
+                     -- tenured active member paying the whole amount.
 
 entries              (id, room_id, category_id, currency, amount_minor,
-                     date, paid_by_membership_id, notes,
+                     date, notes,
                      status 'draft'|'published', template_id NULL,
                      created_by, created_at, updated_at)
-                     -- no bill/payment `type`; user entries are created
-                     -- `published`, drafts come only from recurring templates
+                     -- no bill/payment `type`; user entries AND recurring
+                     -- materializations are both created `published`.
+                     -- no paid_by column — see entry_payers.
+
+entry_payers        (entry_id, membership_id, amount_minor)
+                     -- who put money down and how much (§8b);
+                     -- sum per entry must equal entries.amount_minor;
+                     -- 1 row = someone fronted it, N rows = split payment
 
 entry_weights       (entry_id, membership_id, weight_bps)
                      -- weight_bps is integer basis points (2500 = 25.00%);
@@ -394,6 +424,8 @@ These were discussed and explicitly deferred. Do not implement in v1.
 
 - `amount_minor > 0` (no zero/negative)
 - `currency ∈ {'USD', 'KHR'}`
+- Every entry needs at least one payer, and `sum(payers.amount_minor)` must equal the entry's `amount_minor`
+- Payers must be active members of the room
 - `date` ∈ valid range (no future dates allowed, but any past date)
 - `share_percent` per member: 0–100, sum across active members in the room must equal 100 (validated on member create/update)
 - For each entry: at least one attendee required; attendees must be active members

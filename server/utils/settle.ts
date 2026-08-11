@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
-import { entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { entries, entryPayers, entryWeights, roomMemberships } from "hub:db:schema";
 import { monthRange } from "~~/shared/types/date";
 import {
   settle,
@@ -20,16 +20,16 @@ export interface SettleOptions {
 }
 
 // Loads the month's published entries (with weights) and members, then runs
-// the pure settlement algorithm per currency. The full members set (active
-// + inactive) is used — pro-rating must see departed members' joinedAt /
-// leftAt to compute effective weights for historical entries.
+// the settlement algorithm per currency. The full members set (active +
+// inactive) is passed so departed members referenced by historical entry
+// weights still resolve by id.
 export async function settleRoom(
   options: SettleOptions,
 ): Promise<{ USD: CurrencyPlan; KHR: CurrencyPlan }> {
   const { start, end } = monthRange(options.yyyymm);
 
-  // All room members (active + inactive) — pro-rating needs joinedAt / leftAt
-  // for departed members referenced by old entries.
+  // All room members (active + inactive) — departed members are still
+  // referenced by the weights on old entries and must resolve by id.
   const memberRows = await db
     .select({
       id: roomMemberships.id,
@@ -53,7 +53,6 @@ export async function settleRoom(
       id: entries.id,
       currency: entries.currency,
       amountMinor: entries.amountMinor,
-      paidByMembershipId: entries.paidByMembershipId,
     })
     .from(entries)
     .where(
@@ -88,17 +87,42 @@ export async function settleRoom(
     weightsByEntry.get(w.entryId)!.push({ membershipId: w.membershipId, weightBps: w.weightBps });
   }
 
+  // Payers for those entries in a single query.
+  const payerRows = entryRows.length
+    ? await db
+        .select({
+          entryId: entryPayers.entryId,
+          membershipId: entryPayers.membershipId,
+          amountMinor: entryPayers.amountMinor,
+        })
+        .from(entryPayers)
+        .where(
+          inArray(
+            entryPayers.entryId,
+            entryRows.map((e) => e.id),
+          ),
+        )
+    : [];
+
+  const payersByEntry = new Map<string, Array<{ membershipId: string; amountMinor: number }>>();
+  for (const p of payerRows) {
+    if (!payersByEntry.has(p.entryId)) payersByEntry.set(p.entryId, []);
+    payersByEntry
+      .get(p.entryId)!
+      .push({ membershipId: p.membershipId, amountMinor: Number(p.amountMinor) });
+  }
+
   const toSettlementEntries = (currency: "USD" | "KHR"): SettlementEntry[] =>
     entryRows
       .filter((e) => e.currency === currency)
       .map((e) => ({
         amountMinor: Number(e.amountMinor),
-        paidByMembershipId: e.paidByMembershipId,
+        payers: payersByEntry.get(e.id) ?? [],
         weights: weightsByEntry.get(e.id) ?? [],
       }));
 
   return {
-    USD: { currency: "USD", result: settle(toSettlementEntries("USD"), members, options.yyyymm) },
-    KHR: { currency: "KHR", result: settle(toSettlementEntries("KHR"), members, options.yyyymm) },
+    USD: { currency: "USD", result: settle(toSettlementEntries("USD"), members) },
+    KHR: { currency: "KHR", result: settle(toSettlementEntries("KHR"), members) },
   };
 }

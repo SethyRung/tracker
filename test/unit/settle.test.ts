@@ -21,19 +21,21 @@ const member = (
   leftAt: leftAt ? new Date(leftAt) : null,
 });
 
+// `paidBy` may be a single member id (that member fronted the whole amount)
+// or explicit payer rows for split/each-pays-own cases.
 const entry = (
   amountMinor: number,
-  paidBy: string,
+  paidBy: string | Array<{ membershipId: string; amountMinor: number }>,
   attendees: Array<[string, number]>,
 ): SettlementEntry => ({
   amountMinor,
-  paidByMembershipId: paidBy,
+  payers: typeof paidBy === "string" ? [{ membershipId: paidBy, amountMinor }] : paidBy,
   weights: attendees.map(([membershipId, weightBps]) => ({ membershipId, weightBps })),
 });
 
 describe("settle", () => {
   it("returns empty balances and transfers for no entries", () => {
-    const result = settle([], [member("m_a"), member("m_b"), member("m_c")], "2026-08");
+    const result = settle([], [member("m_a"), member("m_b"), member("m_c")]);
     expect(result.balances).toHaveLength(3);
     expect(result.balances.every((b) => b.net === 0)).toBe(true);
     expect(result.transfers).toEqual([]);
@@ -54,7 +56,7 @@ describe("settle", () => {
         ["pich", 3333],
       ]),
     ];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
 
     const seth = result.balances.find((b) => b.membershipId === "seth")!;
     const ly = result.balances.find((b) => b.membershipId === "ly")!;
@@ -100,20 +102,17 @@ describe("settle", () => {
         ["c", 3333],
       ]),
     ];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
     const nonZero = result.balances.filter((b) => b.net !== 0).length;
     expect(result.transfers.length).toBeLessThanOrEqual(Math.max(nonZero - 1, 0));
   });
 
-  it("pro-rates a mid-month join correctly", () => {
-    // m_a was there all month, m_b joined Aug 16 00:00 ICT (Aug 15 17:00 UTC).
-    // 31 days in Aug, m_b active for 16 days. Bill: $100 (10000 minor)
-    // paid by m_a, equal split 5000 each.
-    // m_a: pro-rated 5000 (full month) → floor 5000
-    // m_b: pro-rated 5000 * 16 / 31 = 2580.6 → floor 2580
-    // total floored = 7580, remainder = 2420, longest-tenured (m_a) absorbs.
-    // m_a owed = 5000 + 2420 = 7420. m_a paid 10000. Net: 10000 - 7420 = 2580.
-    // m_b owed = 2580. m_b paid 0. Net: -2580.
+  it("ignores tenure: a mid-month join still splits by the entry weights", () => {
+    // m_a was there all month, m_b joined Aug 16 — but the entry says 50/50,
+    // so it settles 50/50. Tenure pro-rating was removed deliberately: the
+    // weights on an entry are the split, full stop.
+    // Bill: $100 (10000 minor) paid by m_a, equal split 5000 each.
+    // m_a owed 5000, paid 10000 → net +5000. m_b owed 5000 → net -5000.
     const members = [member("m_a", "2026-01-01T00:00:00Z"), member("m_b", "2026-08-15T17:00:00Z")];
     const entries = [
       entry(10000, "m_a", [
@@ -121,24 +120,88 @@ describe("settle", () => {
         ["m_b", 5000],
       ]),
     ];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
     const a = result.balances.find((b) => b.membershipId === "m_a")!;
     const b = result.balances.find((b) => b.membershipId === "m_b")!;
-    expect(a.net).toBe(2580);
-    expect(b.net).toBe(-2580);
+    expect(a.net).toBe(5000);
+    expect(b.net).toBe(-5000);
     expect(result.transfers.length).toBe(1);
     expect(result.transfers[0]).toMatchObject({
       fromMembershipId: "m_b",
       toMembershipId: "m_a",
-      amountMinor: 2580,
+      amountMinor: 5000,
     });
+  });
+
+  it("reproduces the two-entry 50/50 case exactly ($110 → ±$55)", () => {
+    // Regression guard for the bug this replaced: $100 + $10 both paid by
+    // m_a, split 50/50, with m_b having joined mid-month. Pro-rating used to
+    // skew this to ±$37.25; it must now be a clean ±$55.00.
+    const members = [member("m_a", "2026-01-01T00:00:00Z"), member("m_b", "2026-08-11T17:00:00Z")];
+    const split: Array<[string, number]> = [
+      ["m_a", 5000],
+      ["m_b", 5000],
+    ];
+    const result = settle([entry(10000, "m_a", split), entry(1000, "m_a", split)], members);
+    expect(result.balances.find((b) => b.membershipId === "m_a")!.net).toBe(5500);
+    expect(result.balances.find((b) => b.membershipId === "m_b")!.net).toBe(-5500);
+  });
+
+  it("nets everyone to zero when each attendee pays their own share", () => {
+    // The "we all transfer rent to the landlord separately" case. Each member
+    // pays exactly what they owe, so no debt is created between members and
+    // the settlement plan is empty.
+    const members = [member("m_a"), member("m_b")];
+    const entries = [
+      entry(
+        11000,
+        [
+          { membershipId: "m_a", amountMinor: 5500 },
+          { membershipId: "m_b", amountMinor: 5500 },
+        ],
+        [
+          ["m_a", 5000],
+          ["m_b", 5000],
+        ],
+      ),
+    ];
+    const result = settle(entries, members);
+    for (const b of result.balances) {
+      expect(b.net).toBe(0);
+    }
+    expect(result.transfers).toEqual([]);
+  });
+
+  it("handles uneven co-payment on a single entry", () => {
+    // m_a fronted $80 and m_b $20 on a $100 bill split 50/50, so m_a is owed
+    // $30 and m_b owes $30.
+    const members = [member("m_a"), member("m_b")];
+    const entries = [
+      entry(
+        10000,
+        [
+          { membershipId: "m_a", amountMinor: 8000 },
+          { membershipId: "m_b", amountMinor: 2000 },
+        ],
+        [
+          ["m_a", 5000],
+          ["m_b", 5000],
+        ],
+      ),
+    ];
+    const result = settle(entries, members);
+    expect(result.balances.find((b) => b.membershipId === "m_a")!.net).toBe(3000);
+    expect(result.balances.find((b) => b.membershipId === "m_b")!.net).toBe(-3000);
+    expect(result.transfers).toEqual([
+      { fromMembershipId: "m_b", toMembershipId: "m_a", amountMinor: 3000 },
+    ]);
   });
 
   it("produces an empty transfer list when every balance nets to zero", () => {
     // Bill paid by a single member who is also the sole attendee — no net.
     const members = [member("solo")];
     const entries = [entry(5000, "solo", [["solo", BPS_TOTAL]])];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
     expect(result.balances[0]!.net).toBe(0);
     expect(result.transfers).toEqual([]);
   });
@@ -153,8 +216,8 @@ describe("settle", () => {
       ]),
     ];
     const khr = [];
-    const usdResult = settle(usd, members, "2026-08");
-    const khrResult = settle(khr, members, "2026-08");
+    const usdResult = settle(usd, members);
+    const khrResult = settle(khr, members);
     expect(usdResult.transfers.length).toBe(1);
     expect(khrResult.balances.every((b) => b.net === 0)).toBe(true);
     expect(khrResult.transfers).toEqual([]);
@@ -184,7 +247,7 @@ describe("settle", () => {
         ["c", 5000],
       ]),
     ];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
 
     // Compute final net per member after applying transfers.
     const finalNet = new Map(members.map((m) => [m.id, 0]));
@@ -200,11 +263,16 @@ describe("settle", () => {
     }
   });
 
-  it("handles a departed payer referenced only by historical entries", () => {
-    // m_x left in July but still has a published entry dated in August.
-    // They paid the bill but weren't active in August, so pro-rating drops
-    // them to 0 effective weight → m_x owes 0, m_a and m_b split the bill.
-    // Net result: m_x nets +9000 (full bill), m_a and m_b are debtors.
+  it("charges a departed member who is still an attendee on the entry", () => {
+    // m_x left in July but still has a published entry dated in August that
+    // they paid AND are listed as an attendee on. Without tenure pro-rating
+    // the stored weights stand: m_x owes their 3333 bps share like anyone
+    // else, and nets the rest of what they fronted.
+    //   m_a: floor(9000 * 3334 / 10000) = 3000
+    //   m_x: floor(9000 * 3333 / 10000) = 2999
+    //   m_b: floor(9000 * 3333 / 10000) = 2999
+    //   remainder 2 → longest-tenured attendee (m_a, first on tie) = 3002
+    // m_x paid 9000, owed 2999 → net +6001.
     const members = [
       member("m_a", "2026-01-01T00:00:00Z"),
       member("m_x", "2026-01-01T00:00:00Z", "2026-07-15T00:00:00Z"), // left July 15
@@ -217,19 +285,19 @@ describe("settle", () => {
         ["m_b", 3333],
       ]),
     ];
-    const result = settle(entries, members, "2026-08");
+    const result = settle(entries, members);
 
-    expect(result.balances.find((b) => b.membershipId === "m_x")!.net).toBe(9000);
-    // m_a, m_b together owe 9000. Sum of nets = 0.
+    expect(result.balances.find((b) => b.membershipId === "m_x")!.net).toBe(6001);
+    // Everything still nets to zero across the room.
     const a = result.balances.find((b) => b.membershipId === "m_a")!.net;
     const b = result.balances.find((b) => b.membershipId === "m_b")!.net;
-    expect(a + b).toBe(-9000);
+    expect(a + b).toBe(-6001);
     expect(a).toBeLessThan(0);
     expect(b).toBeLessThan(0);
     // 2 transfers: m_a → m_x, m_b → m_x, totals equal m_x's net.
     expect(result.transfers.length).toBe(2);
     const total = result.transfers.reduce((s, t) => s + t.amountMinor, 0);
-    expect(total).toBe(9000);
+    expect(total).toBe(6001);
     for (const t of result.transfers) {
       expect(t.toMembershipId).toBe("m_x");
     }
