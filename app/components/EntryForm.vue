@@ -14,6 +14,7 @@ interface MemberRow {
 interface CategoryRow {
   id: string;
   name: string;
+  recurringType?: "unlimited" | "once" | "recurring";
 }
 interface EntryInitial {
   notes: string | null;
@@ -29,10 +30,15 @@ const props = withDefaults(
   defineProps<{
     members: MemberRow[];
     categories: CategoryRow[];
+    // Category IDs whose once-per-month slot is already taken for the form's
+    // target month. On the create form we hide `once` categories in this set
+    // (server would reject a duplicate anyway) plus every `recurring` category
+    // (those are managed via templates, not manually). Edit forms ignore this.
+    blockedCategoryIds?: string[];
     disabled?: boolean;
     initial?: EntryInitial | null;
   }>(),
-  { disabled: false, initial: null },
+  { disabled: false, initial: null, blockedCategoryIds: () => [] },
 );
 
 const emit = defineEmits<{
@@ -89,6 +95,16 @@ const memberCheckboxItems = computed(() =>
 
 const weights = ref<Array<{ membershipId: string; weightBps: number }>>([]);
 const suppressRebalance = ref(false);
+
+const displayCategories = computed(() => {
+  if (props.initial) return props.categories;
+  const blocked = new Set(props.blockedCategoryIds ?? []);
+  return props.categories.filter((c) => {
+    if (c.recurringType === "recurring") return false;
+    if (c.recurringType === "once" && blocked.has(c.id)) return false;
+    return true;
+  });
+});
 
 function memberName(mid: string) {
   return props.members.find((m) => m.id === mid)?.displayName ?? "—";
@@ -282,10 +298,15 @@ function onValidSubmit(event: FormSubmitEvent<FormState>) {
 
       <UFormField label="Category" name="categoryId" required>
         <div v-if="categories.length === 0" class="text-sm text-toned">No categories yet.</div>
+        <div v-else-if="displayCategories.length === 0" class="text-sm text-toned">
+          No categories available — recurring ones are managed on the
+          <NuxtLink to="/recurring" class="text-primary underline">Recurring</NuxtLink>
+          page; once-a-month categories can be logged once per month.
+        </div>
         <URadioGroup
           v-else
           v-model="state.categoryId"
-          :items="categories"
+          :items="displayCategories"
           label-key="name"
           value-key="id"
           variant="table"

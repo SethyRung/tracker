@@ -16,6 +16,20 @@ const { data: roomId } = await useFetch("/api/rooms/current", {
 
 const { members, categories } = await useRoomLists(roomId);
 
+const { data: thisMonthEntries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
+  query: { month: currentMonthKey() },
+  transform: (res) =>
+    (res?.data?.entries ?? []).filter(
+      (e: { status: string; categoryId: string | null }) =>
+        e.status === "published" && e.categoryId,
+    ) as Array<{ categoryId: string }>,
+  default: () => [],
+});
+
+const blockedCategoryIds = computed(() =>
+  Array.from(new Set(thisMonthEntries.value.map((e) => e.categoryId))),
+);
+
 const submitting = ref(false);
 
 async function onSubmit({
@@ -92,7 +106,13 @@ async function onSubmit({
       description="Create or join a room before logging entries."
     />
 
-    <EntryForm v-else :members="members" :categories="categories" @submit="onSubmit">
+    <EntryForm
+      v-else
+      :members="members"
+      :categories="categories"
+      :blocked-category-ids="blockedCategoryIds"
+      @submit="onSubmit"
+    >
       <template #actions="{ totalWeight }">
         <UButton
           type="submit"

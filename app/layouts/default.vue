@@ -21,9 +21,9 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     label: "Settle",
     to: `/settle/${dayjs().format("YYYY-MM")}`,
   },
+  { label: "Categories", icon: "i-lucide-tag", to: "/categories" },
   { label: "Entries", icon: "i-lucide-receipt", to: "/entries" },
   { label: "Recurring", icon: "i-lucide-repeat", to: "/recurring" },
-  { label: "Categories", icon: "i-lucide-tag", to: "/categories" },
 ]);
 </script>
 
