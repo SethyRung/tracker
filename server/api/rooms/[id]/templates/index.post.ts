@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "hub:db";
-import { categories, recurringTemplates } from "hub:db:schema";
+import { categories, recurringTemplates, roomMemberships } from "hub:db:schema";
 import { createTemplateSchema } from "~~/shared/schemas/template";
+import { materializeRecurringDrafts, currentMonthKeyPhnomPenh } from "~~/server/utils/recurring";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
@@ -47,6 +48,27 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  // Configured payers must be active members of this room.
+  if (body.payerSnapshot?.length) {
+    const ids = [...new Set(body.payerSnapshot.map((p) => p.membershipId))];
+    const payers = await db
+      .select({ id: roomMemberships.id })
+      .from(roomMemberships)
+      .where(
+        and(
+          inArray(roomMemberships.id, ids),
+          eq(roomMemberships.roomId, roomId),
+          eq(roomMemberships.isActive, true),
+        ),
+      );
+    if (payers.length !== ids.length) {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "Every payer must be an active member of this room.",
+      });
+    }
+  }
+
   const id = newId();
   await db.insert(recurringTemplates).values({
     id,
@@ -56,8 +78,22 @@ export default defineEventHandler(async (event) => {
     amountMinor: body.amountMinor,
     dayOfMonth: body.dayOfMonth,
     isActive: body.isActive,
+    payerSnapshot: body.payerSnapshot ?? null,
     memberSnapshot: body.memberSnapshot,
   });
+
+  // Materialize this month's entry immediately instead of waiting for the
+  // 1st-of-month cron. A template created mid-month would otherwise contribute
+  // nothing to the current month's settlement. Idempotent, so this is a no-op
+  // if the entry already exists.
+  if (body.isActive) {
+    try {
+      await materializeRecurringDrafts({ roomId, monthKey: currentMonthKeyPhnomPenh() });
+    } catch (e) {
+      // The template itself saved fine; the cron will retry on the 1st.
+      console.error("[templates.post] immediate materialization failed", e);
+    }
+  }
 
   const created = await db
     .select()
