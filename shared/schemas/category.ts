@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const recurringTypeSchema = z.enum(["unlimited", "once", "recurring"]);
+
 export const createCategorySchema = z.object({
   name: z
     .string()
@@ -7,6 +9,7 @@ export const createCategorySchema = z.object({
     .transform((s) => s.trim())
     .refine((s) => s.length > 0, { message: "Name is required" }),
   sortOrder: z.number().int().min(0).default(0),
+  recurringType: recurringTypeSchema.default("unlimited"),
 });
 
 export const updateCategorySchema = z.object({
@@ -17,6 +20,7 @@ export const updateCategorySchema = z.object({
     .refine((s) => s.length > 0, { message: "Name is required" })
     .optional(),
   sortOrder: z.number().int().min(0).optional(),
+  recurringType: recurringTypeSchema.optional(),
 });
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;

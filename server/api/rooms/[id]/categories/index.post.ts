@@ -35,6 +35,7 @@ export default defineEventHandler(async (event) => {
     roomId,
     name: body.name.trim(),
     sortOrder: body.sortOrder,
+    recurringType: body.recurringType,
   });
 
   const created = await db.select().from(categories).where(eq(categories.id, id)).limit(1);

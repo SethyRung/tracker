@@ -48,6 +48,12 @@ export const categories = pgTable("categories", {
     .references(() => rooms.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Drives Phase 7 recurring templates + the once-per-month create limit.
+  // 'unlimited' = multiple entries/month; 'once' = one entry/month (enforced);
+  // 'recurring' = auto-draft monthly with a default amount.
+  recurringType: text("recurring_type", { enum: ["unlimited", "once", "recurring"] })
+    .notNull()
+    .default("unlimited"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

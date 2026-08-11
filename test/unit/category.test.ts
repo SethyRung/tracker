@@ -9,12 +9,22 @@ describe("category schemas", () => {
   describe("createCategorySchema", () => {
     it("accepts a valid name + sortOrder", () => {
       const r = createCategorySchema.parse({ name: "Pets", sortOrder: 0 });
-      expect(r).toEqual({ name: "Pets", sortOrder: 0 });
+      expect(r).toEqual({ name: "Pets", sortOrder: 0, recurringType: "unlimited" });
     });
 
-    it("defaults sortOrder to 0", () => {
+    it("defaults sortOrder to 0 and recurringType to unlimited", () => {
       const r = createCategorySchema.parse({ name: "Pets" });
       expect(r.sortOrder).toBe(0);
+      expect(r.recurringType).toBe("unlimited");
+    });
+
+    it("accepts a recurringType", () => {
+      expect(createCategorySchema.parse({ name: "Rent", recurringType: "recurring" }).recurringType).toBe("recurring");
+      expect(createCategorySchema.parse({ name: "Utilities", recurringType: "once" }).recurringType).toBe("once");
+    });
+
+    it("rejects an invalid recurringType", () => {
+      expect(() => createCategorySchema.parse({ name: "X", recurringType: "fixed" })).toThrow();
     });
 
     it("rejects empty name", () => {
@@ -48,6 +58,12 @@ describe("category schemas", () => {
 
     it("accepts sortOrder only", () => {
       expect(updateCategorySchema.parse({ sortOrder: 3 })).toEqual({ sortOrder: 3 });
+    });
+
+    it("accepts recurringType only", () => {
+      expect(updateCategorySchema.parse({ recurringType: "once" })).toEqual({
+        recurringType: "once",
+      });
     });
 
     it("rejects empty name", () => {

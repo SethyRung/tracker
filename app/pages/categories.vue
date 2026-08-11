@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import * as z from "zod";
+import type { FormSubmitEvent, TableColumn } from "@nuxt/ui";
+
+const USelect = resolveComponent("USelect");
+const UButton = resolveComponent("UButton");
+
 definePageMeta({
   auth: { only: "user" },
 });
@@ -7,60 +13,166 @@ useHead({ title: "Categories · Tricker" });
 const { loggedIn, fetchSession } = useUserSession();
 if (!loggedIn.value) await fetchSession({ force: true });
 
-const { data: roomRes } = await useFetch("/api/rooms/current");
-const roomId = computed(() => roomRes.value?.data?.room?.id ?? null);
+const toast = useToast();
 
-const fetchWithCookies = useRequestFetch();
+const { data: roomId } = await useFetch("/api/rooms/current", {
+  transform: (res) => res?.data?.room?.id,
+});
 
-const categories = ref<Array<{ id: string; name: string; sortOrder: number }>>([]);
-
-async function refreshCategories() {
-  if (!roomId.value) return;
-  const r = await fetchWithCookies(`/api/rooms/${roomId.value}/categories`);
-  categories.value = r.data?.categories ?? [];
+type RecurringType = "unlimited" | "once" | "recurring";
+interface CategoryRow {
+  id: string;
+  name: string;
+  sortOrder: number;
+  recurringType: RecurringType;
 }
 
-if (roomId.value) await refreshCategories();
-watch(roomId, () => refreshCategories());
+const { data: categories, refresh: refreshCategories } = await useFetch(
+  () => `/api/rooms/${roomId.value}/categories`,
+  {
+    transform: (res) => (res?.data?.categories ?? []) as CategoryRow[],
+    default: () => [] as CategoryRow[],
+  },
+);
 
-const newName = ref("");
+const recurringTypeItems = [
+  {
+    label: "Unlimited",
+    value: "unlimited",
+    description: "Log as many entries as you want in a month.",
+  },
+  {
+    label: "Once a month",
+    value: "once",
+    description: "One entry per month — a second is blocked; edit the existing one.",
+  },
+  {
+    label: "Monthly recurring",
+    value: "recurring",
+    description: "Auto-draft each month with a default amount; edit before publishing.",
+  },
+];
+
+const schema = z.object({
+  name: z.string("Name is required").min(1, "Name is required"),
+  recurringType: z.enum(["unlimited", "once", "recurring"], "Recurring type is required"),
+});
+
+type Schema = z.output<typeof schema>;
+
+const state = reactive<Partial<Schema>>({});
+
 const showAddForm = ref(false);
-const addError = ref<string | null>(null);
 const submitting = ref(false);
 
-async function addCategory() {
+function reset() {
+  state.name = undefined;
+  state.recurringType = undefined;
+  showAddForm.value = false;
+}
+
+async function addCategory(event: FormSubmitEvent<Schema>) {
   if (!roomId.value || submitting.value) return;
-  const trimmed = newName.value.trim();
-  if (!trimmed) {
-    addError.value = "Name is required.";
-    return;
-  }
+
+  const { name, recurringType } = event.data;
+
   submitting.value = true;
-  addError.value = null;
   try {
     const maxSort = categories.value.reduce((max, c) => Math.max(max, c.sortOrder), -1);
-    await fetchWithCookies(`/api/rooms/${roomId.value}/categories`, {
+    const res = await $fetch(`/api/rooms/${roomId.value}/categories`, {
       method: "POST",
-      body: { name: trimmed, sortOrder: maxSort + 1 },
+      body: {
+        name,
+        sortOrder: maxSort + 1,
+        recurringType,
+      },
     });
-    newName.value = "";
-    showAddForm.value = false;
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+
+    reset();
+
     await refreshCategories();
   } catch (e) {
-    addError.value = (e as { statusMessage?: string })?.statusMessage ?? "Could not add category.";
+    toast.add({
+      icon: "i-lucide:circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not add category.",
+    });
   } finally {
     submitting.value = false;
+  }
+}
+
+async function updateRecurringType(cat: CategoryRow, type: RecurringType) {
+  if (!roomId.value || cat.recurringType === type) return;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/categories/${cat.id}`, {
+      method: "PATCH",
+      body: { recurringType: type },
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    await refreshCategories();
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide:circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not update category.",
+    });
+    await refreshCategories();
   }
 }
 
 async function deleteCategory(id: string) {
   if (!roomId.value) return;
   if (!confirm("Delete this category? This cannot be undone.")) return;
-  await fetchWithCookies(`/api/rooms/${roomId.value}/categories/${id}`, {
-    method: "DELETE",
-  });
-  await refreshCategories();
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/categories/${id}`, {
+      method: "DELETE",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    await refreshCategories();
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide:circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not delete category.",
+    });
+  }
 }
+
+const columns: TableColumn<CategoryRow>[] = [
+  {
+    accessorKey: "name",
+    header: "Name",
+    cell: ({ row }) => row.original.name,
+  },
+  {
+    id: "recurringType",
+    header: "Recurring",
+    cell: ({ row }) =>
+      h(USelect, {
+        modelValue: row.original.recurringType,
+        items: recurringTypeItems,
+        class: "w-48",
+        "onUpdate:modelValue": (v: RecurringType) => updateRecurringType(row.original, v),
+      }),
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: ({ row }) =>
+      h("div", { class: "flex justify-end" }, [
+        h(UButton, {
+          icon: "i-lucide-trash",
+          color: "error",
+          variant: "ghost",
+          "aria-label": "Delete",
+          onClick: () => deleteCategory(row.original.id),
+        }),
+      ]),
+    meta: { class: { td: "text-right", th: "w-10" } },
+  },
+];
 </script>
 
 <template>
@@ -70,63 +182,45 @@ async function deleteCategory(id: string) {
         <h1 class="font-pixel-circle text-2xl text-primary">Categories</h1>
         <p class="text-xs text-toned mt-1">{{ categories.length }} total</p>
       </div>
+
       <UButton
-        size="sm"
-        color="primary"
         icon="i-lucide-plus"
+        label="Add"
         :disabled="showAddForm || !roomId"
         @click="showAddForm = true"
-      >
-        Add
-      </UButton>
+      />
     </div>
 
     <UCard v-if="showAddForm" class="mb-4">
-      <UForm :schema="null" class="space-y-3" @submit="addCategory">
-        <UInput v-model="newName" placeholder="e.g. Pets" size="md" autofocus />
-        <UAlert v-if="addError" color="error" variant="subtle" :title="addError" />
+      <UForm :schema="schema" :state="state" class="space-y-6" @submit="addCategory">
+        <UFormField label="Name" name="name">
+          <UInput v-model="state.name" size="lg" :ui="{ root: 'w-full' }" />
+        </UFormField>
+
+        <UFormField label="Recurring" name="recurringType">
+          <USelect
+            v-model="state.recurringType"
+            :items="recurringTypeItems"
+            size="lg"
+            :ui="{ root: 'w-full', base: 'w-full' }"
+          />
+        </UFormField>
+
         <div class="flex gap-2">
-          <UButton type="submit" color="primary" size="sm" :loading="submitting"> Add </UButton>
-          <UButton
-            type="button"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            @click="
-              showAddForm = false;
-              newName = '';
-              addError = null;
-            "
-          >
-            Cancel
-          </UButton>
+          <UButton type="submit" label="Add" :loading="submitting" />
+
+          <UButton label="Cancel" color="neutral" variant="ghost" @click="reset" />
         </div>
       </UForm>
     </UCard>
 
     <div v-if="!roomId" class="text-sm text-toned text-center py-8">No room yet.</div>
 
-    <div v-else>
-      <div v-if="categories.length === 0" class="text-sm text-toned text-center py-8">
-        No categories yet. Click "Add" to create one.
-      </div>
-
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div
-          v-for="cat in categories"
-          :key="cat.id"
-          class="flex items-center justify-between gap-2 px-4 py-3 rounded-lg border border-default bg-elevated"
-        >
-          <span class="font-medium">{{ cat.name }}</span>
-          <UButton
-            size="xs"
-            color="error"
-            variant="ghost"
-            icon="i-lucide-trash"
-            @click="deleteCategory(cat.id)"
-          />
-        </div>
-      </div>
-    </div>
+    <UTable
+      v-else
+      :data="categories"
+      :columns="columns"
+      empty='No categories yet. Click "Add" to create one.'
+    />
   </UContainer>
 </template>

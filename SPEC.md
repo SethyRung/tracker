@@ -104,20 +104,24 @@ All routes except `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` 
 
 ## 7. Categories
 
-**Categories are pure labels** for grouping and filtering. They do NOT carry split rules — all categories share the same split logic.
+**Categories are pure labels** for grouping and filtering. They do NOT carry split rules — all categories share the same split logic. Each category carries a **recurring type** that says how (or whether) entries in that category repeat and interact with the per-month limit:
 
-Pre-seeded on room creation (admin can rename/add/remove):
+- `unlimited` — standalone; entries are logged one-off as needed, any number per month.
+- `once` — **at most one entry per month** in this category (server-enforced on POST; the existing entry is editable). The amount is provided by the user on each entry.
+- `recurring` — a `RecurringTemplate` exists for this category (Phase 7): the system auto-creates a **draft** entry each month with a stored default amount; your admin reviews and tweaks the amount before publishing.
 
-- **Rent** — recurring monthly housing cost
-- **Utilities** — water, electricity, internet
-- **Food** — groceries, shared meals
-- **Supplies** — household items, consumables
+Pre-seeded on room creation (admin can rename/add/remove; recurring type is editable):
+
+- **Rent** — `recurring`
+- **Utilities** — `once`
+- **Food** — `unlimited`
+- **Supplies** — `unlimited`
 
 Categories can be freely renamed, added, or deleted. The split logic (§7b) is uniform across all categories.
 
 ## 7b. Split Logic (uniform across all entries)
 
-Every entry — bill or payment — follows the same split model.
+Every entry follows the same split model.
 
 ### Step 1 — Attendees
 
@@ -147,12 +151,15 @@ Household expenses live in a single `entries` table. There is no bill/payment `t
 
 - A member logs a shared expense (rent, utilities, groceries, household items, …) and it is **created `published`** — instant, no draft step.
 - `attendees` + `weights` per attendee; defaults to all active members with profile `share_percent`; the creator (or an admin) can override.
-- One entry form covers everything; a `Recurring?` toggle is UI-ready for Phase 7 templates (non-functional until then).
+- One entry form covers everything. An entry carries **no recurring flag** — recurrence is a property of the chosen **category** (§7), not the entry.
 
 ### Recurring drafts (Phase 7)
 
-- A `RecurringTemplate` has `amount_minor`, `currency`, `category_id`, `day_of_month` (when drafts materialize) and a **member snapshot** (which members are included), not per-member weights.
-- On the 1st of each month (Phnom Penh time), a scheduled task creates **draft** entries from all active templates. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
+- Recurring is a property of the **category** (`recurring_type`), not the entry. The category recurring type is `unlimited | once | recurring` (§7):
+  - `unlimited` — no auto-draft; entries are logged manually, any number per month.
+  - `once` — no auto-draft; a once-per-month limit is enforced at entry POST (you log the single monthly entry manually; the server blocks a second). Edits to the existing entry are allowed.
+  - `recurring` — a `RecurringTemplate` exists for this category, holding `currency`, `day_of_month` (when drafts materialize), the **member snapshot** (which members are included), and the default `amount_minor` (editable before publishing).
+- On the 1st of each month (Phnom Penh time), a scheduled task creates **draft** entries from every active `recurring` template. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
 - `template_id` links a materialized draft back to its template. Per-month overrides (amount / attendees / weights) are saved on the entry only — they do not propagate back to the template or to other drafts.
 
 ### Lifecycle & permissions
@@ -258,11 +265,23 @@ room_memberships    (id, room_id, user_id, role, display_name,
                      nickname, avatar_url, color, share_percent,
                      joined_at, left_at NULL, is_active)
 
-categories          (id, room_id, name, sort_order, created_at)
-                     -- pure labels; no split rule columns
+categories          (id, room_id, name, sort_order,
+                     recurring_type 'unlimited'|'once'|'recurring',
+                     created_at)
+                     -- pure labels; no split rule columns.
+                     -- recurring_type:
+                     --   'unlimited' = multiple entries/month (manual)
+                     --   'once'      = one entry/month max (server-enforced)
+                     --   'recurring' = auto-draft monthly with default amount
+                     -- default 'unlimited'
 
-recurring_templates (id, room_id, name, category_id, currency,
+recurring_templates (id, room_id, category_id, currency,
                      amount_minor, day_of_month, is_active)
+                     -- one per category with recurring_type = 'recurring';
+                     -- amount_minor is the stored default (editable before
+                     -- publishing). Categories with 'once' are guarded at
+                     -- entry POST and don't need a template; 'unlimited' is
+                     -- manual.
 
 entries              (id, room_id, category_id, currency, amount_minor,
                      date, paid_by_membership_id, notes,
@@ -380,6 +399,7 @@ These were discussed and explicitly deferred. Do not implement in v1.
 - For each entry: at least one attendee required; attendees must be active members
 - For each entry: weights (sum of `weight_bps`) must equal 10000 across attendees
 - An entry's `category_id` must belong to the same room as the entry
+- For an entry in a `recurring_type = 'once'` category: at most one entry per (ICT) month in that category — a second `POST` is rejected with `INVALID_REQUEST` ("only one entry per month — edit the existing entry instead")
 
 ---
 

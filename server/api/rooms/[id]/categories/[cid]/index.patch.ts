@@ -40,6 +40,7 @@ export default defineEventHandler(async (event) => {
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name.trim();
   if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
+  if (body.recurringType !== undefined) updates.recurringType = body.recurringType;
 
   if (Object.keys(updates).length > 0) {
     await db

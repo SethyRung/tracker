@@ -61,9 +61,6 @@ const formSchema = z.object({
   categoryId: z.string().min(1, "Category is required"),
   paidByMembershipId: z.string().min(1, "Paid by is required"),
   attendees: z.array(z.string()).min(1, "At least one attendee is required"),
-  recurring: z.enum(["one-time", "recurring"], {
-    message: "Recurring must be one-time or recurring monthly",
-  }),
 });
 
 type FormState = z.infer<typeof formSchema>;
@@ -76,7 +73,6 @@ const state = reactive<FormState>({
   categoryId: "",
   paidByMembershipId: paidByDefault.value?.id ?? "",
   attendees: [],
-  recurring: "one-time",
 });
 
 const dateValue = computed({
@@ -90,11 +86,6 @@ const dateValue = computed({
 const memberCheckboxItems = computed(() =>
   props.members.map((m) => ({ label: m.displayName, value: m.id })),
 );
-
-const recurringItems = [
-  { label: "One-time", value: "one-time" },
-  { label: "Recurring monthly", value: "recurring" },
-];
 
 const weights = ref<Array<{ membershipId: string; weightBps: number }>>([]);
 const suppressRebalance = ref(false);
@@ -340,18 +331,6 @@ function onValidSubmit(event: FormSubmitEvent<FormState>) {
             thead: 'hidden',
           }"
         />
-      </UFormField>
-
-      <UFormField
-        label="Recurring?"
-        name="recurring"
-        :help="
-          state.recurring === 'recurring'
-            ? 'Recurring templates wire up in Phase 7 — UI-ready now.'
-            : ''
-        "
-      >
-        <URadioGroup v-model="state.recurring" :items="recurringItems" :disabled="disabled" />
       </UFormField>
 
       <slot name="actions" :total-weight="totalWeight" :attendee-error="attendeeError" />

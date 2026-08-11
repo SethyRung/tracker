@@ -6,8 +6,9 @@ definePageMeta({
 const { user } = useUserSession();
 if (!user.value) await navigateTo("/sign-in");
 
-const { data: roomRes } = await useFetch("/api/rooms/current");
-const roomId = computed(() => roomRes.value?.data?.room?.id ?? null);
+const { data: roomId } = await useFetch("/api/rooms/current", {
+  transform: (res) => res?.data?.room?.id,
+});
 
 interface EntryRow {
   id: string;

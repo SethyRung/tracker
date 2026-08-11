@@ -1,6 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
-import { entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
 import { createEntrySchema } from "~~/shared/schemas/entry";
 
 export default defineEventHandler(async (event) => {
@@ -36,6 +36,45 @@ export default defineEventHandler(async (event) => {
       code: ApiResponseCode.InvalidRequest,
       message: "One or more attendees are not active members of this room.",
     });
+  }
+
+  // A category with recurringType 'once' allows only one entry per (ICT) month.
+  if (body.categoryId) {
+    const cat = await db
+      .select({ recurringType: categories.recurringType })
+      .from(categories)
+      .where(and(eq(categories.id, body.categoryId), eq(categories.roomId, roomId)))
+      .limit(1);
+    if (cat[0]?.recurringType === "once") {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: PHNOM_PENH_TZ,
+        year: "numeric",
+        month: "2-digit",
+      }).formatToParts(body.date);
+      const y = parts.find((p) => p.type === "year")?.value;
+      const m = parts.find((p) => p.type === "month")?.value;
+      if (y && m) {
+        const { start, end } = monthRange(`${y}-${m}`);
+        const existing = await db
+          .select({ id: entries.id })
+          .from(entries)
+          .where(
+            and(
+              eq(entries.roomId, roomId),
+              eq(entries.categoryId, body.categoryId),
+              gte(entries.date, start) as never,
+              lt(entries.date, end) as never,
+            ),
+          )
+          .limit(1);
+        if (existing.length > 0) {
+          return createResponse({
+            code: ApiResponseCode.InvalidRequest,
+            message: "This category allows only one entry per month. Edit the existing entry instead.",
+          });
+        }
+      }
+    }
   }
 
   const id = newId();

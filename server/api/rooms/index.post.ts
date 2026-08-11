@@ -4,10 +4,10 @@ import { categories, roomMemberships, rooms } from "hub:db:schema";
 import { createRoomSchema } from "~~/shared/schemas/room";
 
 const DEFAULT_CATEGORIES = [
-  { name: "Rent", sortOrder: 0 },
-  { name: "Utilities", sortOrder: 1 },
-  { name: "Food", sortOrder: 2 },
-  { name: "Supplies", sortOrder: 3 },
+  { name: "Rent", sortOrder: 0, recurringType: "recurring" as const },
+  { name: "Utilities", sortOrder: 1, recurringType: "once" as const },
+  { name: "Food", sortOrder: 2, recurringType: "unlimited" as const },
+  { name: "Supplies", sortOrder: 3, recurringType: "unlimited" as const },
 ];
 
 export default defineEventHandler(async (event) => {
@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
         roomId,
         name: cat.name,
         sortOrder: cat.sortOrder,
+        recurringType: cat.recurringType,
       });
     }
   });

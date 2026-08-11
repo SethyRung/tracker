@@ -14,8 +14,9 @@ if (!user.value) await navigateTo("/sign-in");
 
 const toast = useToast();
 
-const { data: roomRes } = await useFetch("/api/rooms/current");
-const roomId = computed(() => roomRes.value?.data?.room?.id ?? null);
+const { data: roomId } = await useFetch("/api/rooms/current", {
+  transform: (res) => res?.data?.room?.id,
+});
 
 const { members, categories } = await useRoomLists(roomId);
 
