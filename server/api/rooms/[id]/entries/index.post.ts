@@ -82,7 +82,8 @@ export default defineEventHandler(async (event) => {
         if (existing.length > 0) {
           return createResponse({
             code: ApiResponseCode.InvalidRequest,
-            message: "This category allows only one entry per month. Edit the existing entry instead.",
+            message:
+              "This category allows only one entry per month. Edit the existing entry instead.",
           });
         }
       }

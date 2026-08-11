@@ -68,9 +68,7 @@ describe("schemas", () => {
     });
 
     it("rejects non-integer weights", () => {
-      expect(() =>
-        weightEntrySchema.parse({ membership_id: "m1", weight_bps: 5000.5 }),
-      ).toThrow();
+      expect(() => weightEntrySchema.parse({ membership_id: "m1", weight_bps: 5000.5 })).toThrow();
     });
 
     it("rejects empty membership_id", () => {

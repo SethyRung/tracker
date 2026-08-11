@@ -19,8 +19,12 @@ describe("category schemas", () => {
     });
 
     it("accepts a recurringType", () => {
-      expect(createCategorySchema.parse({ name: "Rent", recurringType: "recurring" }).recurringType).toBe("recurring");
-      expect(createCategorySchema.parse({ name: "Utilities", recurringType: "once" }).recurringType).toBe("once");
+      expect(
+        createCategorySchema.parse({ name: "Rent", recurringType: "recurring" }).recurringType,
+      ).toBe("recurring");
+      expect(
+        createCategorySchema.parse({ name: "Utilities", recurringType: "once" }).recurringType,
+      ).toBe("once");
     });
 
     it("rejects an invalid recurringType", () => {

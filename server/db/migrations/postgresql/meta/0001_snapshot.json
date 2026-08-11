@@ -110,12 +110,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -176,12 +172,8 @@
           "name": "categories_room_id_rooms_id_fk",
           "tableFrom": "categories",
           "tableTo": "rooms",
-          "columnsFrom": [
-            "room_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["room_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -284,12 +276,8 @@
           "name": "entries_room_id_rooms_id_fk",
           "tableFrom": "entries",
           "tableTo": "rooms",
-          "columnsFrom": [
-            "room_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["room_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -297,12 +285,8 @@
           "name": "entries_category_id_categories_id_fk",
           "tableFrom": "entries",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -310,12 +294,8 @@
           "name": "entries_paid_by_membership_id_room_memberships_id_fk",
           "tableFrom": "entries",
           "tableTo": "room_memberships",
-          "columnsFrom": [
-            "paid_by_membership_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["paid_by_membership_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -323,12 +303,8 @@
           "name": "entries_created_by_user_id_user_id_fk",
           "tableFrom": "entries",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -368,12 +344,8 @@
           "name": "entry_weights_entry_id_entries_id_fk",
           "tableFrom": "entry_weights",
           "tableTo": "entries",
-          "columnsFrom": [
-            "entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["entry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -381,12 +353,8 @@
           "name": "entry_weights_membership_id_room_memberships_id_fk",
           "tableFrom": "entry_weights",
           "tableTo": "room_memberships",
-          "columnsFrom": [
-            "membership_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["membership_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -394,10 +362,7 @@
       "compositePrimaryKeys": {
         "entry_weights_entry_id_membership_id_pk": {
           "name": "entry_weights_entry_id_membership_id_pk",
-          "columns": [
-            "entry_id",
-            "membership_id"
-          ]
+          "columns": ["entry_id", "membership_id"]
         }
       },
       "uniqueConstraints": {},
@@ -459,12 +424,8 @@
           "name": "invite_links_room_id_rooms_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "rooms",
-          "columnsFrom": [
-            "room_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["room_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -472,12 +433,8 @@
           "name": "invite_links_created_by_membership_id_room_memberships_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "room_memberships",
-          "columnsFrom": [
-            "created_by_membership_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_membership_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -485,12 +442,8 @@
           "name": "invite_links_used_by_membership_id_room_memberships_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "room_memberships",
-          "columnsFrom": [
-            "used_by_membership_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["used_by_membership_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -588,12 +541,8 @@
           "name": "room_memberships_room_id_rooms_id_fk",
           "tableFrom": "room_memberships",
           "tableTo": "rooms",
-          "columnsFrom": [
-            "room_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["room_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -601,12 +550,8 @@
           "name": "room_memberships_user_id_user_id_fk",
           "tableFrom": "room_memberships",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -667,12 +612,8 @@
           "name": "rooms_created_by_user_id_user_id_fk",
           "tableFrom": "rooms",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -759,12 +700,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -774,9 +711,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -840,9 +775,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},

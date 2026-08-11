@@ -185,7 +185,11 @@ async function onDelete() {
       <UBadge v-else color="success" variant="subtle" size="sm">Published</UBadge>
     </div>
     <p v-if="!canEdit" class="text-xs text-toned mb-6">
-      {{ isDraft ? "Only an admin can edit a draft entry." : "Only the creator or an admin can edit this entry." }}
+      {{
+        isDraft
+          ? "Only an admin can edit a draft entry."
+          : "Only the creator or an admin can edit this entry."
+      }}
     </p>
     <p v-else class="text-xs text-toned mb-6">Editing updates this entry only.</p>
 
