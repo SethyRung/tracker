@@ -14,7 +14,6 @@ if (!user.value) await navigateTo("/sign-in");
 
 const yyyymm = computed(() => route.params.yyyymm as string);
 
-// MOCKS §5 header reads "August 2026", not the raw month key.
 const monthLabel = computed(() => dayjs(`${yyyymm.value}-01`).format("MMMM YYYY"));
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
@@ -29,8 +28,6 @@ const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
   },
 );
 
-// The server returns everything already resolved — names, colors and
-// formatted money strings — so this page does no math and no member join.
 interface SettleMemberView {
   membershipId: string;
   name: string;
@@ -217,9 +214,6 @@ async function runMonthAction(action: "close" | "reopen") {
                   />
                   <div class="min-w-0">
                     <span class="text-sm truncate block">{{ m.name }}</span>
-                    <span class="text-[10px] text-toned tabular-nums">
-                      paid {{ m.paidFormatted }} · owed {{ m.owedFormatted }}
-                    </span>
                   </div>
                 </div>
                 <span

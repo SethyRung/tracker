@@ -4,7 +4,6 @@ definePageMeta({
 });
 
 const { user } = useUserSession();
-if (!user.value) await navigateTo("/sign-in");
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
   transform: (res) => res?.data?.room?.id,
