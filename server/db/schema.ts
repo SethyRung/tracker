@@ -124,6 +124,12 @@ export const recurringTemplates = pgTable("recurring_templates", {
   amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
   dayOfMonth: integer("day_of_month").notNull().default(1),
   isActive: boolean("is_active").notNull().default(true),
+  // Who actually fronts this recurring expense. Nullable: when unset the
+  // materializer falls back to the longest-tenured active member (the
+  // behaviour from before this column existed).
+  paidByMembershipId: text("paid_by_membership_id").references(() => roomMemberships.id, {
+    onDelete: "set null",
+  }),
   memberSnapshot: jsonb("member_snapshot")
     .$type<Array<{ membershipId: string; weightBps: number }>>()
     .notNull(),

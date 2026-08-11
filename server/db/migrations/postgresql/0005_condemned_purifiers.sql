@@ -1,0 +1,2 @@
+ALTER TABLE "recurring_templates" ADD COLUMN "paid_by_membership_id" text;--> statement-breakpoint
+ALTER TABLE "recurring_templates" ADD CONSTRAINT "recurring_templates_paid_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("paid_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE set null ON UPDATE no action;

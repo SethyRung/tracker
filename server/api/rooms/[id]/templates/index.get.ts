@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
       amountMinor: recurringTemplates.amountMinor,
       dayOfMonth: recurringTemplates.dayOfMonth,
       isActive: recurringTemplates.isActive,
+      paidByMembershipId: recurringTemplates.paidByMembershipId,
       memberSnapshot: recurringTemplates.memberSnapshot,
       createdAt: recurringTemplates.createdAt,
       updatedAt: recurringTemplates.updatedAt,

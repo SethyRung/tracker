@@ -15,8 +15,7 @@ import { BPS_TOTAL } from "../types/weight";
 export interface SettlementEntry {
   // Pre-loaded entry fields the algorithm needs.
   amountMinor: number;
-  // Who put money down, and how much. Sums to amountMinor.
-  payers: ReadonlyArray<{ membershipId: string; amountMinor: number }>;
+  paidByMembershipId: string;
   weights: ReadonlyArray<{ membershipId: string; weightBps: number }>;
 }
 
@@ -64,11 +63,9 @@ export function settle(
 
   for (const entry of entries) {
     // Defensive: an entry may reference a payer that has since been removed.
-    for (const p of entry.payers) {
-      if (!paidByMember.has(p.membershipId)) {
-        paidByMember.set(p.membershipId, 0);
-        owedByMember.set(p.membershipId, 0);
-      }
+    if (!paidByMember.has(entry.paidByMembershipId)) {
+      paidByMember.set(entry.paidByMembershipId, 0);
+      owedByMember.set(entry.paidByMembershipId, 0);
     }
 
     // Integer math with explicit remainder distribution. Entry weights sum
@@ -87,9 +84,10 @@ export function settle(
     }
     const remainder = entry.amountMinor - sumFloor;
 
-    for (const p of entry.payers) {
-      paidByMember.set(p.membershipId, (paidByMember.get(p.membershipId) ?? 0) + p.amountMinor);
-    }
+    paidByMember.set(
+      entry.paidByMembershipId,
+      (paidByMember.get(entry.paidByMembershipId) ?? 0) + entry.amountMinor,
+    );
 
     if (remainder > 0 && orderedMids.length > 0) {
       // Longest-tenured among attendees that owed something. Falls back to

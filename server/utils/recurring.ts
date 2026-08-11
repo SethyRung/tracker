@@ -3,7 +3,6 @@ import { db } from "hub:db";
 import {
   categories,
   entries,
-  entryPayers,
   entryWeights,
   recurringTemplates,
   roomMemberships,
@@ -47,7 +46,7 @@ export async function materializeRecurringDrafts(
       categoryId: recurringTemplates.categoryId,
       currency: recurringTemplates.currency,
       amountMinor: recurringTemplates.amountMinor,
-      payerSnapshot: recurringTemplates.payerSnapshot,
+      paidByMembershipId: recurringTemplates.paidByMembershipId,
       memberSnapshot: recurringTemplates.memberSnapshot,
     })
     .from(recurringTemplates)
@@ -128,13 +127,19 @@ export async function materializeRecurringDrafts(
       continue;
     }
 
+    // Prefer the template's configured payer; fall back to the longest-
+    // tenured active member when unset or no longer active.
+    const payerId =
+      t.paidByMembershipId && activeIds.has(t.paidByMembershipId)
+        ? t.paidByMembershipId
+        : oldestMember.id;
+
     const templateInput: TemplateSnapshotInput = {
       id: t.id,
       categoryId: t.categoryId,
       currency: t.currency as "USD" | "KHR",
       amountMinor: Number(t.amountMinor),
       memberSnapshot: (t.memberSnapshot ?? []) as TemplateSnapshotInput["memberSnapshot"],
-      payerSnapshot: (t.payerSnapshot ?? null) as TemplateSnapshotInput["payerSnapshot"],
     };
 
     const planned = planDraftForTemplate(templateInput, activeIds, {
@@ -142,7 +147,7 @@ export async function materializeRecurringDrafts(
       roomId: t.roomId,
       createdByUserId: "_recurring_materialize",
       monthStart: start,
-      fallbackPayerMembershipId: oldestMember.id,
+      paidByMembershipId: payerId,
     });
     if (!planned) {
       templatesSkipped++;
@@ -150,8 +155,7 @@ export async function materializeRecurringDrafts(
     }
 
     // `createdByUserId` must reference `user.id` (FK). Templates materialize
-    // outside any user's session; attribute it to the first payer's account.
-    const attributedMembershipId = planned.payers[0]?.membershipId ?? oldestMember.id;
+    // outside any user's session; attribute it to the payer's user account.
     const payerUser = await db
       .select({ userId: roomMemberships.userId })
       .from(roomMemberships)
@@ -159,7 +163,7 @@ export async function materializeRecurringDrafts(
         and(
           eq(roomMemberships.roomId, t.roomId),
           eq(roomMemberships.isActive, true),
-          eq(roomMemberships.id, attributedMembershipId),
+          eq(roomMemberships.id, payerId),
         ),
       )
       .limit(1);
@@ -179,13 +183,6 @@ export async function materializeRecurringDrafts(
           entryId: planned.draft.id,
           membershipId: w.membershipId,
           weightBps: w.weightBps,
-        })),
-      );
-      await tx.insert(entryPayers).values(
-        planned.payers.map((p) => ({
-          entryId: planned.draft.id,
-          membershipId: p.membershipId,
-          amountMinor: p.amountMinor,
         })),
       );
     });

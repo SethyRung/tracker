@@ -41,6 +41,9 @@ export const createTemplateSchema = z.object({
   amountMinor: z.number().int().nonnegative(),
   dayOfMonth: z.number().int().min(1).max(31).default(1),
   isActive: z.boolean().default(true),
+  // Who fronts this expense. Omitted/null => materializer falls back to the
+  // longest-tenured active member.
+  paidByMembershipId: z.string().min(1).nullish(),
   memberSnapshot: memberSnapshotSchema,
 });
 
@@ -50,6 +53,7 @@ export const updateTemplateSchema = z
     amountMinor: z.number().int().nonnegative().optional(),
     dayOfMonth: z.number().int().min(1).max(31).optional(),
     isActive: z.boolean().optional(),
+    paidByMembershipId: z.string().min(1).nullish(),
     memberSnapshot: memberSnapshotSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No updates provided" });

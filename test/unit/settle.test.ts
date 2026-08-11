@@ -21,15 +21,13 @@ const member = (
   leftAt: leftAt ? new Date(leftAt) : null,
 });
 
-// `paidBy` may be a single member id (that member fronted the whole amount)
-// or explicit payer rows for split/each-pays-own cases.
 const entry = (
   amountMinor: number,
-  paidBy: string | Array<{ membershipId: string; amountMinor: number }>,
+  paidBy: string,
   attendees: Array<[string, number]>,
 ): SettlementEntry => ({
   amountMinor,
-  payers: typeof paidBy === "string" ? [{ membershipId: paidBy, amountMinor }] : paidBy,
+  paidByMembershipId: paidBy,
   weights: attendees.map(([membershipId, weightBps]) => ({ membershipId, weightBps })),
 });
 
@@ -134,9 +132,9 @@ describe("settle", () => {
   });
 
   it("reproduces the two-entry 50/50 case exactly ($110 → ±$55)", () => {
-    // Regression guard for the bug this replaced: $100 + $10 both paid by
-    // m_a, split 50/50, with m_b having joined mid-month. Pro-rating used to
-    // skew this to ±$37.25; it must now be a clean ±$55.00.
+    // Regression guard: $100 + $10 both paid by m_a, split 50/50, with m_b
+    // having joined mid-month. Pro-rating used to skew this to ±$37.25; it
+    // must now be a clean ±$55.00.
     const members = [member("m_a", "2026-01-01T00:00:00Z"), member("m_b", "2026-08-11T17:00:00Z")];
     const split: Array<[string, number]> = [
       ["m_a", 5000],
@@ -145,56 +143,6 @@ describe("settle", () => {
     const result = settle([entry(10000, "m_a", split), entry(1000, "m_a", split)], members);
     expect(result.balances.find((b) => b.membershipId === "m_a")!.net).toBe(5500);
     expect(result.balances.find((b) => b.membershipId === "m_b")!.net).toBe(-5500);
-  });
-
-  it("nets everyone to zero when each attendee pays their own share", () => {
-    // The "we all transfer rent to the landlord separately" case. Each member
-    // pays exactly what they owe, so no debt is created between members and
-    // the settlement plan is empty.
-    const members = [member("m_a"), member("m_b")];
-    const entries = [
-      entry(
-        11000,
-        [
-          { membershipId: "m_a", amountMinor: 5500 },
-          { membershipId: "m_b", amountMinor: 5500 },
-        ],
-        [
-          ["m_a", 5000],
-          ["m_b", 5000],
-        ],
-      ),
-    ];
-    const result = settle(entries, members);
-    for (const b of result.balances) {
-      expect(b.net).toBe(0);
-    }
-    expect(result.transfers).toEqual([]);
-  });
-
-  it("handles uneven co-payment on a single entry", () => {
-    // m_a fronted $80 and m_b $20 on a $100 bill split 50/50, so m_a is owed
-    // $30 and m_b owes $30.
-    const members = [member("m_a"), member("m_b")];
-    const entries = [
-      entry(
-        10000,
-        [
-          { membershipId: "m_a", amountMinor: 8000 },
-          { membershipId: "m_b", amountMinor: 2000 },
-        ],
-        [
-          ["m_a", 5000],
-          ["m_b", 5000],
-        ],
-      ),
-    ];
-    const result = settle(entries, members);
-    expect(result.balances.find((b) => b.membershipId === "m_a")!.net).toBe(3000);
-    expect(result.balances.find((b) => b.membershipId === "m_b")!.net).toBe(-3000);
-    expect(result.transfers).toEqual([
-      { fromMembershipId: "m_b", toMembershipId: "m_a", amountMinor: 3000 },
-    ]);
   });
 
   it("produces an empty transfer list when every balance nets to zero", () => {

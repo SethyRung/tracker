@@ -145,24 +145,7 @@ Every entry follows the same split model.
 
 ## 8. Entries
 
-Household expenses live in a single `entries` table. There is no bill/payment `type` — every entry is just an entry, with `amount_minor`, `currency`, `date` (datetime), `category_id`, `notes`, `attendees` + `weights`, `payers`, `created_by`, `created_at`, `updated_at`, plus `status` and `template_id`. (An earlier revision split bills and payments into a `type` field; the distinction duplicated ~90% of the columns/routes/forms for no modeling gain, so it was dropped — see DECISIONS.md.)
-
-## 8b. Payers
-
-Who actually put money down is recorded in `entry_payers (entry_id, membership_id, amount_minor)`. This replaces the earlier single `entries.paid_by_membership_id`, which could not express a room where everyone pays the landlord separately.
-
-Three shapes, all the same table:
-
-- **One person fronted it** — a single row for the full entry amount. The payer is owed back by the other attendees. This is the common case and stays a one-click choice in the form.
-- **Everyone paid their own share** — one row per attendee, each matching their share of the split. Every member's paid equals their owed, so the entry nets to zero and creates **no debt between members**. It still counts toward category totals and monthly spend.
-- **Uneven co-payment** — arbitrary rows (e.g. one member covered $80 of a $100 bill, another $20).
-
-Rules:
-
-- At least one payer row per entry.
-- `sum(entry_payers.amount_minor) == entries.amount_minor` exactly — validated client-side and server-side, on both create and update. The PATCH route re-checks against stored values when only the amount or only the payers is being changed.
-- Every payer must be an active member of the room.
-- Payers and attendees are independent: someone can pay without attending (they are simply owed), and attend without paying.
+Household expenses live in a single `entries` table. There is no bill/payment `type` — every entry is just an entry, with `amount_minor`, `currency`, `date` (datetime), `category_id`, `paid_by_membership_id`, `notes`, `attendees` + `weights`, `created_by`, `created_at`, `updated_at`, plus `status` and `template_id`. (An earlier revision split bills and payments into a `type` field; the distinction duplicated ~90% of the columns/routes/forms for no modeling gain, so it was dropped — see DECISIONS.md.)
 
 ### User entries
 
@@ -207,7 +190,7 @@ Computed per (room, month, currency). Produces two independent settlement plans 
 ### Inputs per entry
 
 - `amount_minor`, `currency`
-- `payers[]` (who put money down, and how much — §8b)
+- `paid_by_membership_id` (who actually paid)
 - `category` (label only, no split rule)
 - `date` (informational; does not affect the split)
 - `attendees[]` and `weights[]` (per-entry, may override profile share_percent)
@@ -219,8 +202,6 @@ For each entry, compute each attendee's owed using their entry weight. Then:
 ```
 balance[m] = sum(paid_by[m]) − sum(owed[m])
 ```
-
-where `sum(paid_by[m])` is the total of that member's `entry_payers` rows.
 
 `balance[m] > 0` means m is owed money; `< 0` means m owes money.
 
@@ -298,27 +279,20 @@ categories          (id, room_id, name, sort_order,
 
 recurring_templates (id, room_id, category_id, currency,
                      amount_minor, day_of_month, is_active,
-                     payer_snapshot JSONB NULL)
+                     paid_by_membership_id NULL)
                      -- one per category with recurring_type = 'recurring';
                      -- amount_minor is the stored default, copied onto each
                      -- materialized entry (editable on the entry while the
-                     -- month is open). payer_snapshot holds payer shares in
-                     -- basis points (summing to 10000) and materializes into
-                     -- entry_payers rows; NULL falls back to the longest-
-                     -- tenured active member paying the whole amount.
+                     -- month is open). paid_by_membership_id is who fronts
+                     -- it; NULL falls back to the longest-tenured active
+                     -- member.
 
 entries              (id, room_id, category_id, currency, amount_minor,
-                     date, notes,
+                     date, paid_by_membership_id, notes,
                      status 'draft'|'published', template_id NULL,
                      created_by, created_at, updated_at)
                      -- no bill/payment `type`; user entries AND recurring
-                     -- materializations are both created `published`.
-                     -- no paid_by column — see entry_payers.
-
-entry_payers        (entry_id, membership_id, amount_minor)
-                     -- who put money down and how much (§8b);
-                     -- sum per entry must equal entries.amount_minor;
-                     -- 1 row = someone fronted it, N rows = split payment
+                     -- materializations are both created `published`
 
 entry_weights       (entry_id, membership_id, weight_bps)
                      -- weight_bps is integer basis points (2500 = 25.00%);
@@ -424,8 +398,6 @@ These were discussed and explicitly deferred. Do not implement in v1.
 
 - `amount_minor > 0` (no zero/negative)
 - `currency ∈ {'USD', 'KHR'}`
-- Every entry needs at least one payer, and `sum(payers.amount_minor)` must equal the entry's `amount_minor`
-- Payers must be active members of the room
 - `date` ∈ valid range (no future dates allowed, but any past date)
 - `share_percent` per member: 0–100, sum across active members in the room must equal 100 (validated on member create/update)
 - For each entry: at least one attendee required; attendees must be active members

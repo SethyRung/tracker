@@ -29,6 +29,20 @@
       "when": 1786420247491,
       "tag": "0003_easy_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786425000000,
+      "tag": "0004_nostalgic_tempest",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786452539449,
+      "tag": "0005_condemned_purifiers",
+      "breakpoints": true
     }
   ]
 }

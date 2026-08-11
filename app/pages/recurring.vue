@@ -36,6 +36,7 @@ interface TemplateRow {
   amountMinor: number;
   dayOfMonth: number;
   isActive: boolean;
+  paidByMembershipId: string | null;
   memberSnapshot: Array<{ membershipId: string; weightBps: number }>;
 }
 
@@ -84,6 +85,7 @@ const schema = z.object({
   amountMajor: z.number().positive("Amount must be greater than 0"),
   dayOfMonth: z.number().int().min(1).max(31),
   isActive: z.boolean(),
+  paidByMembershipId: z.string().min(1, "Pick who pays"),
 });
 
 type Schema = z.output<typeof schema>;
@@ -97,6 +99,15 @@ const weights = ref<Array<{ membershipId: string; weightBps: number }>>([]);
 const suppressRebalance = ref(false);
 
 const memberName = (mid: string) => memberById.value.get(mid)?.displayName ?? "—";
+
+// "Paid by" options — whoever fronts this recurring expense each month.
+const payerItems = computed(() =>
+  (members.value ?? []).map((m) => ({ label: m.displayName, value: m.id })),
+);
+
+// Longest-tenured active member: the fallback the server uses when a
+// template has no configured payer.
+const defaultPayerId = computed(() => (members.value ?? [])[0]?.id);
 
 function equalSplit() {
   const n = weights.value.length;
@@ -133,6 +144,7 @@ function startCreate(category: CategoryRow) {
   formState.amountMajor = 0;
   formState.dayOfMonth = 1;
   formState.isActive = true;
+  formState.paidByMembershipId = defaultPayerId.value;
 }
 
 function startEdit(template: TemplateRow) {
@@ -144,6 +156,7 @@ function startEdit(template: TemplateRow) {
     template.currency === "USD" ? template.amountMinor / 100 : template.amountMinor;
   formState.dayOfMonth = template.dayOfMonth;
   formState.isActive = template.isActive;
+  formState.paidByMembershipId = template.paidByMembershipId ?? defaultPayerId.value;
   suppressRebalance.value = true;
   weights.value = template.memberSnapshot.map((w) => ({
     membershipId: w.membershipId,
@@ -160,6 +173,7 @@ function cancel() {
   formState.amountMajor = undefined;
   formState.dayOfMonth = undefined;
   formState.isActive = undefined;
+  formState.paidByMembershipId = undefined;
   weights.value = [];
 }
 
@@ -187,6 +201,7 @@ async function saveTemplate(event: FormSubmitEvent<Schema>) {
           : Math.round(event.data.amountMajor),
       dayOfMonth: event.data.dayOfMonth,
       isActive: event.data.isActive,
+      paidByMembershipId: event.data.paidByMembershipId,
       memberSnapshot: weights.value,
     };
 
@@ -223,7 +238,7 @@ async function deleteTemplate(template: TemplateRow) {
   if (!roomId.value) return;
   if (
     !confirm(
-      `Delete the recurring template for ${template.categoryName}? Existing drafts are kept but won't be re-created next month.`,
+      `Delete the recurring template for ${template.categoryName}? Entries already posted are kept but won't be re-created next month.`,
     )
   ) {
     return;
@@ -271,7 +286,7 @@ function formatAmount(currency: string, amountMinor: number) {
       <div>
         <h1 class="font-pixel-circle text-2xl text-primary">Recurring</h1>
         <p class="text-xs text-toned mt-1">
-          Auto-draft one entry per month for every recurring category.
+          Auto-post one entry per month for every recurring category.
         </p>
       </div>
     </div>
@@ -314,6 +329,10 @@ function formatAmount(currency: string, amountMinor: number) {
                   }}
                   · day {{ templateByCategoryId.get(cat.id)!.dayOfMonth }} ·
                   {{ templateByCategoryId.get(cat.id)!.isActive ? "active" : "paused" }}
+                  <template v-if="templateByCategoryId.get(cat.id)!.paidByMembershipId">
+                    · paid by
+                    {{ memberName(templateByCategoryId.get(cat.id)!.paidByMembershipId!) }}
+                  </template>
                 </p>
               </template>
               <p v-else class="text-xs text-toned">No template yet</p>
@@ -391,6 +410,15 @@ function formatAmount(currency: string, amountMinor: number) {
                   <USelect v-model="formState.currency" :items="currencyItems" value-key="value" />
                 </UFormField>
               </div>
+
+              <UFormField label="Paid by" name="paidByMembershipId" required>
+                <USelect
+                  v-model="formState.paidByMembershipId"
+                  :items="payerItems"
+                  class="w-full"
+                />
+                <template #help>Who fronts this expense each month.</template>
+              </UFormField>
 
               <UFormField label="Day of month" name="dayOfMonth">
                 <UInputNumber v-model="formState.dayOfMonth" :min="1" :max="31" />

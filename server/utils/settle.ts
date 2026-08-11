@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
-import { entries, entryPayers, entryWeights, roomMemberships } from "hub:db:schema";
+import { entries, entryWeights, roomMemberships } from "hub:db:schema";
 import { monthRange } from "~~/shared/types/date";
 import {
   settle,
@@ -53,6 +53,7 @@ export async function settleRoom(
       id: entries.id,
       currency: entries.currency,
       amountMinor: entries.amountMinor,
+      paidByMembershipId: entries.paidByMembershipId,
     })
     .from(entries)
     .where(
@@ -87,37 +88,12 @@ export async function settleRoom(
     weightsByEntry.get(w.entryId)!.push({ membershipId: w.membershipId, weightBps: w.weightBps });
   }
 
-  // Payers for those entries in a single query.
-  const payerRows = entryRows.length
-    ? await db
-        .select({
-          entryId: entryPayers.entryId,
-          membershipId: entryPayers.membershipId,
-          amountMinor: entryPayers.amountMinor,
-        })
-        .from(entryPayers)
-        .where(
-          inArray(
-            entryPayers.entryId,
-            entryRows.map((e) => e.id),
-          ),
-        )
-    : [];
-
-  const payersByEntry = new Map<string, Array<{ membershipId: string; amountMinor: number }>>();
-  for (const p of payerRows) {
-    if (!payersByEntry.has(p.entryId)) payersByEntry.set(p.entryId, []);
-    payersByEntry
-      .get(p.entryId)!
-      .push({ membershipId: p.membershipId, amountMinor: Number(p.amountMinor) });
-  }
-
   const toSettlementEntries = (currency: "USD" | "KHR"): SettlementEntry[] =>
     entryRows
       .filter((e) => e.currency === currency)
       .map((e) => ({
         amountMinor: Number(e.amountMinor),
-        payers: payersByEntry.get(e.id) ?? [],
+        paidByMembershipId: e.paidByMembershipId,
         weights: weightsByEntry.get(e.id) ?? [],
       }));
 

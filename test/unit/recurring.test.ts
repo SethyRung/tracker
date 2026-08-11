@@ -90,7 +90,7 @@ describe("recurring templates", () => {
   });
 
   describe("planDraftForTemplate", () => {
-    it("produces a draft row with status='draft' and templateId set", () => {
+    it("produces a row with status='published' and templateId set", () => {
       const plan = planDraftForTemplate(template(), new Set(["m_a", "m_b"]), {
         newEntryId: "draft_1",
         roomId: "room_1",
@@ -99,12 +99,28 @@ describe("recurring templates", () => {
         paidByMembershipId: "m_a",
       });
       expect(plan).not.toBeNull();
-      expect(plan!.draft.status).toBe("draft");
+      // Recurring entries are published on materialization so they are
+      // counted by settlement immediately — no admin review gate.
+      expect(plan!.draft.status).toBe("published");
       expect(plan!.draft.templateId).toBe("tpl_1");
       expect(plan!.draft.id).toBe("draft_1");
       expect(plan!.draft.categoryId).toBe("cat_rent");
       expect(plan!.draft.amountMinor).toBe(50000);
       expect(plan!.draft.date).toEqual(new Date("2026-08-01T00:00:00Z"));
+    });
+
+    it("uses the paidByMembershipId it is handed as the entry payer", () => {
+      // The caller (server/utils/recurring.ts) resolves the template's
+      // configured payer, falling back to the longest-tenured member; this
+      // helper just records whatever it is given.
+      const plan = planDraftForTemplate(template(), new Set(["m_a", "m_b"]), {
+        newEntryId: "draft_1",
+        roomId: "room_1",
+        createdByUserId: "user_1",
+        monthStart: new Date("2026-08-01T00:00:00Z"),
+        paidByMembershipId: "m_b",
+      });
+      expect(plan!.draft.paidByMembershipId).toBe("m_b");
     });
 
     it("returns null when every snapshot member has departed (no draft created)", () => {

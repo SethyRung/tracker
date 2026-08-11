@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, recurringTemplates, roomMemberships } from "hub:db:schema";
 import { createTemplateSchema } from "~~/shared/schemas/template";
@@ -48,23 +48,23 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Configured payers must be active members of this room.
-  if (body.payerSnapshot?.length) {
-    const ids = [...new Set(body.payerSnapshot.map((p) => p.membershipId))];
-    const payers = await db
+  // A configured payer must be an active member of this room.
+  if (body.paidByMembershipId) {
+    const payer = await db
       .select({ id: roomMemberships.id })
       .from(roomMemberships)
       .where(
         and(
-          inArray(roomMemberships.id, ids),
+          eq(roomMemberships.id, body.paidByMembershipId),
           eq(roomMemberships.roomId, roomId),
           eq(roomMemberships.isActive, true),
         ),
-      );
-    if (payers.length !== ids.length) {
+      )
+      .limit(1);
+    if (payer.length === 0) {
       return createResponse({
         code: ApiResponseCode.InvalidRequest,
-        message: "Every payer must be an active member of this room.",
+        message: "Payer must be an active member of this room.",
       });
     }
   }
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
     amountMinor: body.amountMinor,
     dayOfMonth: body.dayOfMonth,
     isActive: body.isActive,
-    payerSnapshot: body.payerSnapshot ?? null,
+    paidByMembershipId: body.paidByMembershipId ?? null,
     memberSnapshot: body.memberSnapshot,
   });
 
