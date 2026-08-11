@@ -9,7 +9,7 @@ export default defineTask({
   meta: {
     name: "recurring:materialize",
     description:
-      "On the 1st of each (ICT) month, create draft entries from every active recurring template.",
+      "On the 1st of each (ICT) month, create published entries from every active recurring template.",
   },
   async run() {
     if (currentDayOfMonthPhnomPenh() !== 1) {

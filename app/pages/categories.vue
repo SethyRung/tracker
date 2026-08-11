@@ -49,7 +49,8 @@ const recurringTypeItems = [
   {
     label: "Monthly recurring",
     value: "recurring",
-    description: "Auto-draft each month with a default amount; edit before publishing.",
+    description:
+      "Auto-post each month with a default amount; edit any time while the month is open.",
   },
 ];
 

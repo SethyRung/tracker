@@ -1,4 +1,5 @@
 import { BPS_TOTAL } from "../types/weight";
+import { splitByWeights } from "./payers";
 
 // Pure helpers for recurring-template materialization (Phase 7). The DB-using
 // wrapper lives in `server/utils/recurring.ts`; this file has zero side effects
@@ -15,6 +16,8 @@ export interface TemplateSnapshotInput {
   currency: "USD" | "KHR";
   amountMinor: number;
   memberSnapshot: SnapshotEntry[];
+  // Payer proportions in bps. Null/empty => single fallback payer.
+  payerSnapshot?: SnapshotEntry[] | null;
 }
 
 export interface DraftRow {
@@ -24,8 +27,10 @@ export interface DraftRow {
   currency: "USD" | "KHR";
   amountMinor: number;
   date: Date;
-  paidByMembershipId: string;
-  status: "draft";
+  // Materialized recurring entries are created `published` so they count
+  // toward settlement immediately. An admin can still edit the amount or
+  // weights during the open month; there is no review-before-publish gate.
+  status: "published";
   templateId: string;
   createdByUserId: string;
 }
@@ -33,6 +38,7 @@ export interface DraftRow {
 export interface PlannedDraft {
   draft: DraftRow;
   weights: Array<{ membershipId: string; weightBps: number }>;
+  payers: Array<{ membershipId: string; amountMinor: number }>;
 }
 
 export interface PlanDraftOptions {
@@ -40,7 +46,18 @@ export interface PlanDraftOptions {
   roomId: string;
   createdByUserId: string;
   monthStart: Date;
-  paidByMembershipId: string;
+  // Payer used when the template has no usable payer snapshot.
+  fallbackPayerMembershipId: string;
+}
+
+// Split `amountMinor` across payers by their bps shares. Delegates to the
+// shared splitter so template materialization and the UI's "each pays own
+// share" detection use identical arithmetic.
+export function payerAmounts(
+  amountMinor: number,
+  payers: ReadonlyArray<SnapshotEntry>,
+): Array<{ membershipId: string; amountMinor: number }> {
+  return splitByWeights(amountMinor, payers);
 }
 
 // Prune the template's member_snapshot to members still active in the room,
@@ -83,6 +100,15 @@ export function planDraftForTemplate(
   const weights = pruneSnapshot(template.memberSnapshot, activeMemberIds);
   if (!weights) return null;
 
+  // Payers are pruned to active members the same way. If nothing usable
+  // survives, fall back to a single payer covering the whole amount.
+  const prunedPayers = template.payerSnapshot?.length
+    ? pruneSnapshot(template.payerSnapshot, activeMemberIds)
+    : null;
+  const payers = prunedPayers
+    ? payerAmounts(template.amountMinor, prunedPayers)
+    : [{ membershipId: options.fallbackPayerMembershipId, amountMinor: template.amountMinor }];
+
   return {
     draft: {
       id: options.newEntryId,
@@ -91,12 +117,12 @@ export function planDraftForTemplate(
       currency: template.currency,
       amountMinor: template.amountMinor,
       date: options.monthStart,
-      paidByMembershipId: options.paidByMembershipId,
-      status: "draft",
+      status: "published",
       templateId: template.id,
       createdByUserId: options.createdByUserId,
     },
     weights,
+    payers,
   };
 }
 
