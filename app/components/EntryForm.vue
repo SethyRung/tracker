@@ -223,7 +223,6 @@ function onValidSubmit(event: FormSubmitEvent<FormState>) {
         size: 'lg',
         ui: {
           root: 'w-full',
-          base: 'w-full',
         },
       },
       select: {

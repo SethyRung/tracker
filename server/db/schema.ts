@@ -2,6 +2,7 @@ import {
   bigint,
   boolean,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -91,7 +92,9 @@ export const entries = pgTable("entries", {
   status: text("status", { enum: ["draft", "published"] })
     .notNull()
     .default("draft"),
-  templateId: text("template_id"),
+  templateId: text("template_id").references(() => recurringTemplates.id, {
+    onDelete: "set null",
+  }),
   createdByUserId: text("created_by_user_id")
     .notNull()
     .references(() => user.id, { onDelete: "restrict" }),
@@ -112,3 +115,25 @@ export const entryWeights = pgTable(
   },
   (t) => [primaryKey({ columns: [t.entryId, t.membershipId] })],
 );
+
+// One per category with recurring_type='recurring'. The member snapshot freezes
+// the attendee list at template-create time so future weight changes don't
+// retroactively rewrite past drafts (Phase 7 / SPEC §8).
+export const recurringTemplates = pgTable("recurring_templates", {
+  id: text("id").primaryKey(),
+  roomId: text("room_id")
+    .notNull()
+    .references(() => rooms.id, { onDelete: "cascade" }),
+  categoryId: text("category_id")
+    .notNull()
+    .references(() => categories.id, { onDelete: "cascade" }),
+  currency: text("currency", { enum: ["USD", "KHR"] }).notNull(),
+  amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  dayOfMonth: integer("day_of_month").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  memberSnapshot: jsonb("member_snapshot")
+    .$type<Array<{ membershipId: string; weightBps: number }>>()
+    .notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
