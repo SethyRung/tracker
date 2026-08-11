@@ -1,20 +1,20 @@
-// Share weights are stored as decimals in [0, 1] (0.45 = 45%).
-// 1.0 represents 100%. Kept the field name `weightBps` for backward
-// compat with the wire format.
-export const BPS_TOTAL = 1;
-
-const PRECISION = 10000;
+// Share weights are stored as integer basis points in [0, 10000]
+// (2500 = 25.00%). 10000 represents 100%. This matches SPEC §14 and the
+// integer `weight_bps` / `share_percent_bps` columns. (An earlier version of
+// this file used decimals in [0, 1] under the same `weightBps` name; that
+// contradicted the spec and couldn't be stored in an integer column.)
+export const BPS_TOTAL = 10000;
 
 function round(n: number): number {
-  return Math.round(n * PRECISION) / PRECISION;
+  return Math.round(n);
 }
 
 export function bpsToPercent(bps: number): number {
-  return bps * 100;
+  return bps / 100;
 }
 
 export function percentToBps(percent: number): number {
-  return round(percent / 100);
+  return round(percent * 100);
 }
 
 export interface WeightValidationIssue {
@@ -35,7 +35,7 @@ export function validateWeights(weights: Record<string, number>): WeightValidati
     if (typeof w !== "number" || w < 0 || w > BPS_TOTAL) {
       issues.push({
         code: "out_of_range",
-        message: `Weight for ${id} must be 0–1 (got ${w}).`,
+        message: `Weight for ${id} must be 0–${BPS_TOTAL} (got ${w}).`,
         details: { id, weight: w },
       });
     }
@@ -59,13 +59,13 @@ export function isValidWeights(weights: Record<string, number>): boolean {
 
 export function equalSplitBps(attendeeCount: number): number {
   if (attendeeCount <= 0) return 0;
-  // Floor at 4 decimals so the sum never overshoots. The remainder
-  // absorbs the difference (e.g. 1/7 floor = 0.1428, remainder = 0.0004).
-  return Math.floor((BPS_TOTAL / attendeeCount) * PRECISION) / PRECISION;
+  // Floor so the per-attendee base never overshoots; the remainder absorbs the
+  // difference (e.g. 10000 / 3 floor = 3333, remainder = 1).
+  return Math.floor(BPS_TOTAL / attendeeCount);
 }
 
 export function splitRemainderBps(attendeeCount: number): number {
   if (attendeeCount <= 0) return 0;
   const base = equalSplitBps(attendeeCount);
-  return round(BPS_TOTAL - base * attendeeCount);
+  return BPS_TOTAL - base * attendeeCount;
 }

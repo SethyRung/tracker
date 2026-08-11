@@ -22,6 +22,39 @@ CREATE TABLE "categories" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "entries" (
+	"id" text PRIMARY KEY NOT NULL,
+	"room_id" text NOT NULL,
+	"category_id" text,
+	"currency" text NOT NULL,
+	"amount_minor" bigint NOT NULL,
+	"date" timestamp NOT NULL,
+	"paid_by_membership_id" text NOT NULL,
+	"notes" text,
+	"status" text DEFAULT 'draft' NOT NULL,
+	"template_id" text,
+	"created_by_user_id" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "entry_weights" (
+	"entry_id" text NOT NULL,
+	"membership_id" text NOT NULL,
+	"weight_bps" integer NOT NULL,
+	CONSTRAINT "entry_weights_entry_id_membership_id_pk" PRIMARY KEY("entry_id","membership_id")
+);
+--> statement-breakpoint
+CREATE TABLE "invite_links" (
+	"token_hash" text PRIMARY KEY NOT NULL,
+	"room_id" text NOT NULL,
+	"created_by_membership_id" text NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"used_at" timestamp,
+	"used_by_membership_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "room_memberships" (
 	"id" text PRIMARY KEY NOT NULL,
 	"room_id" text NOT NULL,
@@ -80,6 +113,15 @@ CREATE TABLE "verification" (
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "categories" ADD CONSTRAINT "categories_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entries" ADD CONSTRAINT "entries_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entries" ADD CONSTRAINT "entries_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entries" ADD CONSTRAINT "entries_paid_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("paid_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entries" ADD CONSTRAINT "entries_created_by_user_id_user_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entry_weights" ADD CONSTRAINT "entry_weights_entry_id_entries_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entry_weights" ADD CONSTRAINT "entry_weights_membership_id_room_memberships_id_fk" FOREIGN KEY ("membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_created_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("created_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_used_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("used_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "room_memberships" ADD CONSTRAINT "room_memberships_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "room_memberships" ADD CONSTRAINT "room_memberships_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rooms" ADD CONSTRAINT "rooms_created_by_user_id_user_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint

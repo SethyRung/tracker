@@ -1,48 +1,42 @@
 <script setup lang="ts">
-const { loggedIn, signOut } = useUserSession();
-const route = useRoute();
+import type { NavigationMenuItem } from "@nuxt/ui";
 
-const skipChrome = computed(() => {
-  if (!loggedIn.value) return true;
-  return (
-    route.path.startsWith("/sign-") ||
-    route.path.startsWith("/forgot-") ||
-    route.path.startsWith("/reset-") ||
-    route.path.startsWith("/onboarding") ||
-    route.path.startsWith("/join") ||
-    route.path === "/"
-  );
-});
+const { signOut } = useUserSession();
 
-const addItems = computed(() => [
-  { label: "Bill", icon: "i-lucide-file-plus", to: "/bills/new" },
-  { label: "Payment", icon: "i-lucide-coins", to: "/payments/new" },
-]);
+const dayjs = useDayjs();
 
-const menuItems = computed(() => [
-  { label: "Dashboard", icon: "i-lucide-house", to: "/dashboard" },
+const navItems = computed<NavigationMenuItem[]>(() => [
+  {
+    icon: "i-lucide-house",
+    label: "Home",
+    to: "/dashboard",
+  },
+  {
+    icon: "i-lucide-users",
+    label: "People",
+    to: "/members",
+  },
+  {
+    icon: "i-lucide-scale",
+    label: "Settle",
+    to: `/settle/${dayjs().format("YYYY-MM")}`,
+  },
+  { label: "Entries", icon: "i-lucide-receipt", to: "/entries" },
   { label: "Recurring", icon: "i-lucide-repeat", to: "/recurring" },
   { label: "Categories", icon: "i-lucide-tag", to: "/categories" },
-  { label: "Members", icon: "i-lucide-users", to: "/members" },
 ]);
 </script>
 
 <template>
-  <div v-if="skipChrome" class="min-h-screen flex flex-col font-sans">
-    <slot />
-  </div>
-
-  <div v-else class="min-h-screen flex flex-col font-sans">
+  <div class="min-h-screen flex flex-col font-sans">
     <UHeader
       title="Tricker"
       to="/dashboard"
-      mode="drawer"
+      :toggle="false"
       :ui="{
         title: 'font-pixel-circle text-primary',
       }"
     >
-      <UNavigationMenu :items="menuItems" :ui="{ link: 'justify-start', label: 'font-normal' }" />
-
       <template #right>
         <UColorModeButton />
 
@@ -55,34 +49,31 @@ const menuItems = computed(() => [
           :ui="{ label: 'hidden lg:block' }"
         />
       </template>
-
-      <template #body>
-        <UNavigationMenu
-          :items="menuItems"
-          orientation="vertical"
-          :ui="{ link: 'justify-start', label: 'font-normal' }"
-        />
-      </template>
     </UHeader>
 
     <main class="flex-1 pb-20">
       <slot />
     </main>
 
-    <AppBottomNav />
-
-    <UDropdownMenu
-      :items="addItems"
-      :content="{ side: 'top', align: 'center', sideOffset: 8 }"
-      :ui="{ content: 'min-w-44' }"
-    >
-      <UButton
-        icon="i-lucide-plus"
-        color="primary"
-        size="lg"
-        class="fixed bottom-20 right-0 -translate-x-1/2 z-40 rounded-full shadow-lg"
-        aria-label="Add"
+    <nav class="fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default">
+      <UNavigationMenu
+        :items="navItems"
+        :ui="{
+          root: 'justify-around py-2',
+          item: 'py-0',
+          link: 'flex-col gap-1 px-3',
+          linkLeadingIcon: 'size-5',
+          linkLabel: 'text-[10px]/3 font-normal',
+        }"
       />
-    </UDropdownMenu>
+    </nav>
+
+    <UButton
+      icon="i-lucide-plus"
+      color="primary"
+      size="lg"
+      class="fixed bottom-20 right-0 -translate-x-1/2 z-40 rounded-full shadow-lg"
+      to="/entries/new"
+    />
   </div>
 </template>

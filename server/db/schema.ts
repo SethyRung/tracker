@@ -1,4 +1,12 @@
-import { boolean, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  boolean,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { user } from "#auth/schema";
 
 export const rooms = pgTable("rooms", {
@@ -61,14 +69,14 @@ export const inviteLinks = pgTable("invite_links", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const bills = pgTable("bills", {
+export const entries = pgTable("entries", {
   id: text("id").primaryKey(),
   roomId: text("room_id")
     .notNull()
     .references(() => rooms.id, { onDelete: "cascade" }),
   categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
   currency: text("currency", { enum: ["USD", "KHR"] }).notNull(),
-  amountMinor: integer("amount_minor").notNull(),
+  amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
   date: timestamp("date").notNull(),
   paidByMembershipId: text("paid_by_membership_id")
     .notNull()
@@ -85,16 +93,16 @@ export const bills = pgTable("bills", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const billWeights = pgTable(
-  "bill_weights",
+export const entryWeights = pgTable(
+  "entry_weights",
   {
-    billId: text("bill_id")
+    entryId: text("entry_id")
       .notNull()
-      .references(() => bills.id, { onDelete: "cascade" }),
+      .references(() => entries.id, { onDelete: "cascade" }),
     membershipId: text("membership_id")
       .notNull()
       .references(() => roomMemberships.id, { onDelete: "cascade" }),
     weightBps: integer("weight_bps").notNull(),
   },
-  (t) => [primaryKey({ columns: [t.billId, t.membershipId] })],
+  (t) => [primaryKey({ columns: [t.entryId, t.membershipId] })],
 );

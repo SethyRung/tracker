@@ -3,18 +3,18 @@ definePageMeta({
   auth: { only: "user" },
 });
 
-const { user, signOut } = useUserSession();
+const { user } = useUserSession();
 if (!user.value) await navigateTo("/sign-in");
 
 const { data: roomRes } = await useFetch("/api/rooms/current");
 const roomId = computed(() => roomRes.value?.data?.room?.id ?? null);
 
-interface BillRow {
+interface EntryRow {
   id: string;
   currency: string;
   amountMinor: number;
   date: string;
-  status: string;
+  status: "draft" | "published";
   notes: string | null;
   categoryId: string | null;
   paidByMembershipId: string;
@@ -29,7 +29,7 @@ interface MemberRow {
   role: string;
 }
 
-const bills = ref<BillRow[]>([]);
+const entries = ref<EntryRow[]>([]);
 const members = ref<MemberRow[]>([]);
 const categories = ref<Array<{ id: string; name: string }>>([]);
 
@@ -37,12 +37,12 @@ const fetchWithCookies = useRequestFetch();
 
 async function refreshAll() {
   if (!roomId.value) return;
-  const [b, m, c] = await Promise.all([
-    fetchWithCookies(`/api/rooms/${roomId.value}/bills`),
+  const [e, m, c] = await Promise.all([
+    fetchWithCookies(`/api/rooms/${roomId.value}/entries`),
     fetchWithCookies(`/api/rooms/${roomId.value}/members`),
     fetchWithCookies(`/api/rooms/${roomId.value}/categories`),
   ]);
-  bills.value = (b.data?.bills ?? []) as unknown as BillRow[];
+  entries.value = (e.data?.entries ?? []) as unknown as EntryRow[];
   members.value = m.data?.members ?? [];
   categories.value = c.data?.categories ?? [];
 }
@@ -55,22 +55,25 @@ const catName = (id: string | null) =>
   id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
 const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
 
-const drafts = computed(() => bills.value.filter((b) => b.status === "draft"));
-const published = computed(() => bills.value.filter((b) => b.status === "published"));
-const recent = computed(() =>
-  bills.value
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 5),
-);
+const drafts = computed(() => entries.value.filter((e) => e.status === "draft"));
+const published = computed(() => entries.value.filter((e) => e.status === "published"));
 
+// Drafts aren't counted in settlement until published (SPEC §8), so the totals
+// preview sums published entries only.
 const totalsByCurrency = computed(() => {
   const map: Record<string, number> = { USD: 0, KHR: 0 };
-  for (const b of bills.value) {
-    if (map[b.currency] === undefined) map[b.currency] = 0;
-    map[b.currency] = (map[b.currency] ?? 0) + b.amountMinor;
+  for (const e of published.value) {
+    map[e.currency] = (map[e.currency] ?? 0) + e.amountMinor;
   }
   return map;
+});
+
+const thisMonthEntries = computed(() => {
+  const key = currentMonthKey();
+  return entries.value
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .filter((e) => monthKey(new Date(e.date)) === key);
 });
 
 function formatAmount(currency: string, amountMinor: number) {
@@ -101,13 +104,13 @@ function avatarColor(memberId: string) {
   return memberById.value.get(memberId)?.color ?? "#a1a1aa";
 }
 
-function splitSummary(b: BillRow) {
+function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
   const active = members.value.length;
-  const n = b.weights.length;
+  const n = e.weights.length;
   if (n === 0) return "—";
   if (n === active) return "split: all (equal)";
   if (n === 1) return "split: 1 person";
-  return b.weights.map((w) => `${(w.weightBps / 100).toFixed(0)}%`).join("/");
+  return e.weights.map((w) => `${(w.weightBps / 100).toFixed(0)}%`).join("/");
 }
 </script>
 
@@ -147,6 +150,10 @@ function splitSummary(b: BillRow) {
         </div>
       </UCard>
 
+      <div class="flex gap-3 mb-4">
+        <UButton icon="i-lucide-plus" label="Log entry" to="/entries/new" class="flex-1" />
+      </div>
+
       <UAlert
         v-if="drafts.length > 0"
         color="warning"
@@ -157,53 +164,52 @@ function splitSummary(b: BillRow) {
       >
         <div class="space-y-1 mt-2">
           <div
-            v-for="b in drafts.slice(0, 3)"
-            :key="b.id"
+            v-for="d in drafts.slice(0, 3)"
+            :key="d.id"
             class="flex items-center justify-between gap-2 text-sm"
           >
             <span class="truncate">
-              {{ catName(b.categoryId) }} ·
-              <span class="text-toned">{{ b.notes ?? "—" }}</span>
+              {{ catName(d.categoryId) }} ·
+              <span class="text-toned">{{ d.notes ?? "—" }}</span>
             </span>
             <span class="font-medium tabular-nums">{{
-              formatAmount(b.currency, b.amountMinor)
+              formatAmount(d.currency, d.amountMinor)
             }}</span>
           </div>
         </div>
-        <UButton color="warning" variant="outline" size="sm" to="/dashboard" class="mt-3">
-          Review drafts →
-        </UButton>
       </UAlert>
 
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">Recent</h2>
-            <UButton variant="ghost" color="neutral" size="xs" to="/dashboard">See all</UButton>
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">This month</h2>
           </div>
         </template>
 
-        <ul v-if="recent.length > 0" class="divide-y divide-default">
-          <li v-for="b in recent" :key="b.id" class="py-3 space-y-1">
+        <ul v-if="thisMonthEntries.length > 0" class="divide-y divide-default">
+          <li v-for="e in thisMonthEntries" :key="e.id" class="py-3 space-y-1">
             <div class="flex items-center gap-2">
-              <span class="text-xs text-toned">{{ formatDate(b.date) }}</span>
-              <span class="text-sm font-medium text-default">· {{ catName(b.categoryId) }}</span>
+              <span class="text-xs text-toned">{{ formatDate(e.date) }}</span>
+              <span class="text-sm font-medium text-default">· {{ catName(e.categoryId) }}</span>
+              <UBadge v-if="e.status === 'draft'" color="warning" variant="subtle" size="xs">
+                Draft
+              </UBadge>
             </div>
-            <NuxtLink :to="`/bills/${b.id}/edit`" class="text-sm text-default hover:text-primary">
-              {{ b.notes ?? "—" }}
+            <NuxtLink :to="`/entries/${e.id}/edit`" class="text-sm text-default hover:text-primary">
+              {{ e.notes ?? "—" }}
             </NuxtLink>
             <div class="flex items-center justify-between text-xs text-toned">
               <span>
-                {{ formatAmount(b.currency, b.amountMinor) }}
-                paid by {{ memberLabel(b.paidByMembershipId) }}
+                {{ formatAmount(e.currency, e.amountMinor) }}
+                paid by {{ memberLabel(e.paidByMembershipId) }}
               </span>
-              <span>{{ splitSummary(b) }}</span>
+              <span>{{ splitSummary(e) }}</span>
             </div>
           </li>
         </ul>
 
         <p v-else class="text-sm text-toned text-center py-6">
-          No activity yet — log your first bill to see balances.
+          No activity yet — log your first bill or payment to see balances.
         </p>
       </UCard>
     </template>

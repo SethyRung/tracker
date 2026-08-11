@@ -117,7 +117,7 @@ Categories can be freely renamed, added, or deleted. The split logic (§7b) is u
 
 ## 7b. Split Logic (uniform across all entries)
 
-Every bill and payment follows the same split model.
+Every entry — bill or payment — follows the same split model.
 
 ### Step 1 — Attendees
 
@@ -139,26 +139,33 @@ Every bill and payment follows the same split model.
 - `effective_weight = entry_weight * (effective_days / days_in_month)` where `effective_days` is days the member was active during the entry's month
 - Rounding remainder is assigned to the longest-tenured member at the time of the entry
 
-## 8. Bills vs Payments
+## 8. Entries
 
-The product uses two top-level entry types. Both share `amount_minor`, `currency`, `date`, `category`, `paid_by_member_id`, `notes`, `created_by`, `created_at`, `updated_at`.
+Household expenses live in a single `entries` table. There is no bill/payment `type` — every entry is just an entry, with `amount_minor`, `currency`, `date` (datetime), `category_id`, `paid_by_membership_id`, `notes`, `attendees` + `weights`, `created_by`, `created_at`, `updated_at`, plus `status` and `template_id`. (An earlier revision split bills and payments into a `type` field; the distinction duplicated ~90% of the columns/routes/forms for no modeling gain, so it was dropped — see DECISIONS.md.)
 
-### Bill
+### User entries
 
-- Monthly expense (rent, water bill, electricity bill).
-- **Recurring**: backed by a `RecurringTemplate`. Template has `amount_minor`, `currency`, `category_id`, `day_of_month` (when drafts materialize). Templates store the **member snapshot** (which members are included), not per-member weights.
-- **One-time**: standalone, no template.
-- **Draft lifecycle**: on the 1st of each month (Phnom Penh time), a scheduled task creates **draft** Bill entries from all active templates. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
-- **Per-month override (amount)**: admin can edit a published bill's amount for that month without changing the template.
-- **Per-month override (attendees + weights)**: each draft pre-fills with all active members and their profile `share_percent`. Admin edits before publishing. Published entries' attendees and weights are saved on the entry only — they do not propagate back to the template or to other drafts.
-- Status: `draft` → `published`. Published bills are immutable for amount/attendees/weights unless admin edits (creates an audit-free change; see §15 Out of Scope).
+- A member logs a shared expense (rent, utilities, groceries, household items, …) and it is **created `published`** — instant, no draft step.
+- `attendees` + `weights` per attendee; defaults to all active members with profile `share_percent`; the creator (or an admin) can override.
+- One entry form covers everything; a `Recurring?` toggle is UI-ready for Phase 7 templates (non-functional until then).
 
-### Payment
+### Recurring drafts (Phase 7)
 
-- Ad-hoc shared expense (groceries, drinking water delivery, household items).
-- Always one-time. No template.
-- Status: `published` immediately on create.
-- Has `attendees: member_id[]` and `weights` per attendee. Defaults to all active members with profile `share_percent`; admin can override.
+- A `RecurringTemplate` has `amount_minor`, `currency`, `category_id`, `day_of_month` (when drafts materialize) and a **member snapshot** (which members are included), not per-member weights.
+- On the 1st of each month (Phnom Penh time), a scheduled task creates **draft** entries from all active templates. Admin reviews and **publishes** each (or edits amount/weights/attendees before publishing). Drafts are not counted in settlement until published.
+- `template_id` links a materialized draft back to its template. Per-month overrides (amount / attendees / weights) are saved on the entry only — they do not propagate back to the template or to other drafts.
+
+### Lifecycle & permissions
+
+- `entries.status`: `draft` | `published`. User entries are created `published`; drafts come only from recurring-template materialization.
+- **Edit / delete rules**:
+  - `published`: creator or admin.
+  - `draft`: admin only (drafts are template materializations up for review).
+- **Publish** (`POST /entries/:id/publish`): admin only, drafts only. A published entry is immutable for amount/attendees/weights unless an admin edits (audit-free change; see §15 Out of Scope).
+
+### Weights
+
+`entry_weights (entry_id, membership_id, weight_bps)` — integer basis points (2500 = 25.00%); sum per entry must equal 10000; absent rows mean the member was not an attendee.
 
 ## 9. Month Lifecycle
 
@@ -231,8 +238,8 @@ No historical backfill. The room starts on its creation date; past months are no
 - `/sign-in`, `/sign-up`
 - `/dashboard` — current month view (entries, balances, drafts-to-publish)
 - `/month/[yyyy-mm]` — historical month view (read-only when closed)
-- `/bills/new`, `/bills/[id]/edit`
-- `/payments/new`, `/payments/[id]/edit`
+- `/entries/new` — log a bill or payment (`?type=bill|payment` preselects and locks the type)
+- `/entries/[id]/edit`
 - `/members` — list, invite, remove
 - `/categories` — list, edit, add, remove
 - `/recurring` — recurring templates list
@@ -257,22 +264,19 @@ categories          (id, room_id, name, sort_order, created_at)
 recurring_templates (id, room_id, name, category_id, currency,
                      amount_minor, day_of_month, is_active)
 
-bills               (id, room_id, category_id, currency, amount_minor,
+entries              (id, room_id, category_id, currency, amount_minor,
                      date, paid_by_membership_id, notes,
                      status 'draft'|'published', template_id NULL,
                      created_by, created_at, updated_at)
+                     -- no bill/payment `type`; user entries are created
+                     -- `published`, drafts come only from recurring templates
 
-bill_weights        (bill_id, membership_id, weight_bps)
+entry_weights       (entry_id, membership_id, weight_bps)
                      -- weight_bps is integer basis points (2500 = 25.00%);
-                     -- sum per bill must equal 10000;
+                     -- sum per entry must equal 10000;
                      -- absent rows mean the member was not an attendee
-
-payments            (id, room_id, category_id, currency, amount_minor,
-                     date, paid_by_membership_id, notes,
-                     created_by, created_at, updated_at)
-
-payment_weights     (payment_id, membership_id, weight_bps)
-                     -- same semantics as bill_weights
+                     -- (replaces the former bills/bill_weights and
+                     --  payments/payment_weights tables)
 
 month_snapshots     (id, room_id, yyyymm, status 'open'|'closed',
                      closed_at NULL, closed_by NULL)
@@ -375,7 +379,7 @@ These were discussed and explicitly deferred. Do not implement in v1.
 - `share_percent` per member: 0–100, sum across active members in the room must equal 100 (validated on member create/update)
 - For each entry: at least one attendee required; attendees must be active members
 - For each entry: weights (sum of `weight_bps`) must equal 10000 across attendees
-- A bill's `category_id` must belong to the same room as the bill
+- An entry's `category_id` must belong to the same room as the entry
 
 ---
 

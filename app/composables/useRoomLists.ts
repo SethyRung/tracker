@@ -1,4 +1,4 @@
-export async function useRoomLists(roomId: Ref<string | null>) {
+export async function useRoomLists(roomId: Ref<string | null | undefined>) {
   const { data: membersRes, refresh: refreshMembers } = useFetch(
     `/api/rooms/${roomId.value}/members`,
   );

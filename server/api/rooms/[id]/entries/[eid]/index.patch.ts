@@ -1,10 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "hub:db";
-import { billWeights, bills, roomMemberships } from "hub:db:schema";
+import { entries, entryWeights, roomMemberships } from "hub:db:schema";
 import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
-import { updateBillSchema } from "~~/shared/schemas/bill";
+import { updateEntrySchema } from "~~/shared/schemas/entry";
 
-interface BillShape {
+interface EntryShape {
   id: string;
   roomId: string;
   categoryId: string | null;
@@ -19,17 +19,25 @@ interface BillShape {
   createdAt: Date;
   updatedAt: Date;
 }
-interface BillWithWeights extends BillShape {
-  weights: { billId: string; membershipId: string; weightBps: number }[];
+interface EntryWithWeights extends EntryShape {
+  weights: { entryId: string; membershipId: string; weightBps: number }[];
 }
-interface UpdateBillResponse {
-  bill: BillWithWeights;
+interface UpdateEntryResponse {
+  entry: EntryWithWeights;
 }
 
-export default defineEventHandler(async (event): Promise<ApiResponse<UpdateBillResponse>> => {
+// Unified edit/delete rule (SPEC §8): published → creator or admin; draft →
+// admin only (drafts are recurring-template materializations up for review).
+function canMutate(entry: EntryShape, isAdmin: boolean, isOwner: boolean) {
+  if (isAdmin) return true;
+  if (entry.status === "published") return isOwner;
+  return false;
+}
+
+export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntryResponse>> => {
   const roomId = getRouterParam(event, "id");
-  const bid = getRouterParam(event, "bid");
-  if (!roomId || !bid) {
+  const eid = getRouterParam(event, "eid");
+  if (!roomId || !eid) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
       message: "Missing id",
@@ -37,28 +45,30 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateBillR
   }
 
   const ctx = await requireRoomContext(event, roomId);
-  const body = await readValidatedBody(event, updateBillSchema.parse);
+  const body = await readValidatedBody(event, updateEntrySchema.parse);
 
   const current = await db
     .select()
-    .from(bills)
-    .where(and(eq(bills.id, bid), eq(bills.roomId, roomId)))
+    .from(entries)
+    .where(and(eq(entries.id, eid), eq(entries.roomId, roomId)))
     .limit(1);
   if (current.length === 0) {
     return createResponse({
       code: ApiResponseCode.NotFound,
-      message: "Bill not found",
+      message: "Entry not found",
     });
   }
-  const bill = current[0]!;
+  const entry = current[0]!;
 
   const isAdmin = ctx.role === "admin";
-  const isDraft = bill.status === "draft";
-  const isOwner = bill.createdByUserId === ctx.userId;
-  if (!isAdmin && !(isDraft && isOwner)) {
+  const isOwner = entry.createdByUserId === ctx.userId;
+  if (!canMutate(entry, isAdmin, isOwner)) {
     return createResponse({
       code: ApiResponseCode.Forbidden,
-      message: "Only the creator can edit a draft; only admins can edit a published bill.",
+      message:
+        entry.status === "draft"
+          ? "Only an admin can edit a draft entry."
+          : "Only the creator or an admin can edit this entry.",
     });
   }
 
@@ -91,14 +101,14 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateBillR
 
   await db.transaction(async (tx) => {
     if (Object.keys(updates).length > 1) {
-      await tx.update(bills).set(updates).where(eq(bills.id, bid));
+      await tx.update(entries).set(updates).where(eq(entries.id, eid));
     }
     if (body.weights) {
-      await tx.delete(billWeights).where(eq(billWeights.billId, bid));
+      await tx.delete(entryWeights).where(eq(entryWeights.entryId, eid));
       if (body.weights.length > 0) {
-        await tx.insert(billWeights).values(
+        await tx.insert(entryWeights).values(
           body.weights.map((w) => ({
-            billId: bid,
+            entryId: eid,
             membershipId: w.membershipId,
             weightBps: w.weightBps,
           })),
@@ -107,8 +117,8 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateBillR
     }
   });
 
-  const updated = await db.select().from(bills).where(eq(bills.id, bid)).limit(1);
-  const weights = await db.select().from(billWeights).where(eq(billWeights.billId, bid));
-  const result = { ...updated[0], weights } as BillWithWeights;
-  return createResponse({ code: ApiResponseCode.Success }, { bill: result });
+  const updated = await db.select().from(entries).where(eq(entries.id, eid)).limit(1);
+  const weights = await db.select().from(entryWeights).where(eq(entryWeights.entryId, eid));
+  const result = { ...updated[0], weights } as EntryWithWeights;
+  return createResponse({ code: ApiResponseCode.Success }, { entry: result });
 });

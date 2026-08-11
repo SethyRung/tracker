@@ -13,7 +13,7 @@ export const monthKeySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Month
 
 export const weightEntrySchema = z.object({
   membership_id: z.string().min(1),
-  weight_bps: z.number().min(0).max(BPS_TOTAL),
+  weight_bps: z.number().int().min(0).max(BPS_TOTAL),
 });
 
 export const attendanceSchema = z
@@ -41,7 +41,7 @@ export const attendanceSchema = z
     }
   });
 
-export const sharePercentSchema = z.number().min(0).max(1);
+export const sharePercentSchema = z.number().int().min(0).max(BPS_TOTAL);
 
 export const nowIsoSchema = z
   .string()

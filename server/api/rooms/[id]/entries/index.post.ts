@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "hub:db";
-import { billWeights, bills, roomMemberships } from "hub:db:schema";
-import { createBillSchema } from "~~/shared/schemas/bill";
+import { entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { createEntrySchema } from "~~/shared/schemas/entry";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
@@ -13,7 +13,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const ctx = await requireRoomContext(event, roomId);
-  const body = await readValidatedBody(event, createBillSchema.parse);
+  const body = await readValidatedBody(event, createEntrySchema.parse);
+
+  // User-created entries are always published (instant). Drafts are only
+  // materialized by recurring templates (Phase 7), not via this route.
+  const status = "published" as const;
+  const templateId = body.templateId ?? null;
 
   const attendeeIds = new Set(body.weights.map((w) => w.membershipId));
   const active = await db
@@ -35,7 +40,7 @@ export default defineEventHandler(async (event) => {
 
   const id = newId();
   await db.transaction(async (tx) => {
-    await tx.insert(bills).values({
+    await tx.insert(entries).values({
       id,
       roomId,
       categoryId: body.categoryId ?? null,
@@ -44,13 +49,14 @@ export default defineEventHandler(async (event) => {
       date: body.date,
       paidByMembershipId: body.paidByMembershipId,
       notes: body.notes ?? null,
-      status: "draft",
+      status,
+      templateId,
       createdByUserId: ctx.userId,
     });
     if (body.weights.length > 0) {
-      await tx.insert(billWeights).values(
+      await tx.insert(entryWeights).values(
         body.weights.map((w) => ({
-          billId: id,
+          entryId: id,
           membershipId: w.membershipId,
           weightBps: w.weightBps,
         })),
@@ -58,8 +64,8 @@ export default defineEventHandler(async (event) => {
     }
   });
 
-  const created = await db.select().from(bills).where(eq(bills.id, id)).limit(1);
-  const weights = await db.select().from(billWeights).where(eq(billWeights.billId, id));
-  const bill = { ...created[0], weights };
-  return createResponse({ code: ApiResponseCode.Success }, { bill });
+  const created = await db.select().from(entries).where(eq(entries.id, id)).limit(1);
+  const weights = await db.select().from(entryWeights).where(eq(entryWeights.entryId, id));
+  const entry = { ...created[0], weights };
+  return createResponse({ code: ApiResponseCode.Success }, { entry });
 });
