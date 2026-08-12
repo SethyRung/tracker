@@ -125,16 +125,14 @@ export default defineEventHandler(async (event) => {
       // Creditors first, then debtors — the order the UI renders.
       .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
 
-    const suggestTransfer = result.transfers.map(
-      (t): SettleTransferView => ({
-        fromMembershipId: t.fromMembershipId,
-        fromName: nameOf(t.fromMembershipId),
-        toMembershipId: t.toMembershipId,
-        toName: nameOf(t.toMembershipId),
-        amountMinor: t.amountMinor,
-        amountFormatted: fmt(t.amountMinor),
-      }),
-    );
+    const suggestTransfer = result.transfers.map((t): SettleTransferView => ({
+      fromMembershipId: t.fromMembershipId,
+      fromName: nameOf(t.fromMembershipId),
+      toMembershipId: t.toMembershipId,
+      toName: nameOf(t.toMembershipId),
+      amountMinor: t.amountMinor,
+      amountFormatted: fmt(t.amountMinor),
+    }));
 
     return {
       currency,
