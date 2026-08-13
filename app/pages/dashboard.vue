@@ -11,65 +11,27 @@ const { data: roomId } = await useFetch("/api/rooms/current", {
 
 const toast = useToast();
 
-interface MonthSnapshot {
-  status: "open" | "closed";
-  closedAt: string | null;
-  closedByUserId: string | null;
-}
-
-interface EntryRow {
-  id: string;
-  currency: string;
-  amountMinor: number;
-  date: string;
-  status: "draft" | "published";
-  notes: string | null;
-  categoryId: string | null;
-  paidByMembershipId: string;
-  weights: Array<{ membershipId: string; weightBps: number }>;
-}
-
-interface MemberRow {
-  id: string;
-  userId: string;
-  displayName: string;
-  nickname: string | null;
-  color: string | null;
-  role: string;
-}
-
-interface CategoryRow {
-  id: string;
-  name: string;
-}
-
-const { data: entries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
-  transform: (r) => (r?.data?.entries ?? []) as EntryRow[],
-  default: () => [] as EntryRow[],
-});
-const { data: members } = await useFetch(() => `/api/rooms/${roomId.value}/members`, {
-  transform: (r) => (r?.data?.members ?? []) as MemberRow[],
-  default: () => [] as MemberRow[],
-});
-const { data: categories } = await useFetch(() => `/api/rooms/${roomId.value}/categories`, {
-  transform: (r) => (r?.data?.categories ?? []) as CategoryRow[],
-  default: () => [] as CategoryRow[],
+const { data: dashboard } = await useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
+  transform: (r) => ({
+    entries: r?.data?.entries ?? [],
+    members: r?.data?.members ?? [],
+    categories: r?.data?.categories ?? [],
+  }),
 });
 
-const thisMonthKey = computed(() => currentMonthKey());
+const thisMonthKey = computed(() => monthKey());
 
 const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
   () => `/api/rooms/${roomId.value}/months/${thisMonthKey.value}`,
   {
-    transform: (r) => (r?.data?.snapshot ?? null) as MonthSnapshot | null,
-    default: () => null as MonthSnapshot | null,
+    transform: (r) => r?.data?.snapshot ?? null,
   },
 );
 
 const closingMonth = ref(false);
 
 const isAdmin = computed(() =>
-  (members.value ?? []).some((m) => m.userId === user.value?.id && m.role === "admin"),
+  (dashboard.value?.members ?? []).some((m) => m.userId === user.value?.id && m.role === "admin"),
 );
 const monthClosed = computed(() => monthSnapshot.value?.status === "closed");
 
@@ -107,16 +69,16 @@ async function toggleMonth() {
   }
 }
 
-const memberById = computed(() => new Map((members.value ?? []).map((m) => [m.id, m])));
+const memberById = computed(() => new Map((dashboard.value?.members ?? []).map((m) => [m.id, m])));
 const catName = (id: string | null) =>
-  id ? ((categories.value ?? []).find((c) => c.id === id)?.name ?? "—") : "—";
+  id ? ((dashboard.value?.categories ?? []).find((c) => c.id === id)?.name ?? "—") : "—";
 const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
 
-const drafts = computed(() => (entries.value ?? []).filter((e) => e.status === "draft"));
-const published = computed(() => (entries.value ?? []).filter((e) => e.status === "published"));
+const drafts = computed(() => (dashboard.value?.entries ?? []).filter((e) => e.status === "draft"));
+const published = computed(() =>
+  (dashboard.value?.entries ?? []).filter((e) => e.status === "published"),
+);
 
-// Drafts aren't counted in settlement until published (SPEC §8), so the totals
-// preview sums published entries only.
 const totalsByCurrency = computed(() => {
   const map: Record<string, number> = { USD: 0, KHR: 0 };
   for (const e of published.value) {
@@ -126,8 +88,8 @@ const totalsByCurrency = computed(() => {
 });
 
 const thisMonthEntries = computed(() => {
-  const key = currentMonthKey();
-  return (entries.value ?? [])
+  const key = monthKey();
+  return (dashboard.value?.entries ?? [])
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))
     .filter((e) => monthKey(new Date(e.date)) === key);
@@ -148,21 +110,8 @@ function formatDate(iso: string) {
   }).format(new Date(iso));
 }
 
-function avatarInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((p) => p.charAt(0))
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function avatarColor(memberId: string) {
-  return memberById.value.get(memberId)?.color ?? "#a1a1aa";
-}
-
 function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
-  const active = (members.value ?? []).length;
+  const active = (dashboard.value?.members ?? []).length;
   const n = e.weights.length;
   if (n === 0) return "—";
   if (n === active) return "split: all (equal)";

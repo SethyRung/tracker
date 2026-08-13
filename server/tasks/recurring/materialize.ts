@@ -1,10 +1,5 @@
 import { materializeRecurringDrafts, currentDayOfMonthPhnomPenh } from "~~/server/utils/recurring";
 
-// Materialize draft entries from every active recurring template. Wired up in
-// nuxt.config.ts → nitro.scheduledTasks with the cron `0 17 * * *` (17:00 UTC
-// = 00:00 Asia/Phnom_Penh). We guard inside so a stray fire outside the 1st of
-// the ICT month is a no-op (defense-in-depth — Croner timing is system-clock
-// dependent and deployments may run on different TZ offsets).
 export default defineTask({
   meta: {
     name: "recurring:materialize",

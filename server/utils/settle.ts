@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
 import { entries, entryWeights, roomMemberships } from "hub:db:schema";
-import { monthRange } from "~~/shared/types/date";
+
 import {
   settle,
   type SettlementEntry,
@@ -60,8 +60,8 @@ export async function settleRoom(
       and(
         eq(entries.roomId, options.roomId),
         eq(entries.status, "published"),
-        gte(entries.date, start) as never,
-        lt(entries.date, end) as never,
+        gte(entries.date, start.toDate()),
+        lt(entries.date, end.toDate()),
       ),
     );
 

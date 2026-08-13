@@ -1,9 +1,3 @@
-// Admin succession logic — pure, testable in isolation.
-//
-// SPEC §5: "if the only admin leaves/is removed, the oldest active
-// member (by joined_at) is auto-promoted to admin. Multiple admins
-// not allowed."
-
 export interface ActiveMember {
   id: string;
   joinedAt: Date;

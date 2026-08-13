@@ -15,18 +15,12 @@ export default defineNuxtConfig({
     "@nuxthub/core",
     "@onmax/nuxt-better-auth",
     "@nuxt/test-utils/module",
-    "~/../modules/dayjs",
   ],
-
-  dayjs: {
-    plugins: ["timezone", "utc"],
-    defaultTimezone: "Asia/Phnom_Penh",
-  },
 
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["better-auth/client/plugins", "dayjs", "dayjs/plugin/utc", "dayjs/plugin/timezone"],
+      include: ["better-auth/client/plugins"],
     },
   },
 
@@ -42,8 +36,6 @@ export default defineNuxtConfig({
     experimental: {
       tasks: true,
     },
-    // 17:00 UTC = 00:00 Asia/Phnom_Penh. The task itself guards on
-    // "today is the 1st in ICT" so off-cycle fires are no-ops.
     scheduledTasks: {
       "0 17 * * *": ["recurring:materialize"],
     },

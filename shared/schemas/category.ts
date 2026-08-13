@@ -26,8 +26,6 @@ export const updateCategorySchema = z.object({
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 
-// Per Phase 4 open question: case-insensitive uniqueness within a room.
-// "Food" and "food" collide.
 export function normalizeCategoryName(name: string): string {
   return name.trim().toLowerCase();
 }

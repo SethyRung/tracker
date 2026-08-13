@@ -1,9 +1,5 @@
 import { BPS_TOTAL } from "../types/weight";
 
-// Pure helpers for recurring-template materialization (Phase 7). The DB-using
-// wrapper lives in `server/utils/recurring.ts`; this file has zero side effects
-// and is exercised by `test/unit/recurring.test.ts`.
-
 export interface SnapshotEntry {
   membershipId: string;
   weightBps: number;
@@ -25,9 +21,6 @@ export interface DraftRow {
   amountMinor: number;
   date: Date;
   paidByMembershipId: string;
-  // Materialized recurring entries are created `published` so they count
-  // toward settlement immediately. An admin can still edit the amount or
-  // weights during the open month; there is no review-before-publish gate.
   status: "published";
   templateId: string;
   createdByUserId: string;
@@ -46,11 +39,6 @@ export interface PlanDraftOptions {
   paidByMembershipId: string;
 }
 
-// Prune the template's member_snapshot to members still active in the room,
-// then renormalize weights so they still sum to BPS_TOTAL. Members not in the
-// snapshot are NOT added — the snapshot is the canonical attendee list (admin
-// must edit the template to add new members). Returns null if every snapshot
-// member has departed (we don't materialize empty drafts).
 export function pruneSnapshot(
   snapshot: SnapshotEntry[],
   activeMemberIds: ReadonlySet<string>,
@@ -63,9 +51,6 @@ export function pruneSnapshot(
   if (rawTotal === 0) return null;
   if (rawTotal === BPS_TOTAL) return kept;
 
-  // Rescale to BPS_TOTAL preserving each remaining member's relative share.
-  // Use floor so we never overshoot, then add the leftover to the longest-
-  // tenured kept member (the first one — preserves admin ordering).
   const rescaled = kept.map((e) => ({
     membershipId: e.membershipId,
     weightBps: Math.floor((e.weightBps * BPS_TOTAL) / rawTotal),
@@ -103,9 +88,6 @@ export function planDraftForTemplate(
   };
 }
 
-// Idempotency check: skip if any draft for this template exists in the target
-// month. `existingDraftRows` is whatever the caller has already loaded — they
-// decide whether to scan published/draft, the entire month, etc.
 export function alreadyMaterialized(
   existingDraftRows: ReadonlyArray<{ templateId: string | null; date: Date | string }>,
   templateId: string,
@@ -122,8 +104,6 @@ export function alreadyMaterialized(
   return false;
 }
 
-// Default snapshot for a brand-new template — equal split across the given
-// active members (used by the POST route when the admin doesn't supply one).
 export function equalSplitSnapshot(memberIds: string[]): SnapshotEntry[] {
   const n = memberIds.length;
   if (n === 0) return [];

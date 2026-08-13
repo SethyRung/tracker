@@ -1,19 +1,6 @@
 import { BPS_TOTAL } from "../types/weight";
 
-// Settlement algorithm (SPEC §10). Pure — takes pre-loaded entries + members,
-// returns balances + a minimum-transfer list. The DB-using wrapper lives in
-// server/utils/settle.ts.
-//
-// Settlement is per (room, yyyymm, currency). Each call processes ONE
-// currency; the API route runs the algorithm twice (USD, KHR) for the
-// side-by-side display.
-//
-// Entry weights are used exactly as stored. There is no tenure pro-rating:
-// an attendee's share of an entry is the weight set on that entry, whether
-// they joined the room last year or last week.
-
 export interface SettlementEntry {
-  // Pre-loaded entry fields the algorithm needs.
   amountMinor: number;
   paidByMembershipId: string;
   weights: ReadonlyArray<{ membershipId: string; weightBps: number }>;
@@ -29,7 +16,7 @@ export interface SettlementBalance {
   membershipId: string;
   paid: number;
   owed: number;
-  net: number; // paid - owed. > 0 = creditor, < 0 = debtor, == 0 = settled.
+  net: number;
 }
 
 export interface SettlementTransfer {
@@ -41,15 +28,10 @@ export interface SettlementTransfer {
 export interface SettlementResult {
   balances: SettlementBalance[];
   transfers: SettlementTransfer[];
-  // Sum of |net| across members — sanity-check value (must match total
-  // transfers sum / 2 since each cent of imbalance is paid once).
+
   totalImbalance: number;
 }
 
-// Compute per-member net positions, then the minimum-transfer list.
-// `members` is the full active+inactive set so departed members referenced by
-// an entry's weights still resolve (and so rounding remainders can be
-// assigned deterministically to the longest-tenured attendee).
 export function settle(
   entries: ReadonlyArray<SettlementEntry>,
   members: ReadonlyArray<SettlementMember>,
@@ -62,17 +44,11 @@ export function settle(
   }
 
   for (const entry of entries) {
-    // Defensive: an entry may reference a payer that has since been removed.
     if (!paidByMember.has(entry.paidByMembershipId)) {
       paidByMember.set(entry.paidByMembershipId, 0);
       owedByMember.set(entry.paidByMembershipId, 0);
     }
 
-    // Integer math with explicit remainder distribution. Entry weights sum
-    // to BPS_TOTAL (validated on write), so
-    //   sum(floor(M * w / BPS_TOTAL)) + remainder == M
-    // We add the rounding remainder to the longest-tenured attendee so
-    // totals stay exact and reproducible.
     const floorOwed = new Map<string, number>();
     let sumFloor = 0;
     const orderedMids: string[] = [];
@@ -90,8 +66,6 @@ export function settle(
     );
 
     if (remainder > 0 && orderedMids.length > 0) {
-      // Longest-tenured among attendees that owed something. Falls back to
-      // the first attendee if no member lookup works.
       const memberById = new Map(members.map((m) => [m.id, m]));
       let target = orderedMids[0]!;
       for (const mid of orderedMids) {
@@ -119,9 +93,6 @@ export function settle(
     };
   });
 
-  // Greedy minimum-transfer: largest creditor vs largest debtor, transfer
-  // min(|creditor|, |debtor|), repeat. Produces <= N-1 transfers for N
-  // participants with non-zero net.
   const transfers = greedyMinTransfers(balances);
 
   const totalImbalance = balances.reduce((s, b) => s + Math.abs(b.net), 0);
@@ -129,12 +100,9 @@ export function settle(
   return { balances, transfers, totalImbalance };
 }
 
-// Pure greedy minimum-transfer (also exported for the test suite).
-// Operates on a copy of balances so the input is not mutated.
 export function greedyMinTransfers(
   balances: ReadonlyArray<SettlementBalance>,
 ): SettlementTransfer[] {
-  // Mutable working copies with non-zero net only.
   const creditors = balances
     .filter((b) => b.net > 0)
     .map((b) => ({ ...b }))

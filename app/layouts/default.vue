@@ -3,8 +3,6 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 
 const { signOut } = useUserSession();
 
-const dayjs = useDayjs();
-
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-lucide-house",
@@ -19,7 +17,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-lucide-scale",
     label: "Settle",
-    to: `/settle/${dayjs().format("YYYY-MM")}`,
+    to: `/settle/${monthKey()}`,
   },
   { label: "Categories", icon: "i-lucide-tag", to: "/categories" },
   { label: "Entries", icon: "i-lucide-receipt", to: "/entries" },

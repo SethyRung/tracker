@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { recurringTemplates, roomMemberships } from "hub:db:schema";
 import { updateTemplateSchema } from "~~/shared/schemas/template";
-import { materializeRecurringDrafts, currentMonthKeyPhnomPenh } from "~~/server/utils/recurring";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
@@ -62,7 +61,7 @@ export default defineEventHandler(async (event) => {
   // away, same as creating one. Idempotent: a no-op when the entry exists.
   if (template?.isActive) {
     try {
-      await materializeRecurringDrafts({ roomId, monthKey: currentMonthKeyPhnomPenh() });
+      await materializeRecurringDrafts({ roomId, monthKey: monthKey() });
     } catch (e) {
       console.error("[templates.patch] immediate materialization failed", e);
     }

@@ -74,8 +74,8 @@ export default defineEventHandler(async (event) => {
             and(
               eq(entries.roomId, roomId),
               eq(entries.categoryId, body.categoryId),
-              gte(entries.date, start) as never,
-              lt(entries.date, end) as never,
+              gte(entries.date, start.toDate()),
+              lt(entries.date, end.toDate()),
             ),
           )
           .limit(1);

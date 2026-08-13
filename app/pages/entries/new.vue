@@ -17,7 +17,7 @@ const { data: roomId } = await useFetch("/api/rooms/current", {
 const { members, categories } = await useRoomLists(roomId);
 
 const { data: thisMonthEntries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
-  query: { month: currentMonthKey() },
+  query: { month: monthKey() },
   transform: (res) =>
     (res?.data?.entries ?? []).filter(
       (e: { status: string; categoryId: string | null }) =>

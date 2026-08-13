@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   PHNOM_PENH_TZ,
   activeDaysInMonth,
-  currentMonthKey,
   daysInMonth,
   isValidMonthKey,
   monthKey,
   monthRange,
-} from "../../shared/types/date";
+} from "../../shared/utils/date";
 
 describe("date", () => {
   describe("isValidMonthKey", () => {
@@ -126,9 +125,9 @@ describe("date", () => {
     });
   });
 
-  describe("currentMonthKey", () => {
+  describe("monthKey (current)", () => {
     it("returns the current Phnom Penh month", () => {
-      expect(currentMonthKey()).toMatch(/^\d{4}-\d{2}$/);
+      expect(monthKey()).toMatch(/^\d{4}-\d{2}$/);
     });
   });
 

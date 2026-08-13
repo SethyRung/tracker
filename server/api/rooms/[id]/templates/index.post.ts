@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, recurringTemplates, roomMemberships } from "hub:db:schema";
 import { createTemplateSchema } from "~~/shared/schemas/template";
-import { materializeRecurringDrafts, currentMonthKeyPhnomPenh } from "~~/server/utils/recurring";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
@@ -88,7 +87,7 @@ export default defineEventHandler(async (event) => {
   // if the entry already exists.
   if (body.isActive) {
     try {
-      await materializeRecurringDrafts({ roomId, monthKey: currentMonthKeyPhnomPenh() });
+      await materializeRecurringDrafts({ roomId, monthKey: monthKey() });
     } catch (e) {
       // The template itself saved fine; the cron will retry on the 1st.
       console.error("[templates.post] immediate materialization failed", e);

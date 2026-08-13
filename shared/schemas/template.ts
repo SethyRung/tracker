@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { BPS_TOTAL } from "../types/weight";
 
-// One RecurringTemplate per category with recurring_type='recurring' (Phase 7).
-// Materializes a draft entry on the 1st of each (ICT) month from
-// member_snapshot — pruned to current active members.
-
 const memberSnapshotEntrySchema = z.object({
   membershipId: z.string().min(1),
   weightBps: z.number().int().min(0).max(BPS_TOTAL),
@@ -41,8 +37,6 @@ export const createTemplateSchema = z.object({
   amountMinor: z.number().int().nonnegative(),
   dayOfMonth: z.number().int().min(1).max(31).default(1),
   isActive: z.boolean().default(true),
-  // Who fronts this expense. Omitted/null => materializer falls back to the
-  // longest-tenured active member.
   paidByMembershipId: z.string().min(1).nullish(),
   memberSnapshot: memberSnapshotSchema,
 });

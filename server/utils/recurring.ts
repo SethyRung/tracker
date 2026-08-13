@@ -7,12 +7,6 @@ import {
   recurringTemplates,
   roomMemberships,
 } from "hub:db:schema";
-import { monthRange, PHNOM_PENH_TZ } from "~~/shared/types/date";
-import {
-  alreadyMaterialized,
-  planDraftForTemplate,
-  type TemplateSnapshotInput,
-} from "~~/shared/utils/recurring";
 
 export interface MaterializeOptions {
   roomId?: string;
@@ -33,8 +27,10 @@ export interface MaterializeResult {
 export async function materializeRecurringDrafts(
   options: MaterializeOptions = {},
 ): Promise<MaterializeResult> {
-  const monthKey = options.monthKey ?? currentMonthKeyPhnomPenh();
-  const { start, end } = monthRange(monthKey);
+  const key = options.monthKey ?? monthKey();
+  const range = monthRange(key);
+  const start = range.start.toDate();
+  const end = range.end.toDate();
 
   // Fetch templates: must be is_active AND the linked category must still be
   // recurring_type='recurring' (admin may have flipped it to unlimited, in
@@ -64,7 +60,7 @@ export async function materializeRecurringDrafts(
   const templatesProcessed = templateRows.length;
   if (templatesProcessed === 0) {
     return {
-      monthKey,
+      monthKey: key,
       roomId: options.roomId ?? null,
       draftsCreated: 0,
       templatesProcessed: 0,
@@ -190,34 +186,10 @@ export async function materializeRecurringDrafts(
   }
 
   return {
-    monthKey,
+    monthKey: key,
     roomId: options.roomId ?? null,
     draftsCreated,
     templatesProcessed,
     templatesSkipped,
   };
-}
-
-// Same as currentMonthKey() in shared/types/date but exported via this util
-// for callers that don't want to import the dayjs module.
-export function currentMonthKeyPhnomPenh(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: PHNOM_PENH_TZ,
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === "year")?.value;
-  const m = parts.find((p) => p.type === "month")?.value;
-  if (!y || !m) throw new Error("Failed to derive ICT month key");
-  return `${y}-${m}`;
-}
-
-export function currentDayOfMonthPhnomPenh(): number {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: PHNOM_PENH_TZ,
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const d = parts.find((p) => p.type === "day")?.value;
-  if (!d) throw new Error("Failed to derive ICT day of month");
-  return Number(d);
 }

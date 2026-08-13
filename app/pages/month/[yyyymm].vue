@@ -48,19 +48,22 @@ interface CategoryRow {
   name: string;
 }
 
-const { data: entries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
+const { data: dashboard } = await useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
   query: { month: yyyymm },
-  transform: (r) => (r?.data?.entries ?? []) as EntryRow[],
-  default: () => [] as EntryRow[],
+  transform: (r) => ({
+    entries: (r?.data?.entries ?? []) as EntryRow[],
+    members: (r?.data?.members ?? []) as MemberRow[],
+    categories: (r?.data?.categories ?? []) as CategoryRow[],
+  }),
+  default: () => ({
+    entries: [] as EntryRow[],
+    members: [] as MemberRow[],
+    categories: [] as CategoryRow[],
+  }),
 });
-const { data: members } = await useFetch(() => `/api/rooms/${roomId.value}/members`, {
-  transform: (r) => (r?.data?.members ?? []) as MemberRow[],
-  default: () => [] as MemberRow[],
-});
-const { data: categories } = await useFetch(() => `/api/rooms/${roomId.value}/categories`, {
-  transform: (r) => (r?.data?.categories ?? []) as CategoryRow[],
-  default: () => [] as CategoryRow[],
-});
+const entries = computed(() => dashboard.value?.entries ?? []);
+const members = computed(() => dashboard.value?.members ?? []);
+const categories = computed(() => dashboard.value?.categories ?? []);
 const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
   () => `/api/rooms/${roomId.value}/months/${yyyymm.value}`,
   {

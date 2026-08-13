@@ -7,14 +7,13 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const dayjs = useDayjs();
 
 const { user } = useUserSession();
 if (!user.value) await navigateTo("/sign-in");
 
 const yyyymm = computed(() => route.params.yyyymm as string);
 
-const monthLabel = computed(() => dayjs(`${yyyymm.value}-01`).format("MMMM YYYY"));
+const monthLabel = computed(() => toDate(yyyymm.value).format("MMMM YYYY"));
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
   transform: (res) => res?.data?.room?.id,

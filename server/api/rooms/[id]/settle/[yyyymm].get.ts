@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { roomMemberships } from "hub:db:schema";
-import { isValidMonthKey } from "~~/shared/types/date";
+
 import { formatMoney, type Currency } from "~~/shared/types/money";
 import { settleRoom } from "~~/server/utils/settle";
 import type { SettlementResult } from "~~/shared/utils/settle";

@@ -19,7 +19,9 @@ export default defineEventHandler(async (event) => {
   if (query.status) whereParts.push(eq(entries.status, query.status));
   if (query.categoryId) whereParts.push(eq(entries.categoryId, query.categoryId));
   if (query.month) {
-    const { start, end } = monthRange(query.month);
+    const range = monthRange(query.month ?? "");
+    const start = range.start.toDate();
+    const end = range.end.toDate();
     whereParts.push(gte(entries.date, start) as never);
     whereParts.push(lt(entries.date, end) as never);
   }

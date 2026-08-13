@@ -1,5 +1,4 @@
 import { getMonthSnapshot } from "~~/server/utils/month";
-import { isValidMonthKey } from "~~/shared/types/date";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
