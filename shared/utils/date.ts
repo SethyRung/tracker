@@ -2,9 +2,9 @@ import dayjs from "dayjs";
 
 import type { Dayjs } from "dayjs";
 
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import customParseFormat from "dayjs/plugin/customParseFormat";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+import customParseFormat from "dayjs/plugin/customParseFormat.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -36,6 +36,15 @@ export function isValidMonthKey(value: unknown): boolean {
  */
 export function monthKey(date?: Date): string {
   return dayjs(date).format("YYYY-MM");
+}
+
+/**
+ * Current day-of-month (1–31) in the Phnom Penh timezone.
+ *
+ * @returns The ICT calendar day for "now".
+ */
+export function currentDayOfMonth(): number {
+  return dayjs().tz(PHNOM_PENH_TZ).date();
 }
 
 /**
