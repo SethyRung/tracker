@@ -13,7 +13,7 @@ if (!user.value) await navigateTo("/sign-in");
 
 const yyyymm = computed(() => route.params.yyyymm as string);
 
-const monthLabel = computed(() => toDate(yyyymm.value).format("MMMM YYYY"));
+const monthLabel = computed(() => toDayJS(yyyymm.value, "YYYY-MM").format("MMMM YYYY"));
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
   transform: (res) => res?.data?.room?.id,

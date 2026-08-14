@@ -48,18 +48,18 @@ export function currentDayOfMonth(): number {
 }
 
 /**
- * Parse a month key into a dayjs date.
+ * Parse a date string into a Dayjs instance.
  *
- * @param value - Month key in `YYYY-MM`.
- * @returns A dayjs instance for the start of that month.
- * @throws {Error} When `value` is not a valid `YYYY-MM` month key.
+ * @param iso - Date string to parse.
+ * @param format - Optional dayjs parse format; defaults to native ISO-8601.
+ * @returns A valid Dayjs instance.
  */
-export function toDate(value: string): Dayjs {
-  if (!isValidMonthKey(value)) {
-    throw new Error(`Invalid month key: ${value}`);
+export function toDayJS(iso: string, format?: string): Dayjs {
+  const d = format ? dayjs(iso, format, true) : dayjs(iso);
+  if (!d.isValid()) {
+    throw new Error(`Invalid date string: ${iso}`);
   }
-
-  return dayjs(value, "YYYY-MM");
+  return d;
 }
 
 /**
@@ -73,7 +73,7 @@ export function toDate(value: string): Dayjs {
  * @throws {Error} When `value` is not a valid `YYYY-MM` month key.
  */
 export function monthRange(value: string): { start: Dayjs; end: Dayjs } {
-  const date = toDate(value);
+  const date = toDayJS(value, "YYYY-MM");
   const start = dayjs.tz(date);
   const end = dayjs.tz(date).add(1, "month");
 
@@ -88,7 +88,7 @@ export function monthRange(value: string): { start: Dayjs; end: Dayjs } {
  * @throws {Error} When `value` is not a valid `YYYY-MM` month key.
  */
 export function daysInMonth(value: string): number {
-  const date = toDate(value);
+  const date = toDayJS(value, "YYYY-MM");
   return date.daysInMonth();
 }
 
@@ -122,7 +122,7 @@ export function activeDaysInMonth(value: string, joinedAt: Date, leftAt: Date | 
   // Normalise to whole calendar days, then clamp the end to the month's last
   // day (monthEnd is the 1st of the next month).
   const startDate = effectiveStart.format("YYYY-MM-DD");
-  const lastDate = toDate(value).endOf("month").format("YYYY-MM-DD");
+  const lastDate = toDayJS(value, "YYYY-MM").endOf("month").format("YYYY-MM-DD");
   let endDate = effectiveEnd.format("YYYY-MM-DD");
   if (endDate > lastDate) endDate = lastDate;
 
