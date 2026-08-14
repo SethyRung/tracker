@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { TableColumn } from "@nuxt/ui";
+
 definePageMeta({
   auth: { only: "user" },
 });
+useHead({ title: "Dashboard · Tricker" });
 
 const { user } = useUserSession();
 
@@ -9,246 +12,287 @@ const { data: roomId } = await useFetch("/api/rooms/current", {
   transform: (res) => res?.data?.room?.id,
 });
 
-const toast = useToast();
+const currentMonth = computed(() => monthKey());
 
-const { data: dashboard } = await useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
-  transform: (r) => ({
-    entries: r?.data?.entries ?? [],
-    members: r?.data?.members ?? [],
-    categories: r?.data?.categories ?? [],
-  }),
-});
-
-const thisMonthKey = computed(() => monthKey());
-
-const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
-  () => `/api/rooms/${roomId.value}/months/${thisMonthKey.value}`,
+const { data: dashboard, status: dashStatus } = await useFetch(
+  () => `/api/rooms/${roomId.value}/dashboard`,
   {
-    transform: (r) => r?.data?.snapshot ?? null,
+    query: { month: currentMonth },
+    transform: (r) => ({
+      entries: r?.data?.entries ?? [],
+      members: r?.data?.members ?? [],
+      categories: r?.data?.categories ?? [],
+    }),
   },
 );
 
-const closingMonth = ref(false);
+const { data: snapshotRes } = await useFetch(
+  () => `/api/rooms/${roomId.value}/months/${currentMonth.value}`,
+  { transform: (r) => r?.data?.snapshot },
+);
+
+const members = computed(() => dashboard.value?.members ?? []);
+const categories = computed(() => dashboard.value?.categories ?? []);
+const entries = computed(() => dashboard.value?.entries ?? []);
+
+const monthLabel = computed(() => toDayJS(currentMonth.value, "YYYY-MM").format("MMMM YYYY"));
+const monthStatus = computed(() => snapshotRes.value?.status ?? "open");
+const monthClosed = computed(() => monthStatus.value === "closed");
+
+const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));
+const published = computed(() => entries.value.filter((e) => e.status === "published"));
+const drafts = computed(() => entries.value.filter((e) => e.status === "draft"));
+const draftsLabel = computed(
+  () => `${drafts.value.length} draft${drafts.value.length > 1 ? "s" : ""} to publish`,
+);
+const recentEntries = computed(() =>
+  entries.value.slice().sort((a, b) => b.date.localeCompare(a.date)),
+);
 
 const isAdmin = computed(() =>
-  (dashboard.value?.members ?? []).some((m) => m.userId === user.value?.id && m.role === "admin"),
-);
-const monthClosed = computed(() => monthSnapshot.value?.status === "closed");
-
-async function toggleMonth() {
-  if (!roomId.value || !isAdmin.value) return;
-  const action = monthClosed.value ? "reopen" : "close";
-  if (action === "close") {
-    if (
-      !confirm(
-        `Close ${thisMonthKey.value}? Entries will be locked — no edits, deletes, or publishes until you reopen.`,
-      )
-    ) {
-      return;
-    }
-  }
-  closingMonth.value = true;
-  try {
-    const res = await $fetch(`/api/rooms/${roomId.value}/months/${thisMonthKey.value}/${action}`, {
-      method: "POST",
-    });
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
-    await refreshMonth();
-    toast.add({
-      icon: "i-lucide:circle-check",
-      title: action === "close" ? "Month closed" : "Month reopened",
-    });
-  } catch (e) {
-    toast.add({
-      icon: "i-lucide:circle-x",
-      title: "Error",
-      description: e instanceof Error ? e.message : "Could not update month.",
-    });
-  } finally {
-    closingMonth.value = false;
-  }
-}
-
-const memberById = computed(() => new Map((dashboard.value?.members ?? []).map((m) => [m.id, m])));
-const catName = (id: string | null) =>
-  id ? ((dashboard.value?.categories ?? []).find((c) => c.id === id)?.name ?? "—") : "—";
-const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
-
-const drafts = computed(() => (dashboard.value?.entries ?? []).filter((e) => e.status === "draft"));
-const published = computed(() =>
-  (dashboard.value?.entries ?? []).filter((e) => e.status === "published"),
+  members.value.some((m) => m.userId === user.value?.id && m.role === "admin"),
 );
 
-const totalsByCurrency = computed(() => {
-  const map: Record<string, number> = { USD: 0, KHR: 0 };
+const totals = computed(() => {
+  const t: Record<string, number> = { USD: 0, KHR: 0 };
+  for (const e of published.value) t[e.currency] = (t[e.currency] ?? 0) + e.amountMinor;
+  return t;
+});
+
+const paidByMember = computed(() => {
+  const map = new Map<string, { USD: number; KHR: number }>();
   for (const e of published.value) {
-    map[e.currency] = (map[e.currency] ?? 0) + e.amountMinor;
+    const cur = e.currency as "USD" | "KHR";
+    const t = map.get(e.paidByMembershipId) ?? { USD: 0, KHR: 0 };
+    t[cur] += e.amountMinor;
+    map.set(e.paidByMembershipId, t);
   }
-  return map;
+  return [...map.entries()]
+    .map(([id, t]) => ({ id, ...t }))
+    .sort((a, b) => b.USD - a.USD || b.KHR - a.KHR);
 });
 
-const thisMonthEntries = computed(() => {
-  const key = monthKey();
-  return (dashboard.value?.entries ?? [])
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .filter((e) => monthKey(new Date(e.date)) === key);
-});
+const loading = computed(() => dashStatus.value === "pending" && !dashboard.value);
 
-function formatAmount(currency: string, amountMinor: number) {
-  if (currency === "USD") {
-    return `$${(amountMinor / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  return `៛${amountMinor.toLocaleString("en-US")}`;
+function money(amountMinor: number, currency: string) {
+  return formatMoney({ amount_minor: amountMinor, currency: currency as "USD" | "KHR" });
+}
+function member(id: string) {
+  return memberById.value.get(id);
+}
+function memberLabel(id: string) {
+  return member(id)?.displayName ?? "—";
+}
+function memberInitials(id: string) {
+  const name = member(id)?.displayName ?? "?";
+  return name.slice(0, 1).toUpperCase();
+}
+function catName(id: string | null) {
+  return id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
 }
 
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "Asia/Phnom_Penh",
-  }).format(new Date(iso));
-}
+const UAvatar = resolveComponent("UAvatar");
+const UBadge = resolveComponent("UBadge");
 
-function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
-  const active = (dashboard.value?.members ?? []).length;
-  const n = e.weights.length;
-  if (n === 0) return "—";
-  if (n === active) return "split: all (equal)";
-  if (n === 1) return "split: 1 person";
-  return e.weights.map((w) => `${(w.weightBps / 100).toFixed(0)}%`).join("/");
+const recentColumns: TableColumn<(typeof recentEntries.value)[number]>[] = [
+  {
+    accessorKey: "date",
+    header: "Date",
+    cell: ({ row }) => toDayJS(row.original.date).format("MMM d"),
+    meta: { class: { td: "whitespace-nowrap" } },
+  },
+  {
+    accessorKey: "notes",
+    header: "Description",
+  },
+  {
+    id: "paidBy",
+    header: "Paid by",
+    cell: ({ row }) =>
+      h("div", { class: "flex items-center gap-2" }, [
+        h(UAvatar, {
+          text: memberInitials(row.original.paidByMembershipId),
+        }),
+        memberLabel(row.original.paidByMembershipId),
+      ]),
+  },
+  {
+    id: "amount",
+    header: "Amount",
+    cell: ({ row }) =>
+      h(
+        "span",
+        { class: "text-sm font-semibold text-primary tabular-nums" },
+        money(row.original.amountMinor, row.original.currency),
+      ),
+    meta: { class: { td: "text-right tabular-nums whitespace-nowrap", th: "text-right" } },
+  },
+];
+
+function onRowSelect(_e: Event, row: { original: { id: string } }) {
+  navigateTo(`/entries/${row.original.id}/edit`);
 }
 </script>
 
 <template>
-  <div class="px-4 py-4 max-w-2xl mx-auto">
+  <UContainer class="max-w-2xl py-6 space-y-6">
     <AuthEmailVerificationBanner />
 
-    <div v-if="!roomId" class="text-center py-12">
-      <UIcon name="i-lucide-home" class="size-12 text-toned mx-auto mb-3" />
-      <h2 class="text-lg font-medium text-default">No room yet</h2>
-      <p class="text-sm text-toned mt-1">
-        Create or join a household to start tracking shared bills.
-      </p>
-      <UButton color="primary" to="/onboarding/room" class="mt-4">Create room</UButton>
-    </div>
+    <UPageCard
+      v-if="!roomId"
+      icon="i-lucide-house"
+      title="No room yet"
+      description="Create or join a household to start tracking shared bills."
+      class="text-center"
+    >
+      <template #footer>
+        <div class="flex justify-center">
+          <UButton icon="i-lucide-plus" label="Create room" to="/onboarding/room" />
+        </div>
+      </template>
+    </UPageCard>
 
     <template v-else>
-      <div class="flex items-center justify-between mb-4 gap-3">
-        <div>
-          <h1 class="font-pixel-circle text-2xl text-primary">{{ thisMonthKey }}</h1>
-          <p class="text-xs text-toned mt-1">
-            <UBadge :color="monthClosed ? 'neutral' : 'primary'" variant="subtle" size="xs">
-              {{ monthClosed ? "Closed" : "Open" }}
-            </UBadge>
-            <span v-if="monthClosed" class="ml-2">No edits allowed this month.</span>
-          </p>
+      <header class="flex items-end justify-between gap-4">
+        <div class="space-y-1">
+          <p class="font-mono text-xs uppercase tracking-wider text-toned">Overview</p>
+          <h1 class="font-pixel-circle text-2xl text-primary">{{ monthLabel }}</h1>
         </div>
-        <UButton
-          v-if="isAdmin"
-          :icon="monthClosed ? 'i-lucide-lock-open' : 'i-lucide-lock'"
-          :label="monthClosed ? 'Reopen' : 'Close month'"
-          :color="monthClosed ? 'neutral' : 'primary'"
-          variant="outline"
-          :loading="closingMonth"
-          @click="toggleMonth"
+        <UBadge
+          :color="monthClosed ? 'neutral' : 'success'"
+          :variant="monthClosed ? 'subtle' : 'soft'"
+          :icon="monthClosed ? 'i-lucide-lock' : 'i-lucide-circle-dot'"
+          :label="monthClosed ? 'Closed' : 'Open'"
         />
-      </div>
+      </header>
 
-      <UAlert
-        v-if="monthClosed"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-lock"
-        title="Month closed"
-        description="No edits, deletes, or publishes until an admin reopens this month."
-        class="mb-4"
-      />
-
-      <UCard class="mb-4">
-        <template #header>
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
-            Balances this month
-          </h2>
-        </template>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="rounded-lg bg-elevated p-3">
-            <p class="text-xs font-semibold text-toned mb-2">USD</p>
-            <p class="text-lg font-bold text-default tabular-nums">
-              {{ formatAmount("USD", totalsByCurrency.USD ?? 0) }}
-            </p>
-          </div>
-          <div class="rounded-lg bg-elevated p-3">
-            <p class="text-xs font-semibold text-toned mb-2">KHR</p>
-            <p class="text-lg font-bold text-default tabular-nums">
-              {{ formatAmount("KHR", totalsByCurrency.KHR ?? 0) }}
-            </p>
-          </div>
+      <div v-if="loading" class="space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+          <USkeleton v-for="i in 2" :key="i" class="h-24 rounded-xl" />
         </div>
-      </UCard>
-
-      <div class="flex gap-3 mb-4">
-        <UButton icon="i-lucide-plus" label="Log entry" to="/entries/new" class="flex-1" />
+        <USkeleton class="h-40 rounded-xl" />
+        <USkeleton class="h-64 rounded-xl" />
       </div>
 
-      <UAlert
-        v-if="drafts.length > 0"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-clipboard-list"
-        :title="`${drafts.length} draft${drafts.length === 1 ? '' : 's'} to publish`"
-        class="mb-4"
-      >
-        <div class="space-y-1 mt-2">
-          <div
-            v-for="d in drafts.slice(0, 3)"
-            :key="d.id"
-            class="flex items-center justify-between gap-2 text-sm"
+      <div v-else class="space-y-6">
+        <UAlert
+          v-if="isAdmin && drafts.length > 0 && !monthClosed"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-file-pen-line"
+          :title="draftsLabel"
+          description="Review and publish pending drafts so they count toward this month."
+          :actions="[
+            { label: 'Review drafts', to: '/entries', color: 'warning', variant: 'solid' },
+          ]"
+        />
+
+        <div class="grid grid-cols-2 gap-4">
+          <UCard variant="outline" :ui="{ body: 'p-5 space-y-2' }">
+            <div class="flex items-center justify-between">
+              <UBadge color="neutral" variant="subtle" label="USD" class="font-mono" />
+              <UIcon name="i-lucide-dollar-sign" class="size-4 text-toned" />
+            </div>
+            <p class="text-2xl font-semibold text-primary tabular-nums">
+              {{ money(totals.USD ?? 0, "USD") }}
+            </p>
+            <p class="text-xs text-dimmed">{{ published.length }} published entries</p>
+          </UCard>
+
+          <UCard variant="outline" :ui="{ body: 'p-5 space-y-2' }">
+            <div class="flex items-center justify-between">
+              <UBadge color="neutral" variant="subtle" label="KHR" class="font-mono" />
+              <UIcon name="i-lucide-coins" class="size-4 text-toned" />
+            </div>
+            <p class="text-2xl font-semibold text-primary tabular-nums">
+              {{ money(totals.KHR ?? 0, "KHR") }}
+            </p>
+            <p class="text-xs text-dimmed">Settled in parallel ledger</p>
+          </UCard>
+        </div>
+
+        <UButton
+          block
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-scale"
+          trailing-icon="i-lucide-arrow-right"
+          :label="`Settle ${monthLabel}`"
+          :to="`/settle/${currentMonth}`"
+        />
+
+        <UCard v-if="paidByMember.length > 0" variant="outline">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
+                Paid this month
+              </h2>
+              <UIcon name="i-lucide-users" class="size-4 text-toned" />
+            </div>
+          </template>
+
+          <ul class="divide-y divide-default -my-2">
+            <li v-for="m in paidByMember" :key="m.id" class="flex items-center gap-3 py-2.5">
+              <span
+                class="size-2.5 rounded-full shrink-0"
+                :style="{ background: member(m.id)?.color ?? '#9CA3AF' }"
+              />
+              <span class="flex-1 text-sm text-default truncate">{{ memberLabel(m.id) }}</span>
+              <span v-if="m.USD" class="text-sm font-medium text-primary tabular-nums">{{
+                money(m.USD, "USD")
+              }}</span>
+              <span v-if="m.KHR" class="text-sm font-medium text-primary tabular-nums">{{
+                money(m.KHR, "KHR")
+              }}</span>
+            </li>
+          </ul>
+        </UCard>
+
+        <UCard variant="outline" :ui="{ body: 'p-0' }">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
+                Recent
+              </h2>
+              <UButton
+                label="See all"
+                to="/entries"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                trailing-icon="i-lucide-arrow-right"
+              />
+            </div>
+          </template>
+
+          <UTable
+            :data="recentEntries"
+            :columns="recentColumns"
+            :ui="{
+              tr: 'data-[selectable=true]:cursor-pointer',
+              td: 'text-toned',
+            }"
+            @select="onRowSelect"
           >
-            <span class="truncate">
-              {{ catName(d.categoryId) }} ·
-              <span class="text-toned">{{ d.notes ?? "—" }}</span>
-            </span>
-            <span class="font-medium tabular-nums">{{
-              formatAmount(d.currency, d.amountMinor)
-            }}</span>
-          </div>
-        </div>
-      </UAlert>
-
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">This month</h2>
-          </div>
-        </template>
-
-        <ul v-if="thisMonthEntries.length > 0" class="divide-y divide-default">
-          <li v-for="e in thisMonthEntries" :key="e.id" class="py-3 space-y-1">
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-toned">{{ formatDate(e.date) }}</span>
-              <span class="text-sm font-medium text-default">· {{ catName(e.categoryId) }}</span>
-              <UBadge v-if="e.status === 'draft'" color="warning" variant="subtle" size="xs">
-                Draft
-              </UBadge>
-            </div>
-            <NuxtLink :to="`/entries/${e.id}/edit`" class="text-sm text-default hover:text-primary">
-              {{ e.notes ?? "—" }}
-            </NuxtLink>
-            <div class="flex items-center justify-between text-xs text-toned">
-              <span>
-                {{ formatAmount(e.currency, e.amountMinor) }}
-                paid by {{ memberLabel(e.paidByMembershipId) }}
-              </span>
-              <span>{{ splitSummary(e) }}</span>
-            </div>
-          </li>
-        </ul>
-
-        <p v-else class="text-sm text-toned text-center py-6">
-          No activity yet — log your first bill or payment to see balances.
-        </p>
-      </UCard>
+            <template #empty>
+              <div class="text-center py-10 space-y-2">
+                <UIcon name="i-lucide-receipt" class="size-8 text-dimmed mx-auto" />
+                <p class="text-sm text-muted">No activity yet</p>
+                <p class="text-xs text-dimmed">Log your first bill to see balances.</p>
+                <UButton
+                  icon="i-lucide-plus"
+                  label="Add entry"
+                  to="/entries/new"
+                  color="primary"
+                  variant="soft"
+                  size="sm"
+                  class="mt-1"
+                />
+              </div>
+            </template>
+          </UTable>
+        </UCard>
+      </div>
     </template>
-  </div>
+  </UContainer>
 </template>
