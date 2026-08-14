@@ -19,9 +19,9 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     label: "Settle",
     to: `/settle/${monthKey()}`,
   },
-  { label: "Categories", icon: "i-lucide-tag", to: "/categories" },
-  { label: "Entries", icon: "i-lucide-receipt", to: "/entries" },
-  { label: "Recurring", icon: "i-lucide-repeat", to: "/recurring" },
+  { icon: "i-lucide-tag", label: "Categories", to: "/categories" },
+  { icon: "i-lucide-receipt", label: "Entries", to: "/entries" },
+  { icon: "i-lucide-repeat", label: "Recurring", to: "/recurring" },
 ]);
 </script>
 
@@ -29,7 +29,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   <div class="min-h-screen flex flex-col font-sans">
     <UHeader
       title="Tricker"
-      to="/dashboard"
       :toggle="false"
       :ui="{
         title: 'font-pixel-circle text-primary',
@@ -57,7 +56,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       <UNavigationMenu
         :items="navItems"
         :ui="{
-          root: 'justify-around py-2',
+          root: 'justify-around py-2 px-4 sm:px-6 lg:px-8',
           item: 'py-0',
           link: 'flex-col gap-1 px-3',
           linkLeadingIcon: 'size-5',
@@ -68,7 +67,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
 
     <UButton
       icon="i-lucide-plus"
-      color="primary"
       size="lg"
       class="fixed bottom-20 right-0 -translate-x-1/2 z-40 rounded-full shadow-lg"
       to="/entries/new"
