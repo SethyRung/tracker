@@ -1,4 +1,5 @@
 import { defineServerAuth } from "@onmax/nuxt-better-auth/config";
+import { customSession } from "better-auth/plugins";
 
 export default defineServerAuth({
   emailAndPassword: {
@@ -17,4 +18,5 @@ export default defineServerAuth({
       sendVerificationEmail({ to: user.email, name: user.name, url });
     },
   },
+  plugins: [customSession(attachActiveRoom)],
 });
