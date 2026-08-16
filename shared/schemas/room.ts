@@ -33,7 +33,12 @@ export const joinRoomSchema = z.object({
     .optional(),
 });
 
+export const createInviteSchema = z.object({
+  emails: z.array(z.email().max(254)).min(1).max(20),
+});
+
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type UpdateRoomInput = z.infer<typeof updateRoomSchema>;
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
+export type CreateInviteInput = z.infer<typeof createInviteSchema>;

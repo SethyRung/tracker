@@ -39,6 +39,15 @@ export function monthKey(date?: Date): string {
 }
 
 /**
+ * Get the current date and time in the Phnom Penh timezone.
+ *
+ * @returns A Dayjs instance representing the current time in Phnom Penh.
+ */
+export function now(): Dayjs {
+  return dayjs().tz(PHNOM_PENH_TZ);
+}
+
+/**
  * Current day-of-month (1–31) in the Phnom Penh timezone.
  *
  * @returns The ICT calendar day for "now".

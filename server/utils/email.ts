@@ -8,7 +8,7 @@ interface SendParams {
   html: string;
 }
 
-async function sendEmail({ to, subject, html }: SendParams): Promise<void> {
+async function sendEmail({ to, subject, html }: SendParams) {
   const config = useRuntimeConfig();
   const apiKey = config.resend.apiKey;
   const from = config.resend.fromEmail;
@@ -22,7 +22,7 @@ async function sendEmail({ to, subject, html }: SendParams): Promise<void> {
   }
 
   resendClient ??= new Resend(apiKey);
-  await resendClient.emails.send({ from, to, subject, html });
+  return await resendClient.emails.send({ from, to, subject, html });
 }
 
 function escapeHtml(value: string): string {
@@ -132,6 +132,28 @@ export function sendPasswordResetEmail(params: {
       buttonText: "Reset password",
       url,
       note: "This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email.",
+    }),
+  });
+}
+
+export function sendInviteEmail(params: {
+  to: string;
+  url: string;
+  roomName: string;
+  inviterName: string | null | undefined;
+}) {
+  const { to, url, roomName, inviterName } = params;
+  const inviter = inviterName?.trim() || "Someone";
+  return sendEmail({
+    to,
+    subject: `${inviter} invited you to ${roomName} on Tricker`,
+    html: renderTemplate({
+      heading: `Join ${roomName}`,
+      greeting: "Hi there,",
+      body: `${inviter} invited you to join their household on Tricker to track and split shared bills. Click the button below to accept the invitation.`,
+      buttonText: "Accept invite",
+      url,
+      note: "This link is single-use and expires in 7 days. If you weren't expecting this, you can safely ignore this email.",
     }),
   });
 }
