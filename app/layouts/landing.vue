@@ -12,7 +12,7 @@ const { loggedIn } = useUserSession();
 const authCta = computed(() =>
   loggedIn.value
     ? { to: "/dashboard", label: "Go to dashboard" }
-    : { to: "/sign-up", label: "Get started" },
+    : { to: "/sign-in", label: "Get started" },
 );
 
 const year = new Date().getFullYear();
@@ -35,7 +35,7 @@ const year = new Date().getFullYear();
 
       <template #right>
         <UColorModeButton />
-        <UButton v-if="!loggedIn" label="Sign in" color="neutral" variant="ghost" to="/sign-in" />
+
         <UButton
           :label="authCta.label"
           color="primary"

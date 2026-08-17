@@ -8,13 +8,9 @@ const { loggedIn } = useUserSession();
 const primaryCta = computed(() =>
   loggedIn.value
     ? { to: "/dashboard", label: "Go to dashboard" }
-    : { to: "/sign-up", label: "Get started free" },
+    : { to: "/sign-in", label: "Get started free" },
 );
-const secondaryCta = computed(() =>
-  loggedIn.value
-    ? { to: "/dashboard", label: "Go to dashboard" }
-    : { to: "/sign-in", label: "Sign in" },
-);
+
 const ctaLinks = computed<ButtonProps[]>(() => [
   {
     label: primaryCta.value.label,
@@ -22,13 +18,6 @@ const ctaLinks = computed<ButtonProps[]>(() => [
     size: "xl",
     trailingIcon: "i-lucide-arrow-right",
     to: primaryCta.value.to,
-  },
-  {
-    label: secondaryCta.value.label,
-    color: "neutral",
-    variant: "subtle",
-    size: "xl",
-    to: secondaryCta.value.to,
   },
 ]);
 
