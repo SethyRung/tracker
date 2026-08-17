@@ -8,7 +8,6 @@ definePageMeta({
 useHead({ title: "Create room · Tricker" });
 
 const { user } = useUserSession();
-if (!user.value) await navigateTo("/sign-in");
 
 const schema = z.object({
   name: z.string().min(1, "Give your room a name").max(80, "Keep it under 80 characters"),
@@ -83,17 +82,19 @@ async function goNext() {
   if (currentStep.value < steps.length - 1) currentStep.value += 1;
 }
 
-async function generateShareLink() {
-  if (!roomId.value || shareLink.value) return;
+async function createInviteLink() {
   try {
-    const res = await $fetch(`/api/rooms/${roomId.value}/invite-links`, { method: "POST" });
+    const res = await $fetch(`/api/rooms/${user.value?.roomId}/invite-links/create`, {
+      method: "POST",
+    });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
-    shareLink.value = `${window.location.origin}/join/${res.data.token}`;
+
+    shareLink.value = res.data.joinUrl;
   } catch (e) {
     toast.add({
-      title: e instanceof Error ? e.message : "Could not generate a link.",
-      color: "error",
-      icon: "i-lucide-alert-circle",
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not create invite link.",
     });
   }
 }
@@ -206,7 +207,7 @@ const { copy, copied } = useClipboard();
                   icon="i-lucide-link"
                   label="Generate link"
                   :loading="submitting"
-                  @click="generateShareLink"
+                  @click="createInviteLink"
                 />
                 <div v-else class="space-y-1.5">
                   <UFieldGroup size="sm" class="w-full">
