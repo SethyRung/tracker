@@ -21,15 +21,22 @@ const toast = useToast();
 const signUp = useSignUp("email");
 
 const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const authError = computed(() => humaniseAuthError(signUp.error.value));
 const isSubmitting = computed(() => signUp.status.value === "pending");
 
-const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
+const schema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    email: z.email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(8, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 type Schema = z.output<typeof schema>;
 
@@ -37,6 +44,7 @@ const state = reactive<Partial<Schema>>({
   name: "",
   email: "",
   password: "",
+  confirmPassword: "",
 });
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -117,6 +125,30 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               size="xs"
               :aria-label="showPassword ? 'Hide password' : 'Show password'"
               @click="showPassword = !showPassword"
+            />
+          </template>
+        </UInput>
+      </UFormField>
+
+      <UFormField name="confirmPassword" label="Confirm password">
+        <UInput
+          v-model="state.confirmPassword"
+          :type="showConfirmPassword ? 'text' : 'password'"
+          placeholder="Repeat the password"
+          size="lg"
+          autocomplete="new-password"
+        >
+          <template #leading>
+            <UIcon name="i-lucide-lock-keyhole" class="size-4 text-muted" />
+          </template>
+          <template #trailing>
+            <UButton
+              :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'"
+              @click="showConfirmPassword = !showConfirmPassword"
             />
           </template>
         </UInput>
