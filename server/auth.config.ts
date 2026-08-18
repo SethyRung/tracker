@@ -21,18 +21,19 @@ export default defineServerAuth({
   },
   plugins: [
     /**
-     * Augment a Better Auth session payload with the user's active `roomId`.
+     * Augment a Better Auth session payload with the user's active `roomId`
+     * and `role` within that room.
      *
      * Resolves the user's active room fresh on every call so that a recently
-     * joined/left room is reflected immediately, regardless of session cookie
-     * cache TTL.
+     * joined/left room (or a role change) is reflected immediately,
+     * regardless of session cookie cache TTL.
      */
     customSession(async (sessionData) => {
       const { db } = await import("hub:db");
       const { roomMemberships, rooms } = await import("hub:db:schema");
 
       const rows = await db
-        .select({ id: rooms.id })
+        .select({ id: rooms.id, role: roomMemberships.role })
         .from(roomMemberships)
         .innerJoin(rooms, eq(rooms.id, roomMemberships.roomId))
         .where(
@@ -43,7 +44,11 @@ export default defineServerAuth({
 
       return {
         ...sessionData,
-        user: { ...sessionData.user, roomId: rows[0]?.id ?? null },
+        user: {
+          ...sessionData.user,
+          roomId: rows[0]?.id ?? null,
+          role: rows[0]?.role ?? null,
+        },
       };
     }),
   ],
