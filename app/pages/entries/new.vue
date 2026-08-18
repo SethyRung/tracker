@@ -4,30 +4,25 @@ definePageMeta({
   auth: { only: "user" },
 });
 
-const router = useRouter();
 const toast = useToast();
 
 const { user } = useUserSession();
-if (!user.value) await navigateTo("/sign-in");
-
-const { data: roomId } = await useFetch("/api/rooms/current", {
-  transform: (res) => res?.data?.room?.id,
-});
+const roomId = computed(() => user.value?.roomId ?? null);
 
 const { members, categories } = await useRoomLists(roomId);
 
-const { data: thisMonthEntries } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
+const { data: thisMonthEntriesRes } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
   query: { month: monthKey() },
-  transform: (res) =>
-    (res?.data?.entries ?? []).filter(
-      (e: { status: string; categoryId: string | null }) =>
-        e.status === "published" && e.categoryId,
-    ) as Array<{ categoryId: string }>,
-  default: () => [],
 });
 
+const thisMonthEntries = computed(() =>
+  isSuccessResponse(thisMonthEntriesRes.value)
+    ? thisMonthEntriesRes.value.data.entries.filter((e) => e.status === "published" && e.categoryId)
+    : [],
+);
+
 const blockedCategoryIds = computed(() =>
-  Array.from(new Set(thisMonthEntries.value.map((e) => e.categoryId))),
+  Array.from(new Set(thisMonthEntries.value.map((e) => e.categoryId).filter(Boolean))),
 );
 
 const submitting = ref(false);
@@ -73,7 +68,7 @@ async function onSubmit({
     await navigateTo(`/entries/${res.data.entry.id}/edit`);
   } catch (e) {
     toast.add({
-      icon: "i-lucide:circle-x",
+      icon: "i-lucide-circle-x",
       title: "Error",
       description: e instanceof Error ? e.message : "Could not create entry.",
     });
@@ -84,44 +79,36 @@ async function onSubmit({
 </script>
 
 <template>
-  <UContainer class="py-4 max-w-2xl">
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="font-pixel-circle text-2xl text-primary mb-6">New Entry</h1>
-
-      <UButton
-        icon="i-lucide-chevron-left"
-        label="Back"
-        color="neutral"
-        variant="outline"
-        @click="router.back"
-      />
-    </div>
-
-    <UAlert
+  <UContainer class="max-w-2xl py-6 space-y-6">
+    <UPageCard
       v-if="!roomId"
-      color="info"
-      variant="subtle"
       icon="i-lucide-info"
       title="No room yet"
       description="Create or join a room before logging entries."
     />
 
-    <EntryForm
-      v-else
-      :members="members"
-      :categories="categories"
-      :blocked-category-ids="blockedCategoryIds"
-      @submit="onSubmit"
-    >
-      <template #actions="{ totalWeight }">
-        <UButton
-          type="submit"
-          label="Save Entry"
-          block
-          :loading="submitting"
-          :disabled="totalWeight !== 10000 || submitting"
-        />
-      </template>
-    </EntryForm>
+    <template v-else>
+      <div class="space-y-1">
+        <p class="font-mono text-xs uppercase tracking-wider text-toned">Entries</p>
+        <h1 class="font-pixel-circle text-2xl text-primary">New entry</h1>
+      </div>
+
+      <EntryForm
+        :members="members"
+        :categories="categories"
+        :blocked-category-ids="blockedCategoryIds"
+        @submit="onSubmit"
+      >
+        <template #actions="{ totalWeight }">
+          <UButton
+            type="submit"
+            label="Save Entry"
+            block
+            :loading="submitting"
+            :disabled="totalWeight !== 10000 || submitting"
+          />
+        </template>
+      </EntryForm>
+    </template>
   </UContainer>
 </template>
