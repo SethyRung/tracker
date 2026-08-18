@@ -1,41 +1,47 @@
 <script setup lang="ts">
+import { z } from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
+
 definePageMeta({
   auth: { only: "user" },
 });
 
+useHead({ title: "Join room · Tricker" });
+
 const route = useRoute();
-const token = computed(() => (route.params.token as string | undefined) ?? "");
-
-const displayName = ref("");
-const color = ref<string | null>(null);
-const submitting = ref(false);
-const error = ref<string | null>(null);
-const success = ref(false);
-
+const toast = useToast();
 const { fetchSession } = useUserSession();
 
-async function onAccept() {
-  if (submitting.value || displayName.value.trim().length === 0) return;
+const token = computed(() => (route.params.token as string | undefined) ?? "");
+
+const schema = z.object({
+  displayName: z.string().min(1, "Display name is required").max(80),
+});
+type Schema = z.output<typeof schema>;
+
+const state = reactive<Partial<Schema>>({ displayName: "" });
+const submitting = ref(false);
+
+async function onAccept(event: FormSubmitEvent<Schema>) {
+  if (submitting.value) return;
   submitting.value = true;
-  error.value = null;
   try {
     const res = await $fetch("/api/rooms/join", {
       method: "POST",
       body: {
         token: token.value,
-        displayName: displayName.value.trim(),
-        color: color.value ?? undefined,
+        displayName: event.data.displayName.trim(),
       },
     });
-    if (!isSuccessResponse(res)) {
-      throw new Error(res.status.message);
-    }
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
 
-    success.value = true;
     await fetchSession({ force: true });
-    await navigateTo(`/dashboard?roomId=${res.data.roomId}`);
+    await navigateTo("/dashboard");
   } catch (e) {
-    error.value = e instanceof Error ? e.message : "Could not join this room.";
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: e instanceof Error ? e.message : "Could not join this room.",
+    });
   } finally {
     submitting.value = false;
   }
@@ -43,42 +49,34 @@ async function onAccept() {
 </script>
 
 <template>
-  <UContainer class="py-8 max-w-lg">
-    <header class="mb-6">
+  <UContainer class="max-w-lg py-6 space-y-6">
+    <div class="space-y-1">
+      <p class="font-mono text-xs uppercase tracking-wider text-toned">Invite</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Join a room</h1>
-      <p class="text-toned mt-1">Pick a display name to use inside this household.</p>
-    </header>
+      <p class="text-xs text-toned">Pick a display name to use inside this household.</p>
+    </div>
 
-    <UForm :schema="null" class="space-y-5" @submit.prevent="onAccept">
-      <UFormField label="Display name" name="displayName" required>
-        <UInput
-          v-model="displayName"
-          placeholder="Your name in this room"
+    <UCard variant="outline">
+      <UForm :schema="schema" :state="state" class="space-y-6" @submit="onAccept">
+        <UFormField label="Display name" name="displayName" required>
+          <UInput
+            v-model="state.displayName"
+            placeholder="Your name in this room"
+            size="lg"
+            :ui="{ root: 'w-full' }"
+            autocomplete="name"
+          />
+        </UFormField>
+
+        <UButton
+          type="submit"
+          label="Join room"
           size="lg"
-          autocomplete="name"
+          block
+          :loading="submitting"
+          :disabled="submitting"
         />
-      </UFormField>
-
-      <UAlert
-        v-if="error"
-        color="error"
-        variant="subtle"
-        :title="error"
-        icon="i-lucide-alert-circle"
-      />
-
-      <UButton
-        type="submit"
-        label="Join room"
-        size="lg"
-        block
-        :loading="submitting"
-        :disabled="submitting || success"
-      />
-
-      <p class="text-xs text-toned">
-        Token: <span class="font-mono">{{ token }}</span>
-      </p>
-    </UForm>
+      </UForm>
+    </UCard>
   </UContainer>
 </template>
