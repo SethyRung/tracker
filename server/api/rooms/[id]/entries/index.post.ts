@@ -1,8 +1,50 @@
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
-import { createEntrySchema } from "~~/shared/schemas/entry";
+import { z } from "zod";
+import { BPS_TOTAL } from "~~/shared/types/weight";
 import { assertMonthOpenForDate } from "~~/server/utils/month";
+
+const weightEntrySchema = z.object({
+  membershipId: z.string().min(1),
+  weightBps: z.number().int().min(0).max(BPS_TOTAL),
+});
+
+const weightsSchema = z
+  .array(weightEntrySchema)
+  .min(1, "At least one attendee is required")
+  .superRefine((entries, ctx) => {
+    const total = entries.reduce((sum, e) => sum + e.weightBps, 0);
+    if (Math.abs(total - BPS_TOTAL) > 0.0001) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Weights sum to ${total.toFixed(4)}, expected ${BPS_TOTAL.toFixed(4)}`,
+        params: { code: "sum_mismatch", total, expected: BPS_TOTAL },
+      });
+    }
+    const ids = new Set<string>();
+    for (const [i, e] of entries.entries()) {
+      if (ids.has(e.membershipId)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Duplicate attendee ${e.membershipId}`,
+          path: [i, "membershipId"],
+        });
+      }
+      ids.add(e.membershipId);
+    }
+  });
+
+const createEntrySchema = z.object({
+  categoryId: z.string().nullable().optional(),
+  currency: z.enum(["USD", "KHR"]),
+  amountMinor: z.number().int().nonnegative(),
+  date: z.coerce.date(),
+  paidByMembershipId: z.string().min(1),
+  notes: z.string().max(500).nullable().optional(),
+  weights: weightsSchema,
+  templateId: z.string().nullable().optional(),
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

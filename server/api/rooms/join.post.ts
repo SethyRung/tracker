@@ -1,7 +1,16 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { inviteLinks, roomMemberships } from "hub:db:schema";
-import { joinRoomSchema } from "~~/shared/schemas/room";
+import { z } from "zod";
+
+const joinRoomSchema = z.object({
+  token: z.string().min(1).max(64),
+  displayName: z.string().min(1).max(80),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+});
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event);

@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { rooms } from "hub:db:schema";
-import { updateRoomSchema } from "~~/shared/schemas/room";
+import { z } from "zod";
+
+const updateRoomSchema = z.object({
+  name: z.string().min(1).max(80).optional(),
+  usdEnabled: z.boolean().optional(),
+  khrEnabled: z.boolean().optional(),
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

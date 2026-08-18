@@ -1,4 +1,8 @@
-import { createInviteSchema } from "~~/shared/schemas/room";
+import { z } from "zod";
+
+const createInviteSchema = z.object({
+  emails: z.array(z.email().max(254)).min(1).max(20),
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

@@ -1,7 +1,48 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, recurringTemplates, roomMemberships } from "hub:db:schema";
-import { createTemplateSchema } from "~~/shared/schemas/template";
+import { z } from "zod";
+import { BPS_TOTAL } from "~~/shared/types/weight";
+
+const memberSnapshotEntrySchema = z.object({
+  membershipId: z.string().min(1),
+  weightBps: z.number().int().min(0).max(BPS_TOTAL),
+});
+
+const memberSnapshotSchema = z
+  .array(memberSnapshotEntrySchema)
+  .min(1, "At least one attendee is required")
+  .superRefine((entries, ctx) => {
+    const total = entries.reduce((s, e) => s + e.weightBps, 0);
+    if (Math.abs(total - BPS_TOTAL) > 0.0001) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Snapshot weights sum to ${total.toFixed(4)}, expected ${BPS_TOTAL.toFixed(4)}.`,
+        params: { code: "sum_mismatch", total, expected: BPS_TOTAL },
+      });
+    }
+    const ids = new Set<string>();
+    for (const [i, e] of entries.entries()) {
+      if (ids.has(e.membershipId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate attendee ${e.membershipId}`,
+          path: [i, "membershipId"],
+        });
+      }
+      ids.add(e.membershipId);
+    }
+  });
+
+const createTemplateSchema = z.object({
+  categoryId: z.string().min(1),
+  currency: z.enum(["USD", "KHR"]),
+  amountMinor: z.number().int().nonnegative(),
+  dayOfMonth: z.number().int().min(1).max(31).default(1),
+  isActive: z.boolean().default(true),
+  paidByMembershipId: z.string().min(1).nullish(),
+  memberSnapshot: memberSnapshotSchema,
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

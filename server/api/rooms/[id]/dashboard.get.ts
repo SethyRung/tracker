@@ -1,7 +1,18 @@
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
-import { entryListQuerySchema } from "~~/shared/schemas/entry";
+import { z } from "zod";
+
+const entryStatusSchema = z.enum(["draft", "published"]);
+
+const entryListQuerySchema = z.object({
+  status: entryStatusSchema.optional(),
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+  categoryId: z.string().optional(),
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

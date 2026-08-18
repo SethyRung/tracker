@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories, roomMemberships, rooms } from "hub:db:schema";
-import { createRoomSchema } from "~~/shared/schemas/room";
+import { z } from "zod";
+
+const createRoomSchema = z.object({
+  name: z.string().min(1).max(80),
+  usdEnabled: z.boolean().default(true),
+  khrEnabled: z.boolean().default(true),
+});
 
 const DEFAULT_CATEGORIES = [
   { name: "Rent", sortOrder: 0, recurringType: "recurring" as const },

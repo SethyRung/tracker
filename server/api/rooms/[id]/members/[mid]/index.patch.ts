@@ -1,7 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "hub:db";
 import { roomMemberships } from "hub:db:schema";
-import { updateMemberSchema } from "~~/shared/schemas/room";
+import { z } from "zod";
+
+const updateMemberSchema = z.object({
+  displayName: z.string().min(1).max(80).optional(),
+  nickname: z.string().max(80).nullable().optional(),
+  avatarUrl: z.string().url().nullable().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
+  sharePercentBps: z.number().int().min(0).max(10000).optional(),
+});
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");

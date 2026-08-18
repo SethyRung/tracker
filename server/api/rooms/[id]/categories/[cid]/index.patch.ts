@@ -1,7 +1,24 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "hub:db";
 import { categories } from "hub:db:schema";
-import { normalizeCategoryName, updateCategorySchema } from "~~/shared/schemas/category";
+import { z } from "zod";
+
+const recurringTypeSchema = z.enum(["unlimited", "once", "recurring"]);
+
+const updateCategorySchema = z.object({
+  name: z
+    .string()
+    .max(40)
+    .transform((s) => s.trim())
+    .refine((s) => s.length > 0, { message: "Name is required" })
+    .optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  recurringType: recurringTypeSchema.optional(),
+});
+
+function normalizeCategoryName(name: string): string {
+  return name.trim().toLowerCase();
+}
 
 export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "id");
