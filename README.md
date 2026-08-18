@@ -4,12 +4,12 @@ Multi-tenant household bill tracker. Each "room" is an independent household wit
 
 USD and KHR tracked separately — two parallel ledgers, never converted.
 
-Full spec: [SPEC.md](./SPEC.md) · UI wireframes: [MOCKS.md](./MOCKS.md) · Agent notes: [AGENTS.md](./AGENTS.md).
+Agent notes: [AGENTS.md](./AGENTS.md). Theme: [DESIGN.md](./DESIGN.md).
 
 ## Stack
 
 - [Nuxt 4](https://nuxt.com) + [Nuxt UI](https://ui.nuxt.com) + Tailwind CSS v4
-- [Better-Auth](https://better-auth.com) — email + password, sessions, verification, password reset (planned, not yet installed)
+- [Better-Auth](https://better-auth.com) — email + password, sessions, email verification, password reset
 - [Neon](https://neon.tech) serverless Postgres
 - [NuxtHub](https://hub.nuxt.com) hosting
 - [Zod](https://zod.dev) for validation
@@ -24,15 +24,15 @@ Full spec: [SPEC.md](./SPEC.md) · UI wireframes: [MOCKS.md](./MOCKS.md) · Agen
 - **Currencies**: USD `$1,234.56` · KHR `៛1,234,567`. Never converted; settled in two parallel ledgers.
 - **Time**: stored UTC, displayed in `Asia/Phnom_Penh`.
 - **Entry dates**: any historical date allowed.
-- **Unified split model**: every entry uses the same split logic — pick attendees (default all) → set shares (default `100/N` equal). User-editable per entry. See `SPEC.md §7b`.
+- **Unified split model**: every entry uses the same split logic — pick attendees (default all) → set shares (default `100/N` equal). User-editable per entry.
 - **Categories**: pure labels for filtering/reporting (Rent, Utilities, Food, Supplies pre-seeded). They do **not** carry split rules.
 - **Month lifecycle**: open → admin-closes. Closed months lock edits and snapshot settlement.
 - **Recurring bills**: templates auto-materialize as published entries on the 1st of each month (and immediately when a template is created mid-month).
 - **Settlement**: minimum-transfer algorithm per (room, month, currency). Two side-by-side panels (USD + KHR).
 - **Roles**: Admin + Member. Admin auto-succeeds to oldest active member on departure.
-- **Splits**: an entry is split purely by the per-entry attendee weights. No tenure pro-rating — see `SPEC.md §11`.
-- **Auth**: email + password with mandatory email verification, password reset, 30-day sliding session cookies.
-- **Out of scope (v1)**: audit log, notifications, data export, account deletion, receipts, multi-admin, currency conversion. See `SPEC.md §15`.
+- **Splits**: an entry is split purely by the per-entry attendee weights. No tenure pro-rating.
+- **Auth**: email + password with email verification (sent on sign-up but does not block login), password reset, 30-day sliding session cookies.
+- **Out of scope (v1)**: audit log, notifications, data export, account deletion, receipts, multi-admin, currency conversion.
 
 ## Development
 
@@ -54,11 +54,9 @@ Requires Bun and a `DATABASE_URL` env var pointing at Neon.
 ```
 app/         Nuxt 4 client (pages, layouts, components, composables)
 server/      Nitro server (api routes, middleware, utils)
-SPEC.md      Authoritative product spec
-DECISIONS.md Decision rationale (from /grilling sessions)
-MOCKS.md     ASCII UI wireframes
+DESIGN.md    Theme spec (olive-green primary, Geist type, pixel-letter details)
 AGENTS.md    Repo notes for AI agents
 .agents/     Project-local Pi skills
 ```
 
-See [AGENTS.md](./AGENTS.md) for gotchas and conventions (money as integer, `test/` directory not yet scaffolded, Nuxt 4 compat flags, etc.).
+See [AGENTS.md](./AGENTS.md) for gotchas and conventions (money as integer, Nuxt 4 compat flags, the build-time `hub:db` virtual-module gotcha, etc.).

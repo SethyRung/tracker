@@ -2,8 +2,7 @@
 
 Multi-tenant household bill tracker. Nuxt 4 + @nuxt/ui SaaS, Postgres (Neon prod / local docker), Better-Auth, Drizzle via NuxtHub.
 
-> **Source of truth order**: `SPEC.md` (what to build) > `DESIGN.md` (theme/colors/fonts) > `MOCKS.md` (UI wireframes) > `README.md` (intro).
-> If this file disagrees with `SPEC.md`, the spec wins.
+> **Source of truth**: when this file disagrees with `DESIGN.md` or `README.md`, those win.
 
 ## Quick start
 
@@ -53,9 +52,7 @@ shared/         Code imported by BOTH client and server
   types/        money, weight, response, member-color
   utils/        pure helpers (date, settle, recurring, invite-token, admin-succession)
 public/fonts/   Geist + custom Geist Pixel font faces (loaded in main.css)
-SPEC.md         Authoritative product spec
 DESIGN.md       Theme spec (olive-green primary, Geist type, pixel-letter details)
-MOCKS.md        ASCII UI wireframes
 ```
 
 Nuxt 4 with `future.compatibilityVersion: 4` and `compatibilityDate: "2026-08-01"` — keep using `app/` for client code, `server/` for Nitro.
@@ -70,7 +67,7 @@ Nuxt 4 with `future.compatibilityVersion: 4` and `compatibilityDate: "2026-08-01
 ## Conventions
 
 - **Money**: `amount_minor` as **integer** (BIGINT in Postgres). USD in cents, KHR no subunit. Never floats, never convert between currencies — two parallel ledgers. See `shared/types/money.ts`.
-- **Weights**: stored as **basis points** (`weight_bps` / `share_percent_bps`, 10000 = 100.00%). See `shared/types/weight.ts` and `SPEC.md §2`.
+- **Weights**: stored as **basis points** (`weight_bps` / `share_percent_bps`, 10000 = 100.00%). See `shared/types/weight.ts`.
 - **Time**: UTC stored, displayed in `Asia/Phnom_Penh`. Entry dates may be any historical date.
 - **Validation**: Zod everywhere — server (`server/api/**`) and client. Schemas live in `shared/schemas/` (drizzle-zod) and are the single source of truth. Don't hand-roll validation in routes.
 - **Multi-tenant**: every API route is under `/api/rooms/[id]/...`. Always scope queries by room id + the caller's membership.
@@ -79,10 +76,16 @@ Nuxt 4 with `future.compatibilityVersion: 4` and `compatibilityDate: "2026-08-01
 
 ## Auth & routing
 
-- Better-Auth via `@onmax/nuxt-better-auth`. Email + password, **mandatory email verification**, password reset, 30-day sliding sessions.
+- Better-Auth via `@onmax/nuxt-better-auth`. Email + password, email verification (sent on sign-up but does not block login — see `requireEmailVerification: false` in `server/auth.config.ts`), password reset, 30-day sliding sessions.
 - Route protection is **declarative** in `nuxt.config.ts` `routeRules`: `auth: "guest"` (sign-in/up/forgot/reset) vs `auth: "user"` (dashboard, month, bills, payments, members, categories, recurring, settle, onboarding). Don't add per-page middleware guards — use routeRules.
 - Auth redirects configured in `nuxt.config.ts` `auth.redirects` (login→`/sign-in`, authenticated→`/dashboard`, etc.).
 - `app/middleware/room.global.ts` redirects logged-in users with no room to `/onboarding/room`.
+- **Build gotcha — virtual `hub:db` imports in auth config**: `@onmax/nuxt-better-auth` loads `server/auth.config.ts` via **jiti** during Nuxt's module-setup phase to introspect plugin metadata for schema generation. At that point `hub:db` / `hub:db:schema` (Nitro aliases registered later) are unresolvable. In dev the error is swallowed and schema gen returns `{}`; in `bun run build` it halts the build. Any code reachable from a static `import` in `auth.config.ts` (e.g. a `customSession` plugin fn) must use **dynamic imports** inside the function body:
+  ```ts
+  const { db } = await import("hub:db");
+  const { ... } = await import("hub:db:schema");
+  ```
+  The fn only runs at request time (inside `customSession`'s `/get-session` endpoint), so Nitro resolves the aliases normally then. See commit `fa2d7cd` for the working pattern.
 
 ## Email (Resend)
 
@@ -117,8 +120,8 @@ See `.agents/skills/` (project-local). Use the `pi-subagents` user skill to dele
 
 - Don't introduce float money anywhere. Use `amount_minor` (integer).
 - Don't convert between USD and KHR — they are parallel ledgers.
-- Don't add a new dep without checking if it's needed for the SPEC.
-- Don't scaffold pages, API routes, or DB tables not in `SPEC.md §13–14` without asking.
+- Don't add a new dep without a concrete user need.
+- Don't scaffold pages, API routes, or DB tables outside the existing scope without asking.
 - Don't change the Nuxt 4 compat flags in `nuxt.config.ts`.
 - Don't write tests under a path not covered by `vitest.config.ts` — they won't run.
 - Don't add per-page auth middleware — use `routeRules` in `nuxt.config.ts`.
