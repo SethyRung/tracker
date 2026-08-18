@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-app",
+  "name": "tracker",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "test:nuxt": "vitest --project nuxt"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@neondatabase/serverless": "^1.1.0",
     "@nuxt/ui": "^4.10.0",
     "@nuxthub/core": "^0.10.8",
@@ -41,7 +42,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.4",
     "@iconify-json/lucide": "^1.2.123",
     "@iconify-json/simple-icons": "^1.2.93",
     "@nuxt/test-utils": "^4.1.0",
