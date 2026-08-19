@@ -17,7 +17,7 @@ const { data: membersData } = await useFetch(() => `/api/rooms/${roomId.value}/m
 
 const members = computed(() => {
   if (!isSuccessResponse(membersData.value)) return [];
-  return membersData.value.data.members;
+  return membersData.value.data;
 });
 
 const isAdmin = computed(() =>

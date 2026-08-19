@@ -21,7 +21,7 @@ const { data: templatesRes, refresh: refreshTemplates } = await useFetch(
 
 const members = computed(() => {
   if (!isSuccessResponse(membersRes.value)) return [];
-  return membersRes.value.data.members;
+  return membersRes.value.data;
 });
 
 const categories = computed(() => {
@@ -31,7 +31,7 @@ const categories = computed(() => {
 
 const templates = computed(() => {
   if (!isSuccessResponse(templatesRes.value)) return [];
-  return templatesRes.value.data.templates ?? [];
+  return templatesRes.value.data ?? [];
 });
 
 type Category = (typeof categories.value)[number];

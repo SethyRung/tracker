@@ -18,9 +18,7 @@ const { data: entryRes, refresh: refreshEntry } = await useFetch(
   () => `/api/rooms/${roomId.value}/entries/${entryId.value}`,
 );
 
-const entry = computed(() =>
-  isSuccessResponse(entryRes.value) ? entryRes.value.data.entry : null,
-);
+const entry = computed(() => (isSuccessResponse(entryRes.value) ? entryRes.value.data : null));
 type Entry = NonNullable<typeof entry.value>;
 
 const submitting = ref(false);

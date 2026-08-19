@@ -18,7 +18,7 @@ const monthLabel = computed(() => toDayJS(yyyymm.value, "YYYY-MM").format("MMMM 
 
 const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
   () => `/api/rooms/${roomId.value}/months/${yyyymm.value}`,
-  { transform: (r) => (isSuccessResponse(r) ? r.data.snapshot : null) },
+  { transform: (r) => (isSuccessResponse(r) ? r.data : null) },
 );
 
 const { data: settleRes, refresh: refreshSettle } = await useFetch(

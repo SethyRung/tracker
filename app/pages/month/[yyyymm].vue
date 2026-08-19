@@ -14,7 +14,7 @@ if (!user.value) await navigateTo("/sign-in");
 const yyyymm = computed(() => route.params.yyyymm as string);
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
-  transform: (res) => res?.data?.room?.id,
+  transform: (res) => res?.data?.id,
 });
 
 interface MonthSnapshot {
@@ -67,7 +67,7 @@ const categories = computed(() => dashboard.value?.categories ?? []);
 const { data: monthSnapshot, refresh: refreshMonth } = await useFetch(
   () => `/api/rooms/${roomId.value}/months/${yyyymm.value}`,
   {
-    transform: (r) => (r?.data?.snapshot ?? null) as MonthSnapshot | null,
+    transform: (r) => (r?.data ?? null) as MonthSnapshot | null,
     default: () => null as MonthSnapshot | null,
   },
 );

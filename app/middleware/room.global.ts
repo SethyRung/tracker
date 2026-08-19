@@ -13,7 +13,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (!loggedIn.value) return;
     try {
       const res = await $fetch("/api/rooms/current");
-      if (isSuccessResponse(res) && !res.data.room) {
+      if (!isSuccessResponse(res)) {
         return navigateTo("/onboarding/room");
       }
     } catch {

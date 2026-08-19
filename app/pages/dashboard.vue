@@ -9,7 +9,7 @@ useHead({ title: "Dashboard · Tricker" });
 const { user } = useUserSession();
 
 const { data: roomId } = await useFetch("/api/rooms/current", {
-  transform: (res) => res?.data?.room?.id,
+  transform: (res) => res?.data?.id,
 });
 
 const currentMonth = computed(() => monthKey());
@@ -28,7 +28,7 @@ const { data: dashboard, status: dashStatus } = await useFetch(
 
 const { data: snapshotRes } = await useFetch(
   () => `/api/rooms/${roomId.value}/months/${currentMonth.value}`,
-  { transform: (r) => r?.data?.snapshot },
+  { transform: (r) => r?.data },
 );
 
 const members = computed(() => dashboard.value?.members ?? []);

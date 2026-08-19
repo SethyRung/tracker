@@ -19,7 +19,7 @@ const members = computed(() => {
   if (!isSuccessResponse(data.value)) {
     return [];
   }
-  return data.value.data.members;
+  return data.value.data;
 });
 
 type Member = (typeof members.value)[number];

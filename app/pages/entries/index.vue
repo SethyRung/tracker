@@ -20,9 +20,7 @@ const {
   status: entriesStatus,
 } = await useFetch(() => `/api/rooms/${roomId.value}/entries`);
 
-const entries = computed(() =>
-  isSuccessResponse(entriesRes.value) ? entriesRes.value.data.entries : [],
-);
+const entries = computed(() => (isSuccessResponse(entriesRes.value) ? entriesRes.value.data : []));
 type Entry = (typeof entries.value)[number];
 
 const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));

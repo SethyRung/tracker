@@ -86,7 +86,7 @@ async function createRoom() {
       },
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
-    roomId.value = res.data.room!.id;
+    roomId.value = res.data!.id;
     return true;
   } catch (e) {
     toast.add({

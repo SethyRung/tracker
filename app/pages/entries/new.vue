@@ -17,7 +17,7 @@ const { data: thisMonthEntriesRes } = await useFetch(() => `/api/rooms/${roomId.
 
 const thisMonthEntries = computed(() =>
   isSuccessResponse(thisMonthEntriesRes.value)
-    ? thisMonthEntriesRes.value.data.entries.filter((e) => e.status === "published" && e.categoryId)
+    ? thisMonthEntriesRes.value.data.filter((e) => e.status === "published" && e.categoryId)
     : [],
 );
 
@@ -65,7 +65,7 @@ async function onSubmit({
       throw new Error(res.status.message);
     }
 
-    await navigateTo(`/entries/${res.data.entry.id}/edit`);
+    await navigateTo(`/entries/${res.data.id}/edit`);
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",
