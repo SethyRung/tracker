@@ -1,54 +1,70 @@
 import type { H3Event } from "h3";
 import { and, eq, asc } from "drizzle-orm";
-import { db } from "hub:db";
-import { rooms, roomMemberships } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 
-type Room = typeof rooms.$inferSelect;
-type RoomMembership = typeof roomMemberships.$inferSelect;
-
-export type RoomRole = "admin" | "member";
-
-export interface RoomContext {
-  room: Room;
-  membership: RoomMembership;
-  role: RoomRole;
-  userId: string;
+export function newId(): string {
+  return crypto.randomUUID();
 }
 
-export async function requireRoomContext(event: H3Event, roomId: string): Promise<RoomContext> {
+export async function getActiveRoom(event: H3Event) {
   const session = await requireUserSession(event);
   const userId = session.user.id;
 
-  const room = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
-  if (room.length === 0) {
+  const membership = await db
+    .select({ room: schema.rooms })
+    .from(schema.roomMemberships)
+    .innerJoin(schema.rooms, eq(schema.rooms.id, schema.roomMemberships.roomId))
+    .where(
+      and(eq(schema.roomMemberships.userId, userId), eq(schema.roomMemberships.isActive, true)),
+    )
+    .orderBy(asc(schema.roomMemberships.joinedAt))
+    .limit(1);
+  const room = membership[0]?.room;
+
+  if (!room) {
     throw createError({ statusCode: 404, statusMessage: "Room not found" });
   }
 
-  const membership = await db
+  return room;
+}
+
+export async function requireRoomContext(event: H3Event, roomId: string) {
+  const session = await requireUserSession(event);
+  const userId = session.user.id;
+
+  const rooms = await db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
+  const room = rooms[0];
+
+  if (!room) {
+    throw createError({ statusCode: 404, statusMessage: "Room not found" });
+  }
+
+  const memberships = await db
     .select()
-    .from(roomMemberships)
+    .from(schema.roomMemberships)
     .where(
       and(
-        eq(roomMemberships.roomId, roomId),
-        eq(roomMemberships.userId, userId),
-        eq(roomMemberships.isActive, true),
+        eq(schema.roomMemberships.roomId, roomId),
+        eq(schema.roomMemberships.userId, userId),
+        eq(schema.roomMemberships.isActive, true),
       ),
     )
     .limit(1);
+  const membership = memberships[0];
 
-  if (membership.length === 0) {
+  if (!membership) {
     throw createError({ statusCode: 403, statusMessage: "Not a member of this room" });
   }
 
   return {
-    room: room[0]!,
-    membership: membership[0]!,
-    role: membership[0]!.role as RoomRole,
+    room: room,
+    membership: membership,
+    role: membership.role,
     userId,
   };
 }
 
-export async function requireRoomAdmin(event: H3Event, roomId: string): Promise<RoomContext> {
+export async function requireRoomAdmin(event: H3Event, roomId: string) {
   const ctx = await requireRoomContext(event, roomId);
   if (ctx.role !== "admin") {
     throw createError({ statusCode: 403, statusMessage: "Admin access required" });
@@ -56,39 +72,30 @@ export async function requireRoomAdmin(event: H3Event, roomId: string): Promise<
   return ctx;
 }
 
-export async function getActiveRoomForUser(userId: string): Promise<Room | null> {
-  const membership = await db
-    .select({ room: rooms })
-    .from(roomMemberships)
-    .innerJoin(rooms, eq(rooms.id, roomMemberships.roomId))
-    .where(and(eq(roomMemberships.userId, userId), eq(roomMemberships.isActive, true)))
-    .orderBy(asc(roomMemberships.joinedAt))
-    .limit(1);
-
-  return membership[0]?.room ?? null;
-}
-
-export async function promoteAdminOnDeparture(roomId: string): Promise<string | null> {
+export async function promoteAdminOnDeparture(roomId: string) {
   const remaining = await db
     .select()
-    .from(roomMemberships)
+    .from(schema.roomMemberships)
     .where(
       and(
-        eq(roomMemberships.roomId, roomId),
-        eq(roomMemberships.role, "member"),
-        eq(roomMemberships.isActive, true),
+        eq(schema.roomMemberships.roomId, roomId),
+        eq(schema.roomMemberships.role, "member"),
+        eq(schema.roomMemberships.isActive, true),
       ),
     )
-    .orderBy(asc(roomMemberships.joinedAt));
-
+    .orderBy(asc(schema.roomMemberships.joinedAt));
   const next = remaining[0];
-  if (!next) return null;
+  if (!next) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Sorry, no more members to promote to admin",
+    });
+  }
 
-  await db.update(roomMemberships).set({ role: "admin" }).where(eq(roomMemberships.id, next.id));
+  await db
+    .update(schema.roomMemberships)
+    .set({ role: "admin" })
+    .where(eq(schema.roomMemberships.id, next.id));
 
   return next.id;
-}
-
-export function newId(): string {
-  return crypto.randomUUID();
 }

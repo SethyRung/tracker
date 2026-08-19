@@ -1,5 +1,5 @@
 import { and, eq, gte, lt } from "drizzle-orm";
-import { db } from "hub:db";
+import { db } from "@nuxthub/db";
 import {
   categories,
   entries,
