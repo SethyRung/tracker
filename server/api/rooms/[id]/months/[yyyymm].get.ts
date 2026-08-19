@@ -1,13 +1,8 @@
-import { getMonthSnapshot } from "~~/server/utils/month";
-
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const yyyymm = getRouterParam(event, "yyyymm");
-  if (!roomId || !yyyymm) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!yyyymm) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
   if (!isValidMonthKey(yyyymm)) {
     return createResponse({
@@ -18,8 +13,6 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomContext(event, roomId);
 
-  // No snapshot row means the month is implicitly OPEN — return a virtual
-  // snapshot so clients don't have to special-case missing rows.
   const snapshot = await getMonthSnapshot(roomId, yyyymm);
   const result = snapshot ?? {
     id: null,
@@ -30,5 +23,5 @@ export default defineEventHandler(async (event) => {
     closedByUserId: null,
   };
 
-  return createResponse({ code: ApiResponseCode.Success }, { snapshot: result });
+  return createResponse({ code: ApiResponseCode.Success }, result);
 });

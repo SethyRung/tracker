@@ -1,25 +1,18 @@
 import { eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { rooms } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
-const updateRoomSchema = z.object({
+const bodySchema = z.object({
   name: z.string().min(1).max(80).optional(),
   usdEnabled: z.boolean().optional(),
   khrEnabled: z.boolean().optional(),
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomAdmin(event, roomId);
-  const body = await readValidatedBody(event, updateRoomSchema.parse);
+  const body = await readValidatedBody(event, bodySchema.parse);
 
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name;
@@ -27,10 +20,19 @@ export default defineEventHandler(async (event) => {
   if (body.khrEnabled !== undefined) updates.khrEnabled = body.khrEnabled;
 
   if (Object.keys(updates).length > 0) {
-    await db.update(rooms).set(updates).where(eq(rooms.id, roomId));
+    await db.update(schema.rooms).set(updates).where(eq(schema.rooms.id, roomId));
   }
 
-  const updated = await db.select().from(rooms).where(eq(rooms.id, roomId)).limit(1);
-  const room = updated[0];
-  return createResponse({ code: ApiResponseCode.Success }, { room });
+  const room = await db.query.rooms.findFirst({
+    where: (r, { eq }) => eq(r.id, roomId),
+  });
+
+  if (!room) {
+    return createResponse({
+      code: ApiResponseCode.InternalError,
+      message: "Failed to update room",
+    });
+  }
+
+  return createResponse({ code: ApiResponseCode.Success }, room);
 });

@@ -5,13 +5,7 @@ const createInviteSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   const ctx = await requireRoomAdmin(event, roomId);
   const { emails } = await readValidatedBody(event, createInviteSchema.parse);

@@ -1,12 +1,8 @@
-import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
-import { db } from "hub:db";
-import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { db } from "@nuxthub/db";
 import { z } from "zod";
 
-const entryStatusSchema = z.enum(["draft", "published"]);
-
-const entryListQuerySchema = z.object({
-  status: entryStatusSchema.optional(),
+const querySchema = z.object({
+  status: z.enum(["draft", "published"]).optional(),
   month: z
     .string()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
@@ -15,52 +11,43 @@ const entryListQuerySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomContext(event, roomId);
-  const query = await getValidatedQuery(event, entryListQuerySchema.parse);
+  const query = await getValidatedQuery(event, querySchema.parse);
   const range = monthRange(query.month ?? "");
   const start = range.start.toDate();
   const end = range.end.toDate();
 
   const [entryRows, memberRows, categoryRows] = await Promise.all([
-    db
-      .select()
-      .from(entries)
-      .where(
+    db.query.entries.findMany({
+      where: (e, { eq, and, gte, lt }) =>
         and(
-          eq(entries.roomId, roomId),
-          query.status ? eq(entries.status, query.status) : undefined,
-          query.categoryId ? eq(entries.categoryId, query.categoryId) : undefined,
-          query.month ? gte(entries.date, start) : undefined,
-          query.month ? lt(entries.date, end) : undefined,
+          eq(e.roomId, roomId),
+          query.status ? eq(e.status, query.status) : undefined,
+          query.categoryId ? eq(e.categoryId, query.categoryId) : undefined,
+          query.month ? gte(e.date, start) : undefined,
+          query.month ? lt(e.date, end) : undefined,
         ),
-      )
-      .orderBy(asc(entries.date), asc(entries.createdAt)),
-    db
-      .select()
-      .from(roomMemberships)
-      .where(and(eq(roomMemberships.roomId, roomId), eq(roomMemberships.isActive, true)))
-      .orderBy(roomMemberships.joinedAt),
-    db.select().from(categories).where(eq(categories.roomId, roomId)),
+      orderBy: (e, { asc }) => [asc(e.date), asc(e.createdAt)],
+    }),
+    db.query.roomMemberships.findMany({
+      where: (m, { eq, and }) => and(eq(m.roomId, roomId), eq(m.isActive, true)),
+      orderBy: (m) => m.joinedAt,
+    }),
+    db.query.categories.findMany({
+      where: (c, { eq }) => eq(c.roomId, roomId),
+    }),
   ]);
 
   const weightRows = entryRows.length
-    ? await db
-        .select()
-        .from(entryWeights)
-        .where(
+    ? await db.query.entryWeights.findMany({
+        where: (w, { inArray }) =>
           inArray(
-            entryWeights.entryId,
+            w.entryId,
             entryRows.map((e) => e.id),
           ),
-        )
+      })
     : [];
 
   const weightsByEntry = new Map<string, typeof weightRows>();

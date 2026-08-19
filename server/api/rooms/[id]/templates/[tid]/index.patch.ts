@@ -1,8 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { recurringTemplates, roomMemberships } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
-import { BPS_TOTAL } from "~~/shared/types/weight";
 
 const memberSnapshotEntrySchema = z.object({
   membershipId: z.string().min(1),
@@ -34,7 +32,7 @@ const memberSnapshotSchema = z
     }
   });
 
-const updateTemplateSchema = z
+const bodySchema = z
   .object({
     currency: z.enum(["USD", "KHR"]).optional(),
     amountMinor: z.number().int().nonnegative().optional(),
@@ -46,17 +44,14 @@ const updateTemplateSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: "No updates provided" });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const tid = getRouterParam(event, "tid");
-  if (!roomId || !tid) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!tid) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
 
   await requireRoomAdmin(event, roomId);
-  const body = await readValidatedBody(event, updateTemplateSchema.parse);
+  const body = await readValidatedBody(event, bodySchema.parse);
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.currency !== undefined) updates.currency = body.currency;
@@ -65,18 +60,13 @@ export default defineEventHandler(async (event) => {
   if (body.isActive !== undefined) updates.isActive = body.isActive;
   if (body.paidByMembershipId !== undefined) {
     if (body.paidByMembershipId) {
-      const payer = await db
-        .select({ id: roomMemberships.id })
-        .from(roomMemberships)
-        .where(
-          and(
-            eq(roomMemberships.id, body.paidByMembershipId),
-            eq(roomMemberships.roomId, roomId),
-            eq(roomMemberships.isActive, true),
-          ),
-        )
-        .limit(1);
-      if (payer.length === 0) {
+      const paidBy = body.paidByMembershipId;
+      const payer = await db.query.roomMemberships.findFirst({
+        columns: { id: true },
+        where: (m, { eq, and }) =>
+          and(eq(m.id, paidBy), eq(m.roomId, roomId), eq(m.isActive, true)),
+      });
+      if (!payer) {
         return createResponse({
           code: ApiResponseCode.InvalidRequest,
           message: "Payer must be an active member of this room.",
@@ -88,20 +78,23 @@ export default defineEventHandler(async (event) => {
   if (body.memberSnapshot !== undefined) updates.memberSnapshot = body.memberSnapshot;
 
   await db
-    .update(recurringTemplates)
+    .update(schema.recurringTemplates)
     .set(updates)
-    .where(and(eq(recurringTemplates.id, tid), eq(recurringTemplates.roomId, roomId)));
+    .where(
+      and(eq(schema.recurringTemplates.id, tid), eq(schema.recurringTemplates.roomId, roomId)),
+    );
 
-  const updated = await db
-    .select()
-    .from(recurringTemplates)
-    .where(eq(recurringTemplates.id, tid))
-    .limit(1);
-  const template = updated[0];
+  const template = await db.query.recurringTemplates.findFirst({
+    where: (t, { eq }) => eq(t.id, tid),
+  });
+  if (!template) {
+    return createResponse({
+      code: ApiResponseCode.InternalError,
+      message: "Failed to update template",
+    });
+  }
 
-  // Activating a template mid-month should post this month's entry right
-  // away, same as creating one. Idempotent: a no-op when the entry exists.
-  if (template?.isActive) {
+  if (template.isActive) {
     try {
       await materializeRecurringDrafts({ roomId, monthKey: monthKey() });
     } catch (e) {
@@ -109,5 +102,5 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return createResponse({ code: ApiResponseCode.Success }, { template });
+  return createResponse({ code: ApiResponseCode.Success }, template);
 });

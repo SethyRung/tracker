@@ -1,38 +1,29 @@
 import { eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { categories, recurringTemplates } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 
-// Members can view templates (so they know what drafts will be created).
-// Editing is admin-only via POST/PATCH/DELETE.
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomContext(event, roomId);
 
   const rows = await db
     .select({
-      id: recurringTemplates.id,
-      roomId: recurringTemplates.roomId,
-      categoryId: recurringTemplates.categoryId,
-      categoryName: categories.name,
-      currency: recurringTemplates.currency,
-      amountMinor: recurringTemplates.amountMinor,
-      dayOfMonth: recurringTemplates.dayOfMonth,
-      isActive: recurringTemplates.isActive,
-      paidByMembershipId: recurringTemplates.paidByMembershipId,
-      memberSnapshot: recurringTemplates.memberSnapshot,
-      createdAt: recurringTemplates.createdAt,
-      updatedAt: recurringTemplates.updatedAt,
+      id: schema.recurringTemplates.id,
+      roomId: schema.recurringTemplates.roomId,
+      categoryId: schema.recurringTemplates.categoryId,
+      categoryName: schema.categories.name,
+      currency: schema.recurringTemplates.currency,
+      amountMinor: schema.recurringTemplates.amountMinor,
+      dayOfMonth: schema.recurringTemplates.dayOfMonth,
+      isActive: schema.recurringTemplates.isActive,
+      paidByMembershipId: schema.recurringTemplates.paidByMembershipId,
+      memberSnapshot: schema.recurringTemplates.memberSnapshot,
+      createdAt: schema.recurringTemplates.createdAt,
+      updatedAt: schema.recurringTemplates.updatedAt,
     })
-    .from(recurringTemplates)
-    .innerJoin(categories, eq(categories.id, recurringTemplates.categoryId))
-    .where(eq(recurringTemplates.roomId, roomId));
+    .from(schema.recurringTemplates)
+    .innerJoin(schema.categories, eq(schema.categories.id, schema.recurringTemplates.categoryId))
+    .where(eq(schema.recurringTemplates.roomId, roomId));
 
-  return createResponse({ code: ApiResponseCode.Success }, { templates: rows });
+  return createResponse({ code: ApiResponseCode.Success }, rows);
 });

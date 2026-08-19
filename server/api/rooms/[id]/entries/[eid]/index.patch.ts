@@ -1,10 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { db } from "hub:db";
-import { entries, entryWeights, roomMemberships } from "hub:db:schema";
-import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
-import { BPS_TOTAL } from "~~/shared/types/weight";
-import { assertMonthOpen, monthKeyFromDate } from "~~/server/utils/month";
 
 const weightEntrySchema = z.object({
   membershipId: z.string().min(1),
@@ -63,44 +59,32 @@ interface EntryShape {
 interface EntryWithWeights extends EntryShape {
   weights: { entryId: string; membershipId: string; weightBps: number }[];
 }
-interface UpdateEntryResponse {
-  entry: EntryWithWeights;
-}
 
-// Unified edit/delete rule (SPEC §8): published → creator or admin; draft →
-// admin only (drafts are recurring-template materializations up for review).
 function canMutate(entry: EntryShape, isAdmin: boolean, isOwner: boolean) {
   if (isAdmin) return true;
   if (entry.status === "published") return isOwner;
   return false;
 }
 
-export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntryResponse>> => {
-  const roomId = getRouterParam(event, "id");
+export default defineEventHandler(async (event) => {
+  const roomId = getRoomId(event);
   const eid = getRouterParam(event, "eid");
-  if (!roomId || !eid) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!eid) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, updateEntrySchema.parse);
 
-  const current = await db
-    .select()
-    .from(entries)
-    .where(and(eq(entries.id, eid), eq(entries.roomId, roomId)))
-    .limit(1);
-  if (current.length === 0) {
+  const entry = await db.query.entries.findFirst({
+    where: (e, { eq, and }) => and(eq(e.id, eid), eq(e.roomId, roomId)),
+  });
+  if (!entry) {
     return createResponse({
       code: ApiResponseCode.NotFound,
       message: "Entry not found",
     });
   }
-  const entry = current[0]!;
-
   const isAdmin = ctx.role === "admin";
   const isOwner = entry.createdByUserId === ctx.userId;
   if (!canMutate(entry, isAdmin, isOwner)) {
@@ -113,9 +97,6 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntry
     });
   }
 
-  // Phase 8: closed months block all mutations. Check both the existing
-  // entry's month AND the new date (if changed) so a date move can't sneak
-  // past.
   try {
     await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
     if (body.date) await assertMonthOpen(roomId, monthKeyFromDate(body.date));
@@ -128,16 +109,11 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntry
 
   if (body.weights && body.weights.length > 0) {
     const attendeeIds = new Set(body.weights.map((w) => w.membershipId));
-    const active = await db
-      .select({ id: roomMemberships.id })
-      .from(roomMemberships)
-      .where(
-        and(
-          eq(roomMemberships.roomId, roomId),
-          eq(roomMemberships.isActive, true),
-          inArray(roomMemberships.id, [...attendeeIds]),
-        ),
-      );
+    const active = await db.query.roomMemberships.findMany({
+      columns: { id: true },
+      where: (m, { eq, and, inArray }) =>
+        and(eq(m.roomId, roomId), eq(m.isActive, true), inArray(m.id, [...attendeeIds])),
+    });
     if (active.length !== attendeeIds.size) {
       return createResponse({
         code: ApiResponseCode.InvalidRequest,
@@ -155,12 +131,12 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntry
 
   await db.transaction(async (tx) => {
     if (Object.keys(updates).length > 1) {
-      await tx.update(entries).set(updates).where(eq(entries.id, eid));
+      await tx.update(schema.entries).set(updates).where(eq(schema.entries.id, eid));
     }
     if (body.weights) {
-      await tx.delete(entryWeights).where(eq(entryWeights.entryId, eid));
+      await tx.delete(schema.entryWeights).where(eq(schema.entryWeights.entryId, eid));
       if (body.weights.length > 0) {
-        await tx.insert(entryWeights).values(
+        await tx.insert(schema.entryWeights).values(
           body.weights.map((w) => ({
             entryId: eid,
             membershipId: w.membershipId,
@@ -171,8 +147,12 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UpdateEntry
     }
   });
 
-  const updated = await db.select().from(entries).where(eq(entries.id, eid)).limit(1);
-  const weights = await db.select().from(entryWeights).where(eq(entryWeights.entryId, eid));
-  const result = { ...updated[0], weights } as EntryWithWeights;
-  return createResponse({ code: ApiResponseCode.Success }, { entry: result });
+  const updated = await db.query.entries.findFirst({
+    where: (e, { eq }) => eq(e.id, eid),
+  });
+  const weights = await db.query.entryWeights.findMany({
+    where: (w, { eq }) => eq(w.entryId, eid),
+  });
+  const result = { ...updated!, weights } as EntryWithWeights;
+  return createResponse({ code: ApiResponseCode.Success }, result);
 });

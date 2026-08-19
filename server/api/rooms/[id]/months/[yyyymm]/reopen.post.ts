@@ -1,15 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { monthSnapshots } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const yyyymm = getRouterParam(event, "yyyymm");
-  if (!roomId || !yyyymm) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!yyyymm) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
   if (!isValidMonthKey(yyyymm)) {
     return createResponse({
@@ -20,12 +16,10 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomAdmin(event, roomId);
 
-  const existing = await db
-    .select()
-    .from(monthSnapshots)
-    .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)))
-    .limit(1);
-  if (existing.length === 0) {
+  const existing = await db.query.monthSnapshots.findFirst({
+    where: (s, { eq, and }) => and(eq(s.roomId, roomId), eq(s.yyyymm, yyyymm)),
+  });
+  if (!existing) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
       message: "Month is not closed.",
@@ -34,19 +28,17 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date();
   await db
-    .update(monthSnapshots)
+    .update(schema.monthSnapshots)
     .set({
       status: "open",
       closedAt: null,
       closedByUserId: null,
       updatedAt: now,
     })
-    .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)));
+    .where(and(eq(schema.monthSnapshots.roomId, roomId), eq(schema.monthSnapshots.yyyymm, yyyymm)));
 
-  const updated = await db
-    .select()
-    .from(monthSnapshots)
-    .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)))
-    .limit(1);
-  return createResponse({ code: ApiResponseCode.Success }, { snapshot: updated[0] });
+  const snapshot = await db.query.monthSnapshots.findFirst({
+    where: (s, { eq, and }) => and(eq(s.roomId, roomId), eq(s.yyyymm, yyyymm)),
+  });
+  return createResponse({ code: ApiResponseCode.Success }, snapshot);
 });

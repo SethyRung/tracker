@@ -1,8 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { entries } from "hub:db:schema";
-import { ApiResponseCode, type ApiResponse } from "#shared/types/response";
-import { assertMonthOpen, monthKeyFromDate } from "~~/server/utils/month";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@nuxthub/db";
 
 interface EntryShape {
   id: string;
@@ -18,31 +15,24 @@ function canMutate(entry: EntryShape, isAdmin: boolean, isOwner: boolean) {
   return false;
 }
 
-export default defineEventHandler(async (event): Promise<ApiResponse<{ ok: true }>> => {
-  const roomId = getRouterParam(event, "id");
+export default defineEventHandler(async (event) => {
+  const roomId = getRoomId(event);
   const eid = getRouterParam(event, "eid");
-  if (!roomId || !eid) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!eid) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
 
   const ctx = await requireRoomContext(event, roomId);
 
-  const current = await db
-    .select()
-    .from(entries)
-    .where(and(eq(entries.id, eid), eq(entries.roomId, roomId)))
-    .limit(1);
-  if (current.length === 0) {
+  const entry = await db.query.entries.findFirst({
+    where: (e, { eq, and }) => and(eq(e.id, eid), eq(e.roomId, roomId)),
+  });
+  if (!entry) {
     return createResponse({
       code: ApiResponseCode.NotFound,
       message: "Entry not found",
     });
   }
-  const entry = current[0]!;
-
   const isAdmin = ctx.role === "admin";
   const isOwner = entry.createdByUserId === ctx.userId;
   if (!canMutate(entry, isAdmin, isOwner)) {
@@ -55,7 +45,6 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ ok: true 
     });
   }
 
-  // Phase 8: closed months block all mutations including delete.
   try {
     await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
   } catch (e) {
@@ -65,6 +54,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ ok: true 
     });
   }
 
-  await db.delete(entries).where(eq(entries.id, eid));
-  return createResponse({ code: ApiResponseCode.Success }, { ok: true });
+  await db.delete(schema.entries).where(eq(schema.entries.id, eid));
+
+  return createResponse({ code: ApiResponseCode.Success }, true);
 });

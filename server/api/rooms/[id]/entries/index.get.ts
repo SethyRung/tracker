@@ -1,6 +1,4 @@
-import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
-import { db } from "hub:db";
-import { entries, entryWeights } from "hub:db:schema";
+import { db } from "@nuxthub/db";
 import { z } from "zod";
 
 const entryStatusSchema = z.enum(["draft", "published"]);
@@ -15,46 +13,34 @@ const entryListQuerySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomContext(event, roomId);
   const query = await getValidatedQuery(event, entryListQuerySchema.parse);
 
-  const whereParts = [eq(entries.roomId, roomId)];
-  if (query.status) whereParts.push(eq(entries.status, query.status));
-  if (query.categoryId) whereParts.push(eq(entries.categoryId, query.categoryId));
-  if (query.month) {
-    const range = monthRange(query.month ?? "");
-    const start = range.start.toDate();
-    const end = range.end.toDate();
-    whereParts.push(gte(entries.date, start) as never);
-    whereParts.push(lt(entries.date, end) as never);
-  }
+  const rows = await db.query.entries.findMany({
+    where: (e, { eq, and, gte, lt }) => {
+      const parts = [eq(e.roomId, roomId)];
+      if (query.status) parts.push(eq(e.status, query.status));
+      if (query.categoryId) parts.push(eq(e.categoryId, query.categoryId));
+      if (query.month) {
+        const range = monthRange(query.month ?? "");
+        parts.push(gte(e.date, range.start.toDate()));
+        parts.push(lt(e.date, range.end.toDate()));
+      }
+      return and(...parts);
+    },
+    orderBy: (e, { asc }) => [asc(e.date), asc(e.createdAt)],
+  });
 
-  const rows = await db
-    .select()
-    .from(entries)
-    .where(and(...whereParts))
-    .orderBy(asc(entries.date), asc(entries.createdAt));
-
-  // Load weights for every fetched entry in one query (the old bill list route
-  // only fetched weights for the first row — this one does it correctly).
   const weightRows = rows.length
-    ? await db
-        .select()
-        .from(entryWeights)
-        .where(
+    ? await db.query.entryWeights.findMany({
+        where: (w, { inArray }) =>
           inArray(
-            entryWeights.entryId,
+            w.entryId,
             rows.map((e) => e.id),
           ),
-        )
+      })
     : [];
 
   const weightsByEntry = new Map<string, typeof weightRows>();
@@ -67,5 +53,5 @@ export default defineEventHandler(async (event) => {
     ...e,
     weights: weightsByEntry.get(e.id) ?? [],
   }));
-  return createResponse({ code: ApiResponseCode.Success }, { entries: entriesData });
+  return createResponse({ code: ApiResponseCode.Success }, entriesData);
 });

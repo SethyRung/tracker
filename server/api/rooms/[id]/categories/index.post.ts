@@ -1,6 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { db } from "hub:db";
-import { categories } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const recurringTypeSchema = z.enum(["unlimited", "once", "recurring"]);
@@ -20,13 +19,7 @@ function normalizeCategoryName(name: string): string {
 }
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, createCategorySchema.parse);
@@ -34,9 +27,14 @@ export default defineEventHandler(async (event) => {
   const normalized = normalizeCategoryName(body.name);
 
   const existing = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(and(eq(categories.roomId, roomId), sql`lower(trim(${categories.name})) = ${normalized}`))
+    .select({ id: schema.categories.id })
+    .from(schema.categories)
+    .where(
+      and(
+        eq(schema.categories.roomId, roomId),
+        sql`lower(trim(${schema.categories.name})) = ${normalized}`,
+      ),
+    )
     .limit(1);
   if (existing.length > 0) {
     return createResponse({
@@ -46,7 +44,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = newId();
-  await db.insert(categories).values({
+  await db.insert(schema.categories).values({
     id,
     roomId,
     name: body.name.trim(),
@@ -54,7 +52,8 @@ export default defineEventHandler(async (event) => {
     recurringType: body.recurringType,
   });
 
-  const created = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
-  const category = created[0];
+  const category = await db.query.categories.findFirst({
+    where: (c, { eq }) => eq(c.id, id),
+  });
   return createResponse({ code: ApiResponseCode.Success }, { category });
 });

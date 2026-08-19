@@ -1,15 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { monthSnapshots } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const yyyymm = getRouterParam(event, "yyyymm");
-  if (!roomId || !yyyymm) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!yyyymm) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
   if (!isValidMonthKey(yyyymm)) {
     return createResponse({
@@ -20,15 +16,13 @@ export default defineEventHandler(async (event) => {
 
   const ctx = await requireRoomAdmin(event, roomId);
 
-  const existing = await db
-    .select()
-    .from(monthSnapshots)
-    .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)))
-    .limit(1);
+  const existing = await db.query.monthSnapshots.findFirst({
+    where: (s, { eq, and }) => and(eq(s.roomId, roomId), eq(s.yyyymm, yyyymm)),
+  });
 
   const now = new Date();
-  if (existing.length === 0) {
-    await db.insert(monthSnapshots).values({
+  if (!existing) {
+    await db.insert(schema.monthSnapshots).values({
       id: newId(),
       roomId,
       yyyymm,
@@ -38,20 +32,20 @@ export default defineEventHandler(async (event) => {
     });
   } else {
     await db
-      .update(monthSnapshots)
+      .update(schema.monthSnapshots)
       .set({
         status: "closed",
         closedAt: now,
         closedByUserId: ctx.userId,
         updatedAt: now,
       })
-      .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)));
+      .where(
+        and(eq(schema.monthSnapshots.roomId, roomId), eq(schema.monthSnapshots.yyyymm, yyyymm)),
+      );
   }
 
-  const updated = await db
-    .select()
-    .from(monthSnapshots)
-    .where(and(eq(monthSnapshots.roomId, roomId), eq(monthSnapshots.yyyymm, yyyymm)))
-    .limit(1);
-  return createResponse({ code: ApiResponseCode.Success }, { snapshot: updated[0] });
+  const snapshot = await db.query.monthSnapshots.findFirst({
+    where: (s, { eq, and }) => and(eq(s.roomId, roomId), eq(s.yyyymm, yyyymm)),
+  });
+  return createResponse({ code: ApiResponseCode.Success }, snapshot);
 });

@@ -1,42 +1,36 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { roomMemberships } from "hub:db:schema";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const mid = getRouterParam(event, "mid");
-  if (!roomId || !mid) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!mid) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
 
   await requireRoomAdmin(event, roomId);
 
-  const target = await db
-    .select()
-    .from(roomMemberships)
-    .where(and(eq(roomMemberships.id, mid), eq(roomMemberships.roomId, roomId)))
-    .limit(1);
-  if (target.length === 0) {
+  const target = await db.query.roomMemberships.findFirst({
+    where: (m, { eq, and }) => and(eq(m.id, mid), eq(m.roomId, roomId)),
+  });
+  if (!target) {
     return createResponse({
       code: ApiResponseCode.NotFound,
       message: "Member not found",
     });
   }
 
-  const wasAdmin = target[0]!.role === "admin";
-
-  await db
-    .update(roomMemberships)
-    .set({ isActive: false, leftAt: new Date() })
-    .where(eq(roomMemberships.id, mid));
+  const wasAdmin = target.role === "admin";
 
   let promoted: string | null = null;
   if (wasAdmin) {
     promoted = await promoteAdminOnDeparture(roomId);
   }
+
+  await db
+    .update(schema.roomMemberships)
+    .set({ isActive: false, leftAt: new Date() })
+    .where(eq(schema.roomMemberships.id, mid));
 
   return createResponse(
     { code: ApiResponseCode.Success },

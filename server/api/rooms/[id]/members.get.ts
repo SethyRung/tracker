@@ -1,23 +1,14 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { roomMemberships } from "hub:db:schema";
+import { db } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   await requireRoomContext(event, roomId);
 
-  const members = await db
-    .select()
-    .from(roomMemberships)
-    .where(and(eq(roomMemberships.roomId, roomId), eq(roomMemberships.isActive, true)))
-    .orderBy(roomMemberships.joinedAt);
+  const members = await db.query.roomMemberships.findMany({
+    where: (m, { eq, and }) => and(eq(m.roomId, roomId), eq(m.isActive, true)),
+    orderBy: (m) => m.joinedAt,
+  });
 
-  return createResponse({ code: ApiResponseCode.Success }, { members });
+  return createResponse({ code: ApiResponseCode.Success }, members);
 });

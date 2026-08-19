@@ -1,9 +1,5 @@
-import { and, eq, gte, inArray, lt } from "drizzle-orm";
-import { db } from "hub:db";
-import { categories, entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
-import { BPS_TOTAL } from "~~/shared/types/weight";
-import { assertMonthOpenForDate } from "~~/server/utils/month";
 
 const weightEntrySchema = z.object({
   membershipId: z.string().min(1),
@@ -47,19 +43,11 @@ const createEntrySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, createEntrySchema.parse);
 
-  // Phase 8: refuse if the target month is closed. SPEC §9: closed blocks
-  // ALL edits including admin; reopen to mutate.
   try {
     await assertMonthOpenForDate(roomId, body.date);
   } catch (e) {
@@ -69,22 +57,15 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // User-created entries are always published (instant). Drafts are only
-  // materialized by recurring templates (Phase 7), not via this route.
   const status = "published" as const;
   const templateId = body.templateId ?? null;
 
   const attendeeIds = new Set(body.weights.map((w) => w.membershipId));
-  const active = await db
-    .select({ id: roomMemberships.id })
-    .from(roomMemberships)
-    .where(
-      and(
-        eq(roomMemberships.roomId, roomId),
-        eq(roomMemberships.isActive, true),
-        inArray(roomMemberships.id, [...attendeeIds]),
-      ),
-    );
+  const active = await db.query.roomMemberships.findMany({
+    columns: { id: true },
+    where: (m, { eq, and, inArray }) =>
+      and(eq(m.roomId, roomId), eq(m.isActive, true), inArray(m.id, [...attendeeIds])),
+  });
   if (active.length !== attendeeIds.size) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
@@ -92,14 +73,13 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // A category with recurringType 'once' allows only one entry per (ICT) month.
   if (body.categoryId) {
-    const cat = await db
-      .select({ recurringType: categories.recurringType })
-      .from(categories)
-      .where(and(eq(categories.id, body.categoryId), eq(categories.roomId, roomId)))
-      .limit(1);
-    if (cat[0]?.recurringType === "once") {
+    const categoryId = body.categoryId;
+    const cat = await db.query.categories.findFirst({
+      columns: { recurringType: true },
+      where: (c, { eq, and }) => and(eq(c.id, categoryId), eq(c.roomId, roomId)),
+    });
+    if (cat?.recurringType === "once") {
       const parts = new Intl.DateTimeFormat("en-US", {
         timeZone: PHNOM_PENH_TZ,
         year: "numeric",
@@ -109,19 +89,17 @@ export default defineEventHandler(async (event) => {
       const m = parts.find((p) => p.type === "month")?.value;
       if (y && m) {
         const { start, end } = monthRange(`${y}-${m}`);
-        const existing = await db
-          .select({ id: entries.id })
-          .from(entries)
-          .where(
+        const existing = await db.query.entries.findFirst({
+          columns: { id: true },
+          where: (e, { eq, and, gte, lt }) =>
             and(
-              eq(entries.roomId, roomId),
-              eq(entries.categoryId, body.categoryId),
-              gte(entries.date, start.toDate()),
-              lt(entries.date, end.toDate()),
+              eq(e.roomId, roomId),
+              eq(e.categoryId, categoryId),
+              gte(e.date, start.toDate()),
+              lt(e.date, end.toDate()),
             ),
-          )
-          .limit(1);
-        if (existing.length > 0) {
+        });
+        if (existing) {
           return createResponse({
             code: ApiResponseCode.InvalidRequest,
             message:
@@ -134,7 +112,7 @@ export default defineEventHandler(async (event) => {
 
   const id = newId();
   await db.transaction(async (tx) => {
-    await tx.insert(entries).values({
+    await tx.insert(schema.entries).values({
       id,
       roomId,
       categoryId: body.categoryId ?? null,
@@ -148,7 +126,7 @@ export default defineEventHandler(async (event) => {
       createdByUserId: ctx.userId,
     });
     if (body.weights.length > 0) {
-      await tx.insert(entryWeights).values(
+      await tx.insert(schema.entryWeights).values(
         body.weights.map((w) => ({
           entryId: id,
           membershipId: w.membershipId,
@@ -158,8 +136,12 @@ export default defineEventHandler(async (event) => {
     }
   });
 
-  const created = await db.select().from(entries).where(eq(entries.id, id)).limit(1);
-  const weights = await db.select().from(entryWeights).where(eq(entryWeights.entryId, id));
-  const entry = { ...created[0], weights };
-  return createResponse({ code: ApiResponseCode.Success }, { entry });
+  const created = await db.query.entries.findFirst({
+    where: (e, { eq }) => eq(e.id, id),
+  });
+  const weights = await db.query.entryWeights.findMany({
+    where: (w, { eq }) => eq(w.entryId, id),
+  });
+  const entry = { ...created!, weights };
+  return createResponse({ code: ApiResponseCode.Success }, entry);
 });

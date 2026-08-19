@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "hub:db";
-import { roomMemberships } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const updateMemberSchema = z.object({
@@ -16,13 +15,10 @@ const updateMemberSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
+  const roomId = getRoomId(event);
   const mid = getRouterParam(event, "mid");
-  if (!roomId || !mid) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing id",
-    });
+  if (!mid) {
+    throw createError({ statusCode: 400, statusMessage: "Missing id" });
   }
 
   const ctx = await requireRoomContext(event, roomId);
@@ -46,16 +42,13 @@ export default defineEventHandler(async (event) => {
 
   if (Object.keys(updates).length > 0) {
     await db
-      .update(roomMemberships)
+      .update(schema.roomMemberships)
       .set(updates)
-      .where(and(eq(roomMemberships.id, mid), eq(roomMemberships.roomId, roomId)));
+      .where(and(eq(schema.roomMemberships.id, mid), eq(schema.roomMemberships.roomId, roomId)));
   }
 
-  const updated = await db
-    .select()
-    .from(roomMemberships)
-    .where(eq(roomMemberships.id, mid))
-    .limit(1);
-  const member = updated[0];
-  return createResponse({ code: ApiResponseCode.Success }, { member });
+  const member = await db.query.roomMemberships.findFirst({
+    where: (m, { eq }) => eq(m.id, mid),
+  });
+  return createResponse({ code: ApiResponseCode.Success }, member);
 });

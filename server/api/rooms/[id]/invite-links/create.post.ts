@@ -1,11 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const roomId = getRouterParam(event, "id");
-  if (!roomId) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Missing room id",
-    });
-  }
+  const roomId = getRoomId(event);
 
   const ctx = await requireRoomAdmin(event, roomId);
   const { joinUrl, expiresAt } = await createInviteLink(ctx.membership.id, roomId);
