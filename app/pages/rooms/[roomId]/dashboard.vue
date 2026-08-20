@@ -198,7 +198,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
         icon="i-lucide-scale"
         trailing-icon="i-lucide-arrow-right"
         :label="`Settle ${monthLabel}`"
-        :to="`/settle/${currentMonth}`"
+        :to="`/rooms/${roomId}/settle/${currentMonth}`"
       />
 
       <UCard v-if="paidByMember.length > 0" variant="outline">
