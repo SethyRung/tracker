@@ -4,13 +4,13 @@ import type { TableColumn } from "@nuxt/ui";
 const UBadge = resolveComponent("UBadge");
 const UButton = resolveComponent("UButton");
 
-definePageMeta({
-  auth: { only: "user" },
-});
 useHead({ title: "Entries · Tricker" });
 
+const { roomId } = useScopedRoom();
+const { currentRole } = useRoomMemberships();
+const isAdmin = computed(() => currentRole.value === "admin");
+
 const { user } = useUserSession();
-const roomId = computed(() => user.value?.roomId ?? null);
 
 const { members, categories } = useRoomLists(roomId);
 
@@ -27,8 +27,6 @@ const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));
 const catName = (id: string | null) =>
   id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
 const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
-
-const isAdmin = computed(() => user.value?.role === "admin");
 
 function canDelete(e: Entry) {
   if (isAdmin.value) return true;
@@ -128,7 +126,7 @@ const columns: TableColumn<Entry>[] = [
           "aria-label": "Edit",
           onClick: (ev: Event) => {
             ev.stopPropagation();
-            navigateTo(`/entries/${row.original.id}/edit`);
+            navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
           },
         }),
         canDelete(row.original)
@@ -150,66 +148,57 @@ const columns: TableColumn<Entry>[] = [
 ];
 
 function onRowSelect(_e: Event, row: { original: Entry }) {
-  navigateTo(`/entries/${row.original.id}/edit`);
+  navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
 }
 </script>
 
 <template>
   <UContainer class="max-w-4xl py-6 space-y-6">
-    <UPageCard
-      v-if="!roomId"
-      icon="i-lucide-info"
-      title="No room yet"
-      description="Create or join a room before logging entries."
-    />
-
-    <template v-else>
-      <div class="flex items-end justify-between gap-4">
-        <div class="space-y-1">
-          <p class="font-mono text-xs uppercase tracking-wider text-toned">Room</p>
-          <h1 class="font-pixel-circle text-2xl text-primary">Entries</h1>
-          <p class="text-xs text-toned">
-            {{ filtered.length }} entr{{ filtered.length === 1 ? "y" : "ies" }}
-          </p>
-        </div>
-
-        <UFormField label="Status" class="w-40">
-          <USelect v-model="statusFilter" :items="statusItems" value-key="value" class="w-32" />
-        </UFormField>
+    <div class="flex items-end justify-between gap-4">
+      <div class="space-y-1">
+        <p class="font-mono text-xs uppercase tracking-wider text-toned">Room</p>
+        <h1 class="font-pixel-circle text-2xl text-primary">Entries</h1>
+        <p class="text-xs text-toned">
+          {{ filtered.length }} entr{{ filtered.length === 1 ? "y" : "ies" }}
+        </p>
       </div>
 
-      <UTable
-        :data="filtered"
-        :columns="columns"
-        :loading="entriesStatus === 'pending'"
-        :ui="{
-          tr: 'cursor-pointer hover:bg-elevated/50',
-        }"
-        @select="onRowSelect"
-      >
-        <template #empty>
-          <div class="text-center py-10 space-y-2">
-            <UIcon name="i-lucide-receipt" class="size-8 text-dimmed mx-auto" />
-            <p class="text-sm text-muted">No entries match these filters</p>
-            <p class="text-xs text-dimmed">Log a bill or change the status filter.</p>
-            <UButton
-              icon="i-lucide-plus"
-              label="Add entry"
-              to="/entries/new"
-              color="primary"
-              variant="soft"
-              class="mt-1"
-            />
-          </div>
-        </template>
-      </UTable>
+      <UFormField label="Status" class="w-40">
+        <USelect v-model="statusFilter" :items="statusItems" value-key="value" class="w-32" />
+      </UFormField>
+    </div>
 
-      <EntriesRemoveModal
-        :open="entryToRemove !== null"
-        :room-id="roomId"
-        :entry="entryToRemove"
-        @removed="refreshEntries()"
-      />
-    </template>
+    <UTable
+      :data="filtered"
+      :columns="columns"
+      :loading="entriesStatus === 'pending'"
+      :ui="{
+        tr: 'cursor-pointer hover:bg-elevated/50',
+      }"
+      @select="onRowSelect"
+    >
+      <template #empty>
+        <div class="text-center py-10 space-y-2">
+          <UIcon name="i-lucide-receipt" class="size-8 text-dimmed mx-auto" />
+          <p class="text-sm text-muted">No entries match these filters</p>
+          <p class="text-xs text-dimmed">Log a bill or change the status filter.</p>
+          <UButton
+            icon="i-lucide-plus"
+            label="Add entry"
+            :to="`/rooms/${roomId}/entries/new`"
+            color="primary"
+            variant="soft"
+            class="mt-1"
+          />
+        </div>
+      </template>
+    </UTable>
+
+    <EntriesRemoveModal
+      :open="entryToRemove !== null"
+      :room-id="roomId"
+      :entry="entryToRemove"
+      @removed="refreshEntries()"
+    />
   </UContainer>
 </template>

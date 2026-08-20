@@ -9,22 +9,21 @@ const { user } = useUserSession();
 
 const currentMonth = computed(() => monthKey());
 
-const { data: dashboard, status: dashStatus } = await useFetch(
-  () => `/api/rooms/${roomId.value}/dashboard`,
-  {
-    query: { month: currentMonth },
-    transform: (r) => ({
-      entries: r?.data?.entries ?? [],
-      members: r?.data?.members ?? [],
-      categories: r?.data?.categories ?? [],
-    }),
-  },
-);
-
-const { data: snapshotRes } = await useFetch(
-  () => `/api/rooms/${roomId.value}/months/${currentMonth.value}`,
-  { transform: (r) => r?.data },
-);
+const dashboardFetch = useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
+  query: { month: currentMonth },
+  transform: (r) => ({
+    entries: r?.data?.entries ?? [],
+    members: r?.data?.members ?? [],
+    categories: r?.data?.categories ?? [],
+  }),
+});
+const snapshotFetch = useFetch(() => `/api/rooms/${roomId.value}/months/${currentMonth.value}`, {
+  transform: (r) => r?.data,
+});
+const [{ data: dashboard, status: dashStatus }, { data: snapshotRes }] = await Promise.all([
+  dashboardFetch,
+  snapshotFetch,
+]);
 
 const members = computed(() => dashboard.value?.members ?? []);
 const categories = computed(() => dashboard.value?.categories ?? []);
@@ -121,7 +120,7 @@ const recentColumns: TableColumn<(typeof recentEntries.value)[number]>[] = [
 ];
 
 function onRowSelect(_e: Event, row: { original: { id: string } }) {
-  navigateTo(`/entries/${row.original.id}/edit`);
+  navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
 }
 </script>
 
@@ -158,7 +157,14 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
         icon="i-lucide-file-pen-line"
         :title="draftsLabel"
         description="Review and publish pending drafts so they count toward this month."
-        :actions="[{ label: 'Review drafts', to: '/entries', color: 'warning', variant: 'solid' }]"
+        :actions="[
+          {
+            label: 'Review drafts',
+            to: `/rooms/${roomId}/entries`,
+            color: 'warning',
+            variant: 'solid',
+          },
+        ]"
       />
 
       <div class="grid grid-cols-2 gap-4">
@@ -230,7 +236,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
             </h2>
             <UButton
               label="See all"
-              to="/entries"
+              :to="`/rooms/${roomId}/entries`"
               color="neutral"
               variant="ghost"
               size="xs"
@@ -256,7 +262,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
               <UButton
                 icon="i-lucide-plus"
                 label="Add entry"
-                to="/entries/new"
+                :to="`/rooms/${roomId}/entries/new`"
                 color="primary"
                 variant="soft"
                 size="sm"

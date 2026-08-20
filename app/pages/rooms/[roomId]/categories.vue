@@ -11,7 +11,10 @@ const toast = useToast();
 
 const { user } = useUserSession();
 
-const { data: membersData } = await useFetch(() => `/api/rooms/${roomId.value}/members`);
+const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
+const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
+const [{ data: membersData }, { data: categoriesData, refresh: refreshCategories }] =
+  await Promise.all([membersFetch, categoriesFetch]);
 
 const members = computed(() => {
   if (!isSuccessResponse(membersData.value)) return [];
@@ -20,10 +23,6 @@ const members = computed(() => {
 
 const isAdmin = computed(() =>
   members.value.some((m) => m.userId === user.value?.id && m.role === "admin"),
-);
-
-const { data: categoriesData, refresh: refreshCategories } = await useFetch(
-  () => `/api/rooms/${roomId.value}/categories`,
 );
 
 const categories = computed(() => {

@@ -13,11 +13,14 @@ const toast = useToast();
 
 const { user } = useUserSession();
 
-const { data: membersRes } = await useFetch(() => `/api/rooms/${roomId.value}/members`);
-const { data: categoriesRes } = await useFetch(() => `/api/rooms/${roomId.value}/categories`);
-const { data: templatesRes, refresh: refreshTemplates } = await useFetch(
-  () => `/api/rooms/${roomId.value}/templates`,
-);
+const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
+const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
+const templatesFetch = useFetch(() => `/api/rooms/${roomId.value}/templates`);
+const [
+  { data: membersRes },
+  { data: categoriesRes },
+  { data: templatesRes, refresh: refreshTemplates },
+] = await Promise.all([membersFetch, categoriesFetch, templatesFetch]);
 
 const members = computed(() => {
   if (!isSuccessResponse(membersRes.value)) return [];
@@ -419,8 +422,10 @@ const columns: TableColumn<Category>[] = [
           <p class="text-sm text-muted">No recurring categories</p>
           <p class="text-xs text-dimmed">
             Mark a category as 'Monthly recurring' on the
-            <ULink :to="`/rooms/${roomId}/categories`" class="text-primary underline">Categories</ULink> page to set
-            up a template.
+            <ULink :to="`/rooms/${roomId}/categories`" class="text-primary underline"
+              >Categories</ULink
+            >
+            page to set up a template.
           </p>
         </div>
       </template>

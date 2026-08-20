@@ -9,7 +9,7 @@ const toast = useToast();
 const { user } = useUserSession();
 const roomId = computed(() => user.value?.roomId ?? null);
 
-const { members, categories } = await useRoomLists(roomId);
+const { members, categories } = useRoomLists(roomId);
 
 const { data: thisMonthEntriesRes } = await useFetch(() => `/api/rooms/${roomId.value}/entries`, {
   query: { month: monthKey() },

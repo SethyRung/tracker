@@ -47,6 +47,13 @@ const emit = defineEmits<{
 
 const { user } = useUserSession();
 
+const route = useRoute();
+// Route param on scoped pages; session roomId as a fallback on the
+// not-yet-migrated flat pages that still render this form.
+const roomId = computed(
+  () => (route.params.roomId as string | undefined) ?? user.value?.roomId ?? "",
+);
+
 const paidByDefault = computed(
   () => props.members.find((m) => m.id === user.value?.id) ?? props.members[0],
 );
@@ -300,7 +307,9 @@ function onValidSubmit(event: FormSubmitEvent<FormState>) {
         <div v-if="categories.length === 0" class="text-sm text-toned">No categories yet.</div>
         <div v-else-if="displayCategories.length === 0" class="text-sm text-toned">
           No categories available — recurring ones are managed on the
-          <NuxtLink to="/recurring" class="text-primary underline">Recurring</NuxtLink>
+          <NuxtLink :to="`/rooms/${roomId}/recurring`" class="text-primary underline"
+            >Recurring</NuxtLink
+          >
           page; once-a-month categories can be logged once per month.
         </div>
         <URadioGroup

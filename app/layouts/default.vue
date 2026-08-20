@@ -27,7 +27,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     to: `/settle/${monthKey()}`,
   },
   { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${roomId.value}/categories` },
-  { icon: "i-lucide-receipt", label: "Entries", to: "/entries" },
+  { icon: "i-lucide-receipt", label: "Entries", to: `/rooms/${roomId.value}/entries` },
   { icon: "i-lucide-repeat", label: "Recurring", to: `/rooms/${roomId.value}/recurring` },
 ]);
 </script>
@@ -78,7 +78,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       icon="i-lucide-plus"
       size="lg"
       class="fixed bottom-20 right-0 -translate-x-1/2 z-40 rounded-full shadow-lg"
-      to="/entries/new"
+      :to="`/rooms/${roomId}/entries/new`"
     />
   </div>
 </template>

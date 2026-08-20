@@ -10,7 +10,7 @@ const toast = useToast();
 const { user } = useUserSession();
 const roomId = computed(() => user.value?.roomId ?? null);
 
-const { members, categories } = await useRoomLists(roomId);
+const { members, categories } = useRoomLists(roomId);
 
 const entryId = computed(() => route.params.id as string);
 
