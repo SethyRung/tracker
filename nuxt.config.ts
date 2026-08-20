@@ -75,6 +75,7 @@ export default defineNuxtConfig({
     "/recurring": { auth: "user" },
     "/settle/**": { auth: "user" },
     "/onboarding/**": { auth: "user" },
+    "/rooms/**": { auth: "user" },
   },
 
   runtimeConfig: {
