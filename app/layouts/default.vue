@@ -1,25 +1,32 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 
-const { signOut } = useUserSession();
+const { signOut, user } = useUserSession();
+
+const route = useRoute();
+// Route param on scoped pages; session roomId as a fallback on the
+// not-yet-migrated flat pages that still use this layout.
+const roomId = computed(
+  () => (route.params.roomId as string | undefined) ?? user.value?.roomId ?? "",
+);
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-lucide-house",
     label: "Home",
-    to: "/dashboard",
+    to: `/rooms/${roomId.value}/dashboard`,
   },
   {
     icon: "i-lucide-users",
     label: "People",
-    to: "/members",
+    to: `/rooms/${roomId.value}/members`,
   },
   {
     icon: "i-lucide-scale",
     label: "Settle",
     to: `/settle/${monthKey()}`,
   },
-  { icon: "i-lucide-tag", label: "Categories", to: "/categories" },
+  { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${roomId.value}/categories` },
   { icon: "i-lucide-receipt", label: "Entries", to: "/entries" },
   { icon: "i-lucide-repeat", label: "Recurring", to: "/recurring" },
 ]);

@@ -429,7 +429,7 @@ const columns: TableColumn<Category>[] = [
             <p class="text-sm text-muted">No recurring categories</p>
             <p class="text-xs text-dimmed">
               Mark a category as 'Monthly recurring' on the
-              <ULink to="/categories" class="text-primary underline">Categories</ULink> page to set
+              <ULink :to="`/rooms/${roomId}/categories`" class="text-primary underline">Categories</ULink> page to set
               up a template.
             </p>
           </div>

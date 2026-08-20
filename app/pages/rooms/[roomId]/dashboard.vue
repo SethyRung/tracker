@@ -3,11 +3,7 @@ import type { TableColumn } from "@nuxt/ui";
 
 useHead({ title: "Dashboard · Tricker" });
 
-const route = useRoute();
-const roomId = computed(() => route.params.roomId as string);
-
-const lastRoomId = useLastRoomId();
-lastRoomId.value = roomId.value;
+const { roomId } = useScopedRoom();
 
 const { user } = useUserSession();
 
