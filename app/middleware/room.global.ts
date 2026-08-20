@@ -1,23 +1,17 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (to.path === "/onboarding/room" || to.path.startsWith("/onboarding/room/")) return;
-  if (to.path.startsWith("/join/")) return;
-  if (
-    to.path.startsWith("/sign-") ||
-    to.path.startsWith("/forgot-") ||
-    to.path.startsWith("/reset-")
-  ) {
-    return;
-  }
-  if (to.path === "/" || to.path === "/dashboard") {
-    const { loggedIn } = useUserSession();
-    if (!loggedIn.value) return;
-    try {
-      const res = await $fetch("/api/rooms/current");
-      if (!isSuccessResponse(res)) {
-        return navigateTo("/onboarding/room");
-      }
-    } catch {
-      return;
+  if (to.path !== "/") return;
+
+  const { loggedIn } = useUserSession();
+  if (!loggedIn.value) return;
+
+  try {
+    const res = await $fetch("/api/rooms");
+    if (isSuccessResponse(res)) {
+      return navigateTo(resolveRoomLanding(res.data));
     }
+  } catch {
+    // fetch error — fall through to the chooser
   }
+
+  return navigateTo("/rooms");
 });

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   auth: { only: "user" },
+  layout: "bare",
 });
 
 useHead({ title: "Onboarding · Tricker" });

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 definePageMeta({
   auth: { only: "user" },
+  layout: "bare",
 });
 
 useHead({ title: "Create room · Tricker" });
@@ -118,7 +119,19 @@ async function goNext() {
   }
 
   if (stepper.value?.hasNext) stepper.value?.next();
-  else await navigateTo("/dashboard");
+  else {
+    const id = roomId.value;
+    if (id) {
+      const lastRoomId = useCookie<string>("lastRoomId", {
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 365,
+      });
+      lastRoomId.value = id;
+      await navigateTo(`/rooms/${id}/dashboard`);
+    } else {
+      await navigateTo("/rooms");
+    }
+  }
 }
 </script>
 

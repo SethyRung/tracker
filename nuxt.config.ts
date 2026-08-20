@@ -48,7 +48,7 @@ export default defineNuxtConfig({
     redirects: {
       login: "/sign-in",
       guest: "/",
-      authenticated: "/dashboard",
+      authenticated: "/",
       logout: "/sign-in",
     },
   },
@@ -76,6 +76,7 @@ export default defineNuxtConfig({
     "/settle/**": { auth: "user" },
     "/onboarding/**": { auth: "user" },
     "/rooms/**": { auth: "user" },
+    "/rooms": { auth: "user" },
   },
 
   runtimeConfig: {
