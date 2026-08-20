@@ -2,10 +2,6 @@
 import { z } from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
-definePageMeta({
-  auth: { only: "user" },
-});
-
 useHead({ title: "Join room · Tricker" });
 
 const route = useRoute();
@@ -36,7 +32,7 @@ async function onAccept(event: FormSubmitEvent<Schema>) {
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
 
     await fetchSession({ force: true });
-    await navigateTo("/dashboard");
+    await navigateTo(`/rooms/${res.data.roomId}/dashboard`);
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",

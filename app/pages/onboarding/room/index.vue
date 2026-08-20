@@ -36,7 +36,7 @@ const { user } = useUserSession();
         description="Open the invite link your admin sent you. If you opened it from email, you're already here."
       >
         <template #footer>
-          <UButton color="neutral" variant="outline" to="/dashboard" label="Go to dashboard" />
+          <UButton color="neutral" variant="outline" to="/rooms" label="Go to rooms" />
         </template>
       </UPageCard>
     </div>

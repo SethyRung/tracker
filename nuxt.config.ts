@@ -21,7 +21,6 @@ export default defineNuxtConfig({
     clientBundle: { scan: true },
   },
 
-
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
@@ -71,17 +70,10 @@ export default defineNuxtConfig({
     "/sign-up": { auth: "guest" },
     "/forgot-password": { auth: "guest" },
     "/reset-password": { auth: "guest" },
-    "/dashboard/**": { auth: "user" },
-    "/month/**": { auth: "user" },
-    "/bills/**": { auth: "user" },
-    "/payments/**": { auth: "user" },
-    "/members": { auth: "user" },
-    "/categories": { auth: "user" },
-    "/recurring": { auth: "user" },
-    "/settle/**": { auth: "user" },
     "/onboarding/**": { auth: "user" },
     "/rooms/**": { auth: "user" },
     "/rooms": { auth: "user" },
+    "/join/**": { auth: "user" },
   },
 
   runtimeConfig: {

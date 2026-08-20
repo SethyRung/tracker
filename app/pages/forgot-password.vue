@@ -4,7 +4,7 @@ import { z } from "zod";
 
 definePageMeta({
   layout: "auth",
-  auth: { only: "guest", redirectTo: "/dashboard" },
+  auth: { only: "guest", redirectTo: "/" },
 });
 
 useHead({

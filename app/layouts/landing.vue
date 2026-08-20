@@ -10,9 +10,7 @@ const items = computed<NavigationMenuItem[]>(() => [
 const { loggedIn } = useUserSession();
 
 const authCta = computed(() =>
-  loggedIn.value
-    ? { to: "/dashboard", label: "Go to dashboard" }
-    : { to: "/sign-in", label: "Get started" },
+  loggedIn.value ? { to: "/rooms", label: "Go to app" } : { to: "/sign-in", label: "Get started" },
 );
 
 const year = new Date().getFullYear();

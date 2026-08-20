@@ -48,11 +48,7 @@ const emit = defineEmits<{
 const { user } = useUserSession();
 
 const route = useRoute();
-// Route param on scoped pages; session roomId as a fallback on the
-// not-yet-migrated flat pages that still render this form.
-const roomId = computed(
-  () => (route.params.roomId as string | undefined) ?? user.value?.roomId ?? "",
-);
+const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
 
 const paidByDefault = computed(
   () => props.members.find((m) => m.id === user.value?.id) ?? props.members[0],

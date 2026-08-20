@@ -6,28 +6,6 @@ export function newId(): string {
   return crypto.randomUUID();
 }
 
-export async function getActiveRoom(event: H3Event) {
-  const session = await requireUserSession(event);
-  const userId = session.user.id;
-
-  const membership = await db
-    .select({ room: schema.rooms })
-    .from(schema.roomMemberships)
-    .innerJoin(schema.rooms, eq(schema.rooms.id, schema.roomMemberships.roomId))
-    .where(
-      and(eq(schema.roomMemberships.userId, userId), eq(schema.roomMemberships.isActive, true)),
-    )
-    .orderBy(asc(schema.roomMemberships.joinedAt))
-    .limit(1);
-  const room = membership[0]?.room;
-
-  if (!room) {
-    throw createError({ statusCode: 404, statusMessage: "Room not found" });
-  }
-
-  return room;
-}
-
 export async function requireRoomContext(event: H3Event, roomId: string) {
   const session = await requireUserSession(event);
   const userId = session.user.id;

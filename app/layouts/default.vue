@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 
-const { signOut, user } = useUserSession();
+const { signOut } = useUserSession();
 
 const route = useRoute();
-// Route param on scoped pages; session roomId as a fallback on the
-// not-yet-migrated flat pages that still use this layout.
-const roomId = computed(
-  () => (route.params.roomId as string | undefined) ?? user.value?.roomId ?? "",
-);
+const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {

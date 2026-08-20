@@ -7,7 +7,7 @@ const { loggedIn } = useUserSession();
 
 const primaryCta = computed(() =>
   loggedIn.value
-    ? { to: "/dashboard", label: "Go to dashboard" }
+    ? { to: "/rooms", label: "Go to app" }
     : { to: "/sign-in", label: "Get started free" },
 );
 

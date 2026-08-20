@@ -17,7 +17,7 @@ async function onResend() {
   if (!user.value) return;
   await resendVerification.execute({
     email: user.value.email,
-    callbackURL: "/dashboard",
+    callbackURL: "/",
   });
   if (resendVerification.status.value === "success") resent.value = true;
 }

@@ -206,9 +206,7 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
 
     <UCard class="mb-4">
       <template #header>
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
-          Totals this month
-        </h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">Totals this month</h2>
       </template>
       <div class="grid grid-cols-2 gap-3">
         <div class="rounded-lg bg-elevated p-3">
@@ -253,7 +251,10 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
               Draft
             </UBadge>
           </div>
-          <NuxtLink :to="`/rooms/${roomId}/entries/${e.id}`" class="text-sm text-default hover:text-primary">
+          <NuxtLink
+            :to="`/rooms/${roomId}/entries/${e.id}`"
+            class="text-sm text-default hover:text-primary"
+          >
             {{ e.notes ?? "—" }}
           </NuxtLink>
           <div class="flex items-center justify-between text-xs text-toned">
