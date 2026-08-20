@@ -28,7 +28,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   },
   { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${roomId.value}/categories` },
   { icon: "i-lucide-receipt", label: "Entries", to: "/entries" },
-  { icon: "i-lucide-repeat", label: "Recurring", to: "/recurring" },
+  { icon: "i-lucide-repeat", label: "Recurring", to: `/rooms/${roomId.value}/recurring` },
 ]);
 </script>
 
