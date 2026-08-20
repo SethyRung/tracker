@@ -165,9 +165,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
         icon="i-lucide-file-pen-line"
         :title="draftsLabel"
         description="Review and publish pending drafts so they count toward this month."
-        :actions="[
-          { label: 'Review drafts', to: '/entries', color: 'warning', variant: 'solid' },
-        ]"
+        :actions="[{ label: 'Review drafts', to: '/entries', color: 'warning', variant: 'solid' }]"
       />
 
       <div class="grid grid-cols-2 gap-4">

@@ -19,8 +19,7 @@ export default defineEventHandler(async (event) => {
       where: (r, { inArray }) => inArray(r.id, roomIds),
     }),
     db.query.roomMemberships.findMany({
-      where: (m, { and, inArray, eq }) =>
-        and(inArray(m.roomId, roomIds), eq(m.isActive, true)),
+      where: (m, { and, inArray, eq }) => and(inArray(m.roomId, roomIds), eq(m.isActive, true)),
     }),
   ]);
 

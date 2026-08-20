@@ -33,11 +33,7 @@ const items = computed<DropdownMenuItem[]>(() => {
 </script>
 
 <template>
-  <UDropdownMenu
-    v-if="currentRoomId"
-    :items="items"
-    :content="{ align: 'end', sideOffset: 8 }"
-  >
+  <UDropdownMenu v-if="currentRoomId" :items="items" :content="{ align: 'end', sideOffset: 8 }">
     <UButton
       :label="currentRoom?.name ?? 'Room'"
       icon="i-lucide-house"
