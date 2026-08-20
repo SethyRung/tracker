@@ -3,10 +3,7 @@ import type { DropdownMenuItem } from "@nuxt/ui";
 
 const { rooms, currentRoom, currentRoomId } = useRoomMemberships();
 
-const lastRoomId = useCookie<string>("lastRoomId", {
-  sameSite: "lax",
-  maxAge: 60 * 60 * 24 * 365,
-});
+const lastRoomId = useLastRoomId();
 
 const otherRooms = computed(() => rooms.value.filter((r) => r.id !== currentRoomId.value));
 

@@ -48,10 +48,10 @@ export default defineEventHandler(async (event) => {
   });
 
   if (existing) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "Already a member of this room.",
-    });
+    return createResponse(
+      { code: ApiResponseCode.Success },
+      { roomId: row.roomId, membershipId: existing.id, alreadyMember: true },
+    );
   }
 
   const usedColors = await db.query.roomMemberships.findMany({

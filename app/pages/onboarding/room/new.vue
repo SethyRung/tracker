@@ -63,6 +63,7 @@ const form = useTemplateRef("form");
 const submitting = ref(false);
 const roomId = ref<string | null>(null);
 const inviteOpen = ref(false);
+const lastRoomId = useLastRoomId();
 
 const roomCreated = computed(() => roomId.value !== null);
 
@@ -122,10 +123,6 @@ async function goNext() {
   else {
     const id = roomId.value;
     if (id) {
-      const lastRoomId = useCookie<string>("lastRoomId", {
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 365,
-      });
       lastRoomId.value = id;
       await navigateTo(`/rooms/${id}/dashboard`);
     } else {

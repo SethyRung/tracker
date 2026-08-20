@@ -5,22 +5,31 @@ useHead({ title: "Your rooms · Tricker" });
 
 const { rooms, status } = useRoomMemberships();
 
-const lastRoomId = useCookie<string>("lastRoomId", {
-  sameSite: "lax",
-  maxAge: 60 * 60 * 24 * 365,
-});
+const lastRoomId = useLastRoomId();
 
 const loading = computed(() => status.value === "pending" && rooms.value.length === 0);
+const joinOpen = ref(false);
 </script>
 
 <template>
   <UContainer class="max-w-3xl py-6 space-y-6">
-    <header class="flex items-end justify-between gap-4">
+    <header class="flex flex-wrap items-end justify-between gap-4">
       <div class="space-y-1">
         <p class="font-mono text-xs uppercase tracking-wider text-toned">Rooms</p>
         <h1 class="font-pixel-circle text-2xl text-primary">Choose a room</h1>
       </div>
-      <UButton icon="i-lucide-plus" label="Create new room" to="/onboarding/room" />
+
+      <div class="flex items-center gap-2">
+        <UButton icon="i-lucide-plus" label="Create new room" to="/onboarding/room" />
+
+        <UButton
+          icon="i-lucide-ticket"
+          label="Join room"
+          color="neutral"
+          variant="outline"
+          @click="joinOpen = true"
+        />
+      </div>
     </header>
 
     <div v-if="loading" class="grid gap-4 sm:grid-cols-2">
@@ -30,13 +39,23 @@ const loading = computed(() => status.value === "pending" && rooms.value.length 
     <div v-else-if="rooms.length === 0" class="text-center py-12 space-y-3">
       <UIcon name="i-lucide-house" class="size-10 text-dimmed mx-auto" />
       <p class="text-sm text-muted">You're not in any room yet.</p>
-      <UButton
-        icon="i-lucide-plus"
-        label="Create your first room"
-        to="/onboarding/room"
-        color="primary"
-        variant="soft"
-      />
+      <div class="flex items-center justify-center gap-2 pt-1">
+        <UButton
+          icon="i-lucide-plus"
+          label="Create your first room"
+          to="/onboarding/room"
+          color="primary"
+          variant="soft"
+        />
+
+        <UButton
+          icon="i-lucide-ticket"
+          label="Join with invite code"
+          color="neutral"
+          variant="outline"
+          @click="joinOpen = true"
+        />
+      </div>
     </div>
 
     <div v-else class="grid gap-4 sm:grid-cols-2">
@@ -75,4 +94,6 @@ const loading = computed(() => status.value === "pending" && rooms.value.length 
       </NuxtLink>
     </div>
   </UContainer>
+
+  <JoinRoomModal v-model:open="joinOpen" />
 </template>

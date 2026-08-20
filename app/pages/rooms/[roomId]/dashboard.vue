@@ -6,10 +6,7 @@ useHead({ title: "Dashboard · Tricker" });
 const route = useRoute();
 const roomId = computed(() => route.params.roomId as string);
 
-const lastRoomId = useCookie<string>("lastRoomId", {
-  sameSite: "lax",
-  maxAge: 60 * 60 * 24 * 365,
-});
+const lastRoomId = useLastRoomId();
 lastRoomId.value = roomId.value;
 
 const { user } = useUserSession();

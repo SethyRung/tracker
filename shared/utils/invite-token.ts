@@ -20,3 +20,20 @@ export async function hashToken(token: string): Promise<string> {
 }
 
 export const INVITE_TOKEN_LENGTH = 8;
+
+/**Accepts a raw invite token or a full invite URL (https://host/join/<token>). */
+export function extractInviteToken(input: string): string {
+  const s = input.trim();
+  if (!s) return "";
+  const idx = s.lastIndexOf("/join/");
+  if (idx >= 0) {
+    return (s.slice(idx + "/join/".length).split(/[?#]/)[0] ?? "").trim();
+  }
+  try {
+    const seg = new URL(s).pathname.split("/").filter(Boolean).pop();
+    if (seg) return seg;
+  } catch {
+    // not a URL — treat the trimmed input as a raw token
+  }
+  return s;
+}
