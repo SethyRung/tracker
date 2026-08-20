@@ -17,6 +17,11 @@ export default defineNuxtConfig({
     "@nuxt/test-utils/module",
   ],
 
+  icon: {
+    clientBundle: { scan: true },
+  },
+
+
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
