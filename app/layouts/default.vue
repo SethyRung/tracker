@@ -35,6 +35,8 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       }"
     >
       <template #right>
+        <RoomSwitcher />
+
         <UColorModeButton />
 
         <UButton
