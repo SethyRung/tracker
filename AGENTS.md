@@ -1,127 +1,72 @@
 # AGENTS.md — Tricker
 
-Multi-tenant household bill tracker. Nuxt 4 + @nuxt/ui SaaS, Postgres (Neon prod / local docker), Better-Auth, Drizzle via NuxtHub.
+Multi-tenant household bill tracker. Nuxt 4 (`app/` client, `server/` Nitro) + @nuxt/ui, Postgres (local Docker / Neon prod), Better-Auth, Drizzle via NuxtHub.
 
-> **Source of truth**: when this file disagrees with `DESIGN.md` or `README.md`, those win.
+Theme: `DESIGN.md`. Do not change `future.compatibilityVersion: 4` or `compatibilityDate` in `nuxt.config.ts`.
 
-## Quick start
+## Setup
 
 ```bash
 bun install
-docker compose up -d postgres     # local Postgres on :5432
-cp .env.example .env               # then edit DATABASE_URL / auth secret / Resend keys
-bun run dev                        # http://localhost:3000
+docker compose up -d postgres     # :5432
+cp .env.example .env              # DATABASE_URL, NUXT_BETTER_AUTH_SECRET, Resend
+bun run dev                       # http://localhost:3000
 ```
 
-Requires Bun. `DATABASE_URL` + `DATABASE_DRIVER` env vars are read by NuxtHub's `hub.db` (see `nuxt.config.ts`). `DATABASE_DRIVER=postgres-js` for local/Postgres, `serverless` for Neon.
+Bun required. `DATABASE_URL` + `DATABASE_DRIVER` feed `hub.db` in `nuxt.config.ts`. Local: `DATABASE_DRIVER=postgres-js`. Neon: `serverless`.
 
 ## Commands
 
 ```bash
-bun run dev              # dev server
-bun run build            # production build
-bun run preview          # preview built app
-bun run typecheck        # nuxt typecheck (vue-tsc)
-bun run lint             # oxlint
-bun run lint:fix         # oxlint --fix
-bun run fmt              # oxfmt (write)
-bun run fmt:check        # oxfmt --check
-bun run test             # vitest (all projects)
-bun run test:unit        # vitest --project unit
-bun run test:nuxt        # vitest --project nuxt (Nuxt env, bun:test stubbed)
-bun run db:generate      # nuxt-hub db generate  — make new migration from schema
-bun run db:migrate       # nuxt-hub db migrate   — apply migrations
-bun run db:drop          # nuxt-hub db drop      — drop tables
+bun run lint && bun run typecheck && bunx vitest run   # before push
+bunx vitest run --project unit money                   # one file
+bun run db:generate | db:migrate | db:drop             # NuxtHub CLI, not drizzle-kit directly
 ```
 
-Suggested order before pushing: `lint -> typecheck -> test`.
+`bun run test` / `test:unit` / `test:nuxt` are **watch**. No `test:e2e` script. No CI.
 
-## Repo layout
+Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **off**). Format is oxfmt (2-space, semicolons, double quotes, trailing commas, printWidth 100).
 
-```
-app/            Nuxt 4 client (pages, layouts, components, composables, middleware, assets)
-  middleware/   auth.global.ts (no-op stub — real auth is via routeRules) + room.global.ts (redirect / and /dashboard to onboarding if no room)
-  app.config.ts UI theme: primary="primary", neutral="zinc"
-server/         Nitro server
-  api/rooms/    All app routes scoped under /api/rooms/[id]/... (multi-tenant)
-  db/           schema.ts (Drizzle pg tables) + migrations/postgresql/ (generated SQL + meta)
-  tasks/recurring/materialize.ts   nitro scheduled task
-  utils/        db-backed helpers (room, month, settle, recurring, email, response)
-shared/         Code imported by BOTH client and server
-  schemas/      Zod schemas (drizzle-zod) — single source of validation
-  types/        money, weight, response, member-color
-  utils/        pure helpers (date, settle, recurring, invite-token, admin-succession)
-public/fonts/   Geist + custom Geist Pixel font faces (loaded in main.css)
-DESIGN.md       Theme spec (olive-green primary, Geist type, pixel-letter details)
-```
+## Layout agents get wrong
 
-Nuxt 4 with `future.compatibilityVersion: 4` and `compatibilityDate: "2026-08-01"` — keep using `app/` for client code, `server/` for Nitro.
+- Pages: `/rooms/[roomId]/...` (param **`roomId`**). API: `/api/rooms/[id]/...` (param **`id`**, use `getRoomId(event)`).
+- Users can belong to **many** rooms. Logged-in `/` → `resolveRoomLanding` (exactly one room → that dashboard, else `/rooms`). `app/middleware/room.global.ts` only intercepts `/`. Onboarding is `/onboarding/room`, not forced.
+- `shared/` = isomorphic pure helpers. `server/utils/` = db-backed. **No `shared/schemas/`** — Zod is inline in each API route and form.
+- Room-scoped APIs: `requireRoomContext` / `requireRoomAdmin`. Return `createResponse` + `ApiResponseCode`, not raw bodies.
 
-## Database (Drizzle + NuxtHub)
+## Database
 
-- No `drizzle.config.ts`. Migrations are managed by the **NuxtHub CLI** (`nuxt-hub db generate/migrate/drop`), wired through `hub.db` in `nuxt.config.ts`. Output lands in `server/db/migrations/postgresql/`.
-- Access the client in server code via the virtual import `import { db } from "hub:db"` and tables via `import { rooms, ... } from "hub:db:schema"`. Schema source is `server/db/schema.ts`.
-- `hub.db.casing: "snake_case"` and `auth.schema.casing: "snake_case"` — DB columns are snake_case; Drizzle maps them. Keep new columns snake_case in SQL.
-- Auth tables come from Better-Auth (`import { user } from "#auth/schema"` in schema.ts).
+- No `drizzle.config.ts`. Schema: `server/db/schema.ts`. Migrations: `server/db/migrations/postgresql/` via `nuxt-hub db generate/migrate`.
+- Prefer `import { db, schema } from "@nuxthub/db"`. Aliases `hub:db` / `hub:db:schema` exist; some older utils still use them.
+- `hub.db.casing` and `auth.schema.casing` are `snake_case`. JS fields camelCase (`amountMinor`); SQL columns snake_case (`amount_minor`).
+- Auth tables: `import { user } from "#auth/schema"`.
+- **Build gotcha**: `@onmax/nuxt-better-auth` jiti-loads `server/auth.config.ts` during Nuxt module setup, before Nitro aliases exist. A static import of `hub:db` / `hub:db:schema` (or anything that pulls them in) fails `bun run build`. Dynamic-import inside request-time fns only.
 
-## Conventions
+## Domain
 
-- **Money**: `amount_minor` as **integer** (BIGINT in Postgres). USD in cents, KHR no subunit. Never floats, never convert between currencies — two parallel ledgers. See `shared/types/money.ts`.
-- **Weights**: stored as **basis points** (`weight_bps` / `share_percent_bps`, 10000 = 100.00%). See `shared/types/weight.ts`.
-- **Time**: UTC stored, displayed in `Asia/Phnom_Penh`. Entry dates may be any historical date.
-- **Validation**: Zod everywhere — server (`server/api/**`) and client. Schemas live in `shared/schemas/` (drizzle-zod) and are the single source of truth. Don't hand-roll validation in routes.
-- **Multi-tenant**: every API route is under `/api/rooms/[id]/...`. Always scope queries by room id + the caller's membership.
-- **Formatting**: oxfmt — 2-space, LF, semicolons, double quotes, trailing comma all, printWidth 100. See `oxfmt.config.ts`.
-- **Linting**: oxlint with `typescript` + `vue` plugins. `@typescript-eslint/no-explicit-any` is **off** by design.
+- **Money**: integer minor units. Never floats. Never convert USD↔KHR — two parallel ledgers. Drizzle/API: `amountMinor`. `shared/types/money.ts` uses `amount_minor`.
+- **Weights**: integer bps, 10000 = 100%, must sum to 10000. Splits are per-entry `entry_weights` only — not membership `sharePercentBps`.
+- **Time**: month keys and display in `Asia/Phnom_Penh`. Month key `YYYY-MM`.
+- **Entries** are the unified bill/payment model (no payments table). Schema default is `draft`; create + materialize force `published`. Closed months reject writes (`assertMonthOpenForDate`).
+- **Categories** `recurringType`: `unlimited` | `once` (one entry/month) | `recurring` (templates only on these; one template per category).
+- **Recurring**: cron `0 17 * * *` = 00:00 ICT. Task no-ops unless ICT day-of-month is 1. Inserts **published** entries — helpers are named `*Draft*` but `status` is `"published"`. Creating an active template also materializes the current month.
 
-## Auth & routing
+## Auth & email
 
-- Better-Auth via `@onmax/nuxt-better-auth`. Email + password, email verification (sent on sign-up but does not block login — see `requireEmailVerification: false` in `server/auth.config.ts`), password reset, 30-day sliding sessions.
-- Route protection is **declarative** in `nuxt.config.ts` `routeRules`: `auth: "guest"` (sign-in/up/forgot/reset) vs `auth: "user"` (dashboard, month, bills, payments, members, categories, recurring, settle, onboarding). Don't add per-page middleware guards — use routeRules.
-- Auth redirects configured in `nuxt.config.ts` `auth.redirects` (login→`/sign-in`, authenticated→`/dashboard`, etc.).
-- `app/middleware/room.global.ts` redirects logged-in users with no room to `/onboarding/room`.
-- **Build gotcha — virtual `hub:db` imports in auth config**: `@onmax/nuxt-better-auth` loads `server/auth.config.ts` via **jiti** during Nuxt's module-setup phase to introspect plugin metadata for schema generation. At that point `hub:db` / `hub:db:schema` (Nitro aliases registered later) are unresolvable. In dev the error is swallowed and schema gen returns `{}`; in `bun run build` it halts the build. Any code reachable from a static `import` in `auth.config.ts` (e.g. a `customSession` plugin fn) must use **dynamic imports** inside the function body:
-  ```ts
-  const { db } = await import("hub:db");
-  const { ... } = await import("hub:db:schema");
-  ```
-  The fn only runs at request time (inside `customSession`'s `/get-session` endpoint), so Nitro resolves the aliases normally then. See commit `fa2d7cd` for the working pattern.
-
-## Email (Resend)
-
-- `server/utils/email.ts` reads `runtimeConfig.resend.apiKey` / `fromEmail` (`NUXT_RESEND_API_KEY`, `NUXT_RESEND_FROM_EMAIL`). If the API key is unset it **logs a warning and silently skips** sending — do not assume email throws. Verify delivery manually in dev.
-
-## Recurring bills
-
-- Templates auto-materialize as published entries on the 1st of each month via the nitro scheduled task `recurring:materialize`, configured in `nuxt.config.ts` `scheduledTasks` at `0 17 * * *` (daily 17:00 UTC). Templates also materialize immediately when created mid-month (`server/tasks/recurring/materialize.ts`, `server/utils/recurring.ts`).
+- Better-Auth via `@onmax/nuxt-better-auth`. Email+password; verification is sent on sign-up but `requireEmailVerification: false`. Config: `server/auth.config.ts` + `app/auth.config.ts`.
+- Protect with `routeRules` (`auth: "guest"` vs `"user"`). `app/middleware/auth.global.ts` is a no-op — don't add new auth middleware files.
+- Redirects: login/logout → `/sign-in`; authenticated/guest → `/`.
+- Resend: if `NUXT_RESEND_API_KEY` is unset, `server/utils/email.ts` **warns and skips**. Do not assume send throws.
 
 ## Testing
 
-- Three vitest projects: `unit` (node env, `test/unit/*`), `e2e` (node env, `test/e2e/*` — **no tests or `test:e2e` script yet**), and `nuxt` (Nuxt env, `test/nuxt/**`, `@nuxt/test-utils`).
-- The `nuxt` project aliases `bun:test` and `bun:test/mock` to `test/stubs/bun-test.ts` so tests written against bun's test API run under Vitest. Don't import `bun:test` in `unit`/`e2e` projects.
-- Run a single test file: `bunx vitest run test/unit/money.test.ts` or `bunx vitest run --project unit money`.
-
-## Known gaps
-
-- **No CI** — no `.github/workflows/`.
-- **No `test:e2e` script** and no e2e tests, despite the `e2e` vitest project being configured.
-- **No `test/nuxt/**` tests exist yet** — `bun run test:nuxt` is wired but runs 0 tests. Only `test/unit/*` has tests.
-- **`shared/schemas/` has no test coverage for some schemas** — most unit tests cover `shared/utils/` + `shared/types/`.
-
-## Available skills
-
-- `nuxt-ui` — building UIs with @nuxt/ui components
-- `nuxt-better-auth` — Better-Auth integration in Nuxt (client composables, server helpers, route protection)
-- `agent-browser` — browser automation / E2E flows
-
-See `.agents/skills/` (project-local). Use the `pi-subagents` user skill to delegate work.
+- `unit`: `test/unit/*.{test,spec}.ts` (**not recursive**). `e2e`: `test/e2e/*` (no dir). `nuxt`: `test/nuxt/**` (no dir, 0 tests).
+- The `nuxt` project aliases `bun:test` → `test/stubs/bun-test.ts`. Don't import `bun:test` in `unit`/`e2e`.
 
 ## Don't
 
-- Don't introduce float money anywhere. Use `amount_minor` (integer).
-- Don't convert between USD and KHR — they are parallel ledgers.
-- Don't add a new dep without a concrete user need.
-- Don't scaffold pages, API routes, or DB tables outside the existing scope without asking.
-- Don't change the Nuxt 4 compat flags in `nuxt.config.ts`.
-- Don't write tests under a path not covered by `vitest.config.ts` — they won't run.
-- Don't add per-page auth middleware — use `routeRules` in `nuxt.config.ts`.
+- Float money or convert USD↔KHR.
+- Add a dependency, or scaffold pages/API/tables outside existing scope, without asking.
+- Write tests outside the vitest globs above.
+
+Project skills: `.agents/skills/` (`nuxt-ui`, `nuxt-better-auth`, `agent-browser`).
