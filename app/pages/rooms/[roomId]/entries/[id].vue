@@ -82,8 +82,7 @@ async function onSubmit({
 }) {
   if (!roomId.value) return;
 
-  const amountMinor =
-    data.currency === "USD" ? Math.round(data.amountMajor * 100) : Math.round(data.amountMajor);
+  const amountMinor = toAmountMinor(data.currency as Currency, data.amountMajor);
 
   submitting.value = true;
   try {

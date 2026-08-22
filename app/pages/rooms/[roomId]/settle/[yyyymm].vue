@@ -29,9 +29,6 @@ const plans = computed<SettleData["usd"][]>(() =>
   settleRes.value ? [settleRes.value.usd, settleRes.value.khr] : [],
 );
 
-const currencyIcon = (currency: string) =>
-  currency === "USD" ? "i-lucide-dollar-sign" : "i-lucide-coins";
-
 function signedBalance(balance: number, formatted: string) {
   if (balance > 0) return `+${formatted}`;
   if (balance < 0) return formatted.replace("-", "−");
@@ -117,7 +114,7 @@ async function runMonthAction(action: "close" | "reopen") {
         <template #header>
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-              <UIcon :name="currencyIcon(plan.currency)" class="size-4 text-toned" />
+              <UIcon :name="currencyIcon(plan.currency as Currency)" class="size-4 text-toned" />
               <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
                 {{ plan.currency }}
               </h2>

@@ -154,7 +154,7 @@ async function populate(data: EntryInitial) {
   }));
   state.description = data.notes ?? "";
   state.currency = data.currency as (typeof state)["currency"];
-  state.amountMajor = data.currency === "USD" ? data.amountMinor / 100 : data.amountMinor;
+  state.amountMajor = toAmountMajor(data.currency as Currency, data.amountMinor);
   state.date = data.date ? new Date(data.date).toISOString() : "";
   state.paidByMembershipId = data.paidByMembershipId;
   state.categoryId = data.categoryId ?? "";
@@ -303,9 +303,9 @@ function onValidSubmit(event: FormSubmitEvent<FormState>) {
         <div v-if="categories.length === 0" class="text-sm text-toned">No categories yet.</div>
         <div v-else-if="displayCategories.length === 0" class="text-sm text-toned">
           No categories available — recurring ones are managed on the
-          <NuxtLink :to="`/rooms/${roomId}/recurring`" class="text-primary underline"
-            >Recurring</NuxtLink
-          >
+          <NuxtLink :to="`/rooms/${roomId}/categories`" class="text-primary underline">
+            Recurring
+          </NuxtLink>
           page; once-a-month categories can be logged once per month.
         </div>
         <URadioGroup
