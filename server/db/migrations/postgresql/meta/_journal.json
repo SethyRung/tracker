@@ -43,6 +43,13 @@
       "when": 1786452539449,
       "tag": "0005_condemned_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787407261129,
+      "tag": "0006_goofy_infant_terrible",
+      "breakpoints": true
     }
   ]
 }
