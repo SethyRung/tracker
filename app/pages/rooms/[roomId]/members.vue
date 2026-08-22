@@ -108,26 +108,7 @@ const columns: TableColumn<Member>[] = [
       />
     </div>
 
-    <UTable :data="members" :columns="columns">
-      <template #empty>
-        <div class="text-center py-10 space-y-2">
-          <UIcon name="i-lucide-users" class="size-8 text-dimmed mx-auto" />
-          <p class="text-sm text-muted">No members yet</p>
-          <p class="text-xs text-dimmed">Invite someone to get started.</p>
-          <UButton
-            v-if="isAdmin"
-            icon="i-lucide-user-plus"
-            label="Invite"
-            class="mt-1"
-            @click="
-              () => {
-                inviteOpen = true;
-              }
-            "
-          />
-        </div>
-      </template>
-    </UTable>
+    <UTable :data="members" :columns="columns" />
 
     <MembersInviteModal v-model:open="inviteOpen" :room-id="roomId" />
     <MembersRemoveModal

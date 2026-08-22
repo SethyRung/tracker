@@ -253,24 +253,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
             td: 'text-toned',
           }"
           @select="onRowSelect"
-        >
-          <template #empty>
-            <div class="text-center py-10 space-y-2">
-              <UIcon name="i-lucide-receipt" class="size-8 text-dimmed mx-auto" />
-              <p class="text-sm text-muted">No activity yet</p>
-              <p class="text-xs text-dimmed">Log your first bill to see balances.</p>
-              <UButton
-                icon="i-lucide-plus"
-                label="Add entry"
-                :to="`/rooms/${roomId}/entries?new=1`"
-                color="primary"
-                variant="soft"
-                size="sm"
-                class="mt-1"
-              />
-            </div>
-          </template>
-        </UTable>
+        />
       </UCard>
     </div>
   </UContainer>
