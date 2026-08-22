@@ -59,8 +59,8 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     <UNavigationMenu
       :items="navItems"
       :ui="{
-        root: 'fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default',
-        list: 'w-screen py-2 px-4 sm:px-6 lg:px-8',
+        root: 'fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default md:justify-around',
+        list: 'w-screen md:w-max py-2 px-4 sm:px-6 lg:px-8',
         item: 'flex-1 py-0',
         link: 'flex-col gap-1 px-3',
         linkLeadingIcon: 'size-5',
