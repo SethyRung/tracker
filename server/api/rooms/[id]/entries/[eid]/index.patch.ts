@@ -85,6 +85,13 @@ export default defineEventHandler(async (event) => {
       message: "Entry not found",
     });
   }
+  if (entry.templateId) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Recurring entries are edited from the category.",
+    });
+  }
+
   const isAdmin = ctx.role === "admin";
   const isOwner = entry.createdByUserId === ctx.userId;
   if (!canMutate(entry, isAdmin, isOwner)) {

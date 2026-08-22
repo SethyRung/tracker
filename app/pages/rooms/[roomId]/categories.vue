@@ -51,6 +51,25 @@ watch(formOpen, (value) => {
   if (!value) editing.value = null;
 });
 
+const route = useRoute();
+
+watch(
+  [() => route.query.edit, categories],
+  () => {
+    const editId = route.query.edit;
+    if (typeof editId !== "string" || !editId) return;
+    if (!isAdmin.value) {
+      void navigateTo({ path: route.path, query: {} }, { replace: true });
+      return;
+    }
+    const found = categories.value.find((c) => c.id === editId);
+    if (!found) return;
+    editCategory(found);
+    void navigateTo({ path: route.path, query: {} }, { replace: true });
+  },
+  { immediate: true },
+);
+
 const UBadge = resolveComponent("UBadge");
 const UButton = resolveComponent("UButton");
 
