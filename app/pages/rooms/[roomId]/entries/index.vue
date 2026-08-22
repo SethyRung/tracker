@@ -28,36 +28,112 @@ const catName = (id: string | null) =>
   id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
 const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
 
+function isRecurring(e: Entry) {
+  if (e.templateId) return true;
+  return categories.value.find((c) => c.id === e.categoryId)?.recurringType === "recurring";
+}
+
 function canDelete(e: Entry) {
   if (isAdmin.value) return true;
   if (e.status === "draft") return false;
   return e.createdByUserId === user.value?.id;
 }
 
+function canEdit(e: Entry) {
+  if (isRecurring(e)) return false;
+  if (isAdmin.value) return true;
+  if (e.status === "draft") return false;
+  return e.createdByUserId === user.value?.id;
+}
+
+function editRecurring(entry: Entry) {
+  const to = entry.categoryId
+    ? `/rooms/${roomId.value}/categories?edit=${entry.categoryId}`
+    : `/rooms/${roomId.value}/categories`;
+  void navigateTo(to);
+}
+
+function canPublish(e: Entry) {
+  return isAdmin.value && e.status === "draft";
+}
+
 const entryToRemove = ref<Entry | null>(null);
+const editing = ref<Entry | null>(null);
+const formOpen = ref(false);
+const publishingId = ref<string | null>(null);
+const toast = useToast();
+const route = useRoute();
 
-const statusFilter = ref<"all" | "draft" | "published">("all");
-
-const statusItems = [
-  { label: "All", value: "all" },
-  { label: "Drafts", value: "draft" },
-  { label: "Published", value: "published" },
-];
-
-const filtered = computed(() =>
-  entries.value
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .filter((e) => (statusFilter.value === "all" ? true : e.status === statusFilter.value)),
+const currentMonth = monthKey();
+const blockedCategoryIds = computed(() =>
+  Array.from(
+    new Set(
+      entries.value
+        .filter(
+          (e) =>
+            e.status === "published" && e.categoryId && monthKey(new Date(e.date)) === currentMonth,
+        )
+        .map((e) => e.categoryId as string),
+    ),
+  ),
 );
 
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Phnom_Penh",
-  }).format(new Date(iso));
+function editEntry(entry: Entry) {
+  editing.value = entry;
+  formOpen.value = true;
+}
+
+watch(formOpen, (value) => {
+  if (!value) editing.value = null;
+});
+
+watch(
+  [() => route.query.new, () => route.query.edit, entries],
+  () => {
+    if (route.query.new != null && route.query.new !== "false") {
+      editing.value = null;
+      formOpen.value = true;
+      void navigateTo({ path: route.path, query: {} }, { replace: true });
+      return;
+    }
+    const editId = route.query.edit;
+    if (typeof editId !== "string" || !editId) return;
+    const found = entries.value.find((e) => e.id === editId);
+    if (!found) return;
+    if (isRecurring(found)) {
+      void navigateTo(
+        found.categoryId
+          ? `/rooms/${roomId.value}/categories?edit=${found.categoryId}`
+          : `/rooms/${roomId.value}/categories`,
+        { replace: true },
+      );
+      return;
+    }
+    editEntry(found);
+    void navigateTo({ path: route.path, query: {} }, { replace: true });
+  },
+  { immediate: true },
+);
+
+async function onPublish(entry: Entry) {
+  if (publishingId.value) return;
+  publishingId.value = entry.id;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/entries/${entry.id}/publish`, {
+      method: "POST",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    await refreshEntries();
+    toast.add({ icon: "i-lucide-circle-check", title: "Published" });
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not publish.",
+    });
+  } finally {
+    publishingId.value = null;
+  }
 }
 
 function splitSummary(e: Entry) {
@@ -73,7 +149,7 @@ const columns: TableColumn<Entry>[] = [
   {
     accessorKey: "date",
     header: "Date",
-    cell: ({ row }) => formatDate(row.original.date),
+    cell: ({ row }) => toDayJS(row.original.date).format("MMM DD, YYYY"),
     meta: { class: { td: "whitespace-nowrap text-toned" } },
   },
   {
@@ -118,17 +194,45 @@ const columns: TableColumn<Entry>[] = [
     header: "",
     cell: ({ row }) =>
       h("div", { class: "flex items-center justify-end gap-1" }, [
-        h(UButton, {
-          icon: "i-lucide-pencil",
-          color: "neutral",
-          variant: "ghost",
-          size: "xs",
-          "aria-label": "Edit",
-          onClick: (ev: Event) => {
-            ev.stopPropagation();
-            navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
-          },
-        }),
+        canPublish(row.original)
+          ? h(UButton, {
+              icon: "i-lucide-send",
+              color: "warning",
+              variant: "ghost",
+              size: "xs",
+              loading: publishingId.value === row.original.id,
+              "aria-label": "Publish",
+              onClick: (ev: Event) => {
+                ev.stopPropagation();
+                void onPublish(row.original);
+              },
+            })
+          : null,
+        isRecurring(row.original) && isAdmin.value
+          ? h(UButton, {
+              icon: "i-lucide-tag",
+              color: "neutral",
+              variant: "ghost",
+              size: "xs",
+              "aria-label": "Edit category",
+              onClick: (ev: Event) => {
+                ev.stopPropagation();
+                editRecurring(row.original);
+              },
+            })
+          : canEdit(row.original)
+            ? h(UButton, {
+                icon: "i-lucide-pencil",
+                color: "neutral",
+                variant: "ghost",
+                size: "xs",
+                "aria-label": "Edit",
+                onClick: (ev: Event) => {
+                  ev.stopPropagation();
+                  editEntry(row.original);
+                },
+              })
+            : null,
         canDelete(row.original)
           ? h(UButton, {
               icon: "i-lucide-trash",
@@ -148,7 +252,11 @@ const columns: TableColumn<Entry>[] = [
 ];
 
 function onRowSelect(_e: Event, row: { original: Entry }) {
-  navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
+  if (isRecurring(row.original)) {
+    if (isAdmin.value) editRecurring(row.original);
+    return;
+  }
+  if (canEdit(row.original)) editEntry(row.original);
 }
 </script>
 
@@ -159,40 +267,32 @@ function onRowSelect(_e: Event, row: { original: Entry }) {
         <p class="font-mono text-xs uppercase tracking-wider text-toned">Room</p>
         <h1 class="font-pixel-circle text-2xl text-primary">Entries</h1>
         <p class="text-xs text-toned">
-          {{ filtered.length }} entr{{ filtered.length === 1 ? "y" : "ies" }}
+          {{ entries.length }} entr{{ entries.length === 1 ? "y" : "ies" }}
         </p>
       </div>
 
-      <UFormField label="Status" class="w-40">
-        <USelect v-model="statusFilter" :items="statusItems" value-key="value" class="w-32" />
-      </UFormField>
+      <EntryForm
+        v-model:open="formOpen"
+        :room-id="roomId"
+        :members="members"
+        :categories="categories"
+        :blocked-category-ids="blockedCategoryIds"
+        :entry="editing"
+        @refresh="refreshEntries"
+      >
+        <UButton icon="i-lucide-plus" label="Add" @click="editing = null" />
+      </EntryForm>
     </div>
 
     <UTable
-      :data="filtered"
+      :data="entries"
       :columns="columns"
       :loading="entriesStatus === 'pending'"
       :ui="{
         tr: 'cursor-pointer hover:bg-elevated/50',
       }"
       @select="onRowSelect"
-    >
-      <template #empty>
-        <div class="text-center py-10 space-y-2">
-          <UIcon name="i-lucide-receipt" class="size-8 text-dimmed mx-auto" />
-          <p class="text-sm text-muted">No entries match these filters</p>
-          <p class="text-xs text-dimmed">Log a bill or change the status filter.</p>
-          <UButton
-            icon="i-lucide-plus"
-            label="Add entry"
-            :to="`/rooms/${roomId}/entries/new`"
-            color="primary"
-            variant="soft"
-            class="mt-1"
-          />
-        </div>
-      </template>
-    </UTable>
+    />
 
     <EntriesRemoveModal
       :open="entryToRemove !== null"

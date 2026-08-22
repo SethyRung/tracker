@@ -252,7 +252,7 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
             </UBadge>
           </div>
           <NuxtLink
-            :to="`/rooms/${roomId}/entries/${e.id}`"
+            :to="`/rooms/${roomId}/entries?edit=${e.id}`"
             class="text-sm text-default hover:text-primary"
           >
             {{ e.notes ?? "—" }}

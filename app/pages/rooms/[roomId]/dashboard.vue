@@ -120,7 +120,7 @@ const recentColumns: TableColumn<(typeof recentEntries.value)[number]>[] = [
 ];
 
 function onRowSelect(_e: Event, row: { original: { id: string } }) {
-  navigateTo(`/rooms/${roomId.value}/entries/${row.original.id}`);
+  navigateTo(`/rooms/${roomId.value}/entries?edit=${row.original.id}`);
 }
 </script>
 
@@ -262,7 +262,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
               <UButton
                 icon="i-lucide-plus"
                 label="Add entry"
-                :to="`/rooms/${roomId}/entries/new`"
+                :to="`/rooms/${roomId}/entries?new=1`"
                 color="primary"
                 variant="soft"
                 size="sm"

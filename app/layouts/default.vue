@@ -67,12 +67,5 @@ const navItems = computed<NavigationMenuItem[]>(() => [
         linkLabel: 'text-[10px]/3 font-normal',
       }"
     />
-
-    <UButton
-      icon="i-lucide-plus"
-      size="lg"
-      class="fixed bottom-20 right-0 -translate-x-1/2 z-40 rounded-full shadow-lg"
-      :to="`/rooms/${roomId}/entries/new`"
-    />
   </div>
 </template>
