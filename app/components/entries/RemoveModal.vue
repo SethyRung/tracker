@@ -13,6 +13,14 @@ const open = defineModel<boolean>("open");
 const toast = useToast();
 const busy = ref(false);
 
+const { isMD } = useBreakpoints();
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+const OverlayComponent = computed(() => ({
+  is: isMD.value ? UModal : UDrawer,
+  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
+}));
+
 async function onConfirm() {
   const entry = props.entry;
   if (!entry || busy.value) return;
@@ -38,14 +46,35 @@ async function onConfirm() {
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Delete this entry?" :ui="{ footer: 'justify-end' }">
+  <component
+    :is="OverlayComponent.is"
+    v-model:open="open"
+    title="Delete this entry?"
+    v-bind="OverlayComponent.props"
+  >
+    <slot />
+
     <template #body>
       <p class="text-toned">This entry will be permanently removed from the room.</p>
     </template>
 
     <template #footer="{ close }">
-      <UButton label="Cancel" color="neutral" variant="ghost" :disabled="busy" @click="close" />
-      <UButton label="Delete" color="error" :loading="busy" :disabled="!entry" @click="onConfirm" />
+      <UButton
+        v-if="isMD"
+        label="Cancel"
+        color="neutral"
+        variant="ghost"
+        :disabled="busy"
+        @click="close"
+      />
+      <UButton
+        label="Delete"
+        color="error"
+        :block="!isMD"
+        :loading="busy"
+        :disabled="!entry"
+        @click="onConfirm"
+      />
     </template>
-  </UModal>
+  </component>
 </template>

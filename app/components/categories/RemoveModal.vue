@@ -13,6 +13,14 @@ const open = defineModel<boolean>("open");
 const toast = useToast();
 const busy = ref(false);
 
+const { isMD } = useBreakpoints();
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+const OverlayComponent = computed(() => ({
+  is: isMD.value ? UModal : UDrawer,
+  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
+}));
+
 async function onConfirm() {
   const category = props.category;
   if (!category || busy.value) return;
@@ -38,11 +46,14 @@ async function onConfirm() {
 </script>
 
 <template>
-  <UModal
+  <component
+    :is="OverlayComponent.is"
     v-model:open="open"
     :title="`Remove ${category?.name ?? ''}?`"
-    :ui="{ footer: 'justify-end' }"
+    v-bind="OverlayComponent.props"
   >
+    <slot />
+
     <template #body>
       <p class="text-toned">
         Existing entries keep their label but new entries can't be assigned to this category.
@@ -50,14 +61,22 @@ async function onConfirm() {
     </template>
 
     <template #footer="{ close }">
-      <UButton label="Cancel" color="neutral" variant="ghost" :disabled="busy" @click="close" />
+      <UButton
+        v-if="isMD"
+        label="Cancel"
+        color="neutral"
+        variant="ghost"
+        :disabled="busy"
+        @click="close"
+      />
       <UButton
         label="Remove"
         color="error"
+        :block="!isMD"
         :loading="busy"
         :disabled="!category"
         @click="onConfirm"
       />
     </template>
-  </UModal>
+  </component>
 </template>
