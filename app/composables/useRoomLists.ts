@@ -6,7 +6,7 @@ export function useRoomLists(roomId: Ref<string | null | undefined>) {
     isSuccessResponse(membersRes.value) ? membersRes.value.data : [],
   );
   const categories = computed(() =>
-    isSuccessResponse(categoriesRes.value) ? (categoriesRes.value.data.categories ?? []) : [],
+    isSuccessResponse(categoriesRes.value) ? categoriesRes.value.data : [],
   );
 
   return { members, categories };
