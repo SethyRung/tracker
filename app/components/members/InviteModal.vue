@@ -1,22 +1,47 @@
 <script setup lang="ts">
 import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
 
-const props = defineProps<{
-  roomId: string;
-}>();
+const props = defineProps<{ roomId: string }>();
+const open = defineModel<boolean>("open", { default: false });
 
 const toast = useToast();
-const open = defineModel<boolean>("open");
 
 const loading = ref(false);
+const submitting = ref(false);
 
-const joinUrl = ref<string>("");
-const expiresAt = ref<string>("");
+const joinUrl = ref("");
+const expiresAt = ref("");
+
+const itemSchema = z.object({
+  email: z.email("Invalid email").max(254).or(z.literal("")),
+});
+
+type ItemSchema = z.output<typeof itemSchema>;
+
+const state = reactive<{ emails: Partial<ItemSchema>[] }>({
+  emails: [{}],
+});
+
+const hasEmails = computed(() => state.emails.some((e) => !!e.email?.trim()));
+
+function addEmail() {
+  state.emails.push({});
+}
+
+function removeEmail(index: number) {
+  if (state.emails.length > 1) state.emails.splice(index, 1);
+  else state.emails[index] = {};
+}
+
+function reset() {
+  state.emails = [{}];
+  submitting.value = false;
+}
 
 async function createInviteLink() {
   try {
     loading.value = true;
-
     const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/create`, {
       method: "POST",
     });
@@ -54,30 +79,9 @@ watch(open, (isOpen) => {
   if (isOpen) {
     createInviteLink();
   } else {
-    state.emails = [{}];
-    submitting.value = false;
+    reset();
   }
 });
-
-const itemSchema = z.object({
-  email: z.email("Invalid email").max(254),
-});
-
-type ItemSchema = z.output<typeof itemSchema>;
-
-const state = reactive<{ emails: Partial<ItemSchema>[] }>({
-  emails: [{}],
-});
-
-function addEmail() {
-  state.emails.push({});
-}
-
-function removeEmail() {
-  if (state.emails.length > 1) {
-    state.emails.pop();
-  }
-}
 
 function formatEmails(emails: string[], max = 4): string {
   if (emails.length <= max) return emails.join(", ");
@@ -85,19 +89,13 @@ function formatEmails(emails: string[], max = 4): string {
   return `${shown} and ${emails.length - max} more`;
 }
 
-const formRef = useTemplateRef("form");
-
-const submitting = ref(false);
-
-const hasEmails = computed(() => state.emails.some((e) => !!e.email?.trim()));
-
-async function onSubmit() {
+async function onSubmit(_event: FormSubmitEvent<Record<string, unknown>>) {
   if (submitting.value) return;
+  const emails = state.emails.map((e) => e.email?.trim()).filter((e): e is string => !!e);
+  if (emails.length === 0) return;
+
   submitting.value = true;
   try {
-    const emails = state.emails.map((e) => e.email?.trim()).filter((e): e is string => !!e);
-    if (emails.length === 0) return;
-
     const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/send`, {
       method: "POST",
       body: { emails },
@@ -130,6 +128,7 @@ async function onSubmit() {
         title: "Invites sent",
         description: formatEmails(successfulEmails),
       });
+      open.value = false;
     }
   } catch (e) {
     toast.add({
@@ -141,60 +140,89 @@ async function onSubmit() {
     submitting.value = false;
   }
 }
+
+const { isMD } = useBreakpoints();
+
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+
+const OverlayComponent = computed(() => {
+  return {
+    is: isMD.value ? UModal : UDrawer,
+    props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
+  };
+});
 </script>
 
 <template>
-  <UModal
+  <component
+    :is="OverlayComponent.is"
     v-model:open="open"
     title="Invite members"
-    :ui="{
-      body: 'space-y-4',
-      footer: 'justify-end',
-    }"
+    description="Email housemates or share an invite link."
+    v-bind="OverlayComponent.props"
   >
+    <slot />
+
     <template #body>
-      <UForm ref="form" :state="state" class="space-y-4" @submit="onSubmit">
-        <UForm
-          v-for="(item, count) in state.emails"
-          :key="count"
-          :name="`emails.${count}`"
-          :schema="itemSchema"
-          nested
-          class="space-y-2"
-        >
-          <UFormField
-            label="Email"
-            name="email"
-            orientation="horizontal"
-            class="w-full justify-start"
+      <UForm id="invite-form" :state="state" class="space-y-4" @submit="onSubmit">
+        <div class="space-y-2">
+          <UForm
+            v-for="(item, index) in state.emails"
+            :key="index"
+            :name="`emails.${index}`"
+            :schema="itemSchema"
+            nested
           >
-            <div class="flex gap-1 items-center">
-              <UInput v-model="item.email" placeholder="someone@example.com" class="flex-1" />
+            <UFormField name="email" label="Email" orientation="horizontal" class="w-full">
+              <div class="flex gap-1 items-center w-full">
+                <UInput
+                  v-model="item.email"
+                  type="email"
+                  placeholder="someone@example.com"
+                  size="lg"
+                  class="flex-1"
+                />
+                <UButton
+                  v-if="state.emails.length > 1"
+                  icon="i-lucide-trash"
+                  color="error"
+                  variant="soft"
+                  aria-label="Remove email"
+                  @click="removeEmail(index)"
+                />
+              </div>
+            </UFormField>
+          </UForm>
+        </div>
 
-              <UButton
-                v-if="count > 0"
-                icon="i-lucide:trash"
-                color="error"
-                variant="soft"
-                @click="removeEmail"
-              />
-            </div>
-          </UFormField>
-        </UForm>
-
-        <UButton color="neutral" variant="subtle" @click="addEmail"> Add email </UButton>
+        <UButton
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-plus"
+          label="Add email"
+          @click="addEmail"
+        />
       </UForm>
 
       <USeparator label="OR" />
 
-      <UFormField label="Invite link" :help="`Expired at ${expiresAt}`" class="w-full">
+      <UFormField label="Invite link" :help="expiresAt ? `Expires at ${expiresAt}` : undefined">
         <UFieldGroup class="w-full">
-          <UInput :model-value="joinUrl" readonly class="flex-1" />
+          <UInput
+            :model-value="joinUrl"
+            :placeholder="loading ? 'Generating…' : ''"
+            readonly
+            size="lg"
+            class="flex-1"
+          />
           <UTooltip text="Copy to clipboard">
             <UButton
               icon="i-lucide-clipboard"
               color="neutral"
               variant="subtle"
+              :loading="loading"
+              :disabled="loading || !joinUrl"
               aria-label="Copy link"
               @click="copyLink"
             />
@@ -205,19 +233,23 @@ async function onSubmit() {
 
     <template #footer="{ close }">
       <UButton
+        v-if="isMD"
         label="Cancel"
         color="neutral"
-        variant="subtle"
+        variant="ghost"
         :disabled="submitting"
         @click="close"
       />
       <UButton
+        type="submit"
+        form="invite-form"
         icon="i-lucide-send"
         label="Send invites"
+        size="lg"
+        :block="!isMD"
         :loading="submitting"
         :disabled="!hasEmails"
-        @click="formRef?.submit()"
       />
     </template>
-  </UModal>
+  </component>
 </template>
