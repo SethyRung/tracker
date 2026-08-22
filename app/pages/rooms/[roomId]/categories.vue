@@ -1,36 +1,13 @@
 <script setup lang="ts">
-import * as z from "zod";
 import { h } from "vue";
-import type { FormSubmitEvent, TableColumn } from "@nuxt/ui";
+import type { TableColumn } from "@nuxt/ui";
 
 useHead({ title: "Categories · Tricker" });
 
+const { user } = useUserSession();
 const { roomId } = useScopedRoom();
 
 const toast = useToast();
-
-const { user } = useUserSession();
-
-const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
-const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
-const [{ data: membersData }, { data: categoriesData, refresh: refreshCategories }] =
-  await Promise.all([membersFetch, categoriesFetch]);
-
-const members = computed(() => {
-  if (!isSuccessResponse(membersData.value)) return [];
-  return membersData.value.data;
-});
-
-const isAdmin = computed(() =>
-  members.value.some((m) => m.userId === user.value?.id && m.role === "admin"),
-);
-
-const categories = computed(() => {
-  if (!isSuccessResponse(categoriesData.value)) return [];
-  return categoriesData.value.data.categories ?? [];
-});
-
-type Category = (typeof categories.value)[number];
 
 const recurringTypeItems = [
   {
@@ -51,54 +28,26 @@ const recurringTypeItems = [
   },
 ];
 
-const schema = z.object({
-  name: z.string("Name is required").min(1, "Name is required"),
-  recurringType: z.enum(["unlimited", "once", "recurring"], "Recurring type is required"),
-});
+const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
+const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
+const [{ data: membersData }, { data: categoriesData, refresh }] = await Promise.all([
+  membersFetch,
+  categoriesFetch,
+]);
 
-type Schema = z.output<typeof schema>;
+const members = computed(() =>
+  isSuccessResponse(membersData.value) ? membersData.value.data : [],
+);
 
-const state = reactive<Partial<Schema>>({});
+const isAdmin = computed(() =>
+  members.value.some((m) => m.userId === user.value?.id && m.role === "admin"),
+);
 
-const showAddForm = ref(false);
-const submitting = ref(false);
+const categories = computed(() =>
+  isSuccessResponse(categoriesData.value) ? categoriesData.value.data : [],
+);
 
-function reset() {
-  state.name = undefined;
-  state.recurringType = undefined;
-  showAddForm.value = false;
-}
-
-async function addCategory(event: FormSubmitEvent<Schema>) {
-  if (!roomId.value || submitting.value) return;
-
-  const { name, recurringType } = event.data;
-
-  submitting.value = true;
-  try {
-    const maxSort = categories.value.reduce((max, c) => Math.max(max, c.sortOrder), -1);
-    const res = await $fetch(`/api/rooms/${roomId.value}/categories`, {
-      method: "POST",
-      body: {
-        name,
-        sortOrder: maxSort + 1,
-        recurringType,
-      },
-    });
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
-
-    reset();
-    await refreshCategories();
-  } catch (e) {
-    toast.add({
-      icon: "i-lucide-circle-x",
-      title: "Error",
-      description: e instanceof Error ? e.message : "Could not add category.",
-    });
-  } finally {
-    submitting.value = false;
-  }
-}
+type Category = (typeof categories.value)[number];
 
 const categoryToRemove = ref<Category | null>(null);
 
@@ -131,7 +80,7 @@ const columns: TableColumn<Category>[] = [
               body: { recurringType: v },
             });
             if (!isSuccessResponse(res)) throw new Error(res.status.message);
-            await refreshCategories();
+            await refresh();
           } catch (e) {
             toast.add({
               icon: "i-lucide-circle-x",
@@ -173,59 +122,19 @@ const columns: TableColumn<Category>[] = [
         <h1 class="font-pixel-circle text-2xl text-primary">Categories</h1>
         <p class="text-xs text-toned">{{ categories.length }} total</p>
       </div>
-      <UButton
-        v-if="isAdmin"
-        icon="i-lucide-plus"
-        label="Add"
-        :disabled="showAddForm"
-        @click="showAddForm = true"
-      />
+
+      <CategoryForm v-if="isAdmin" :room-id="roomId" :members="members" @refresh="refresh">
+        <UButton icon="i-lucide-plus" label="Add" />
+      </CategoryForm>
     </div>
 
-    <UCard v-if="showAddForm" variant="outline">
-      <UForm :schema="schema" :state="state" class="space-y-6" @submit="addCategory">
-        <UFormField label="Name" name="name">
-          <UInput v-model="state.name" size="lg" :ui="{ root: 'w-full' }" />
-        </UFormField>
-
-        <UFormField label="Recurring" name="recurringType">
-          <USelect
-            v-model="state.recurringType"
-            :items="recurringTypeItems"
-            size="lg"
-            :ui="{ root: 'w-full', base: 'w-full', itemDescription: 'text-wrap' }"
-          />
-        </UFormField>
-
-        <div class="flex gap-2">
-          <UButton type="submit" label="Add" :loading="submitting" />
-          <UButton label="Cancel" color="neutral" variant="ghost" @click="reset" />
-        </div>
-      </UForm>
-    </UCard>
-
-    <UTable :data="categories" :columns="columns">
-      <template #empty>
-        <div class="text-center py-10 space-y-2">
-          <UIcon name="i-lucide-folder-open" class="size-8 text-dimmed mx-auto" />
-          <p class="text-sm text-muted">No categories yet</p>
-          <p class="text-xs text-dimmed">Add one to start labeling entries.</p>
-          <UButton
-            v-if="isAdmin"
-            icon="i-lucide-plus"
-            label="Add"
-            class="mt-1"
-            @click="showAddForm = true"
-          />
-        </div>
-      </template>
-    </UTable>
+    <UTable :data="categories" :columns="columns" />
 
     <CategoriesRemoveModal
       :open="categoryToRemove !== null"
       :room-id="roomId"
       :category="categoryToRemove"
-      @removed="refreshCategories"
+      @removed="refresh"
     />
   </UContainer>
 </template>

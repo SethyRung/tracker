@@ -24,7 +24,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   },
   { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${roomId.value}/categories` },
   { icon: "i-lucide-receipt", label: "Entries", to: `/rooms/${roomId.value}/entries` },
-  { icon: "i-lucide-repeat", label: "Recurring", to: `/rooms/${roomId.value}/recurring` },
 ]);
 </script>
 
@@ -57,18 +56,17 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       <slot />
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default">
-      <UNavigationMenu
-        :items="navItems"
-        :ui="{
-          root: 'justify-around py-2 px-4 sm:px-6 lg:px-8',
-          item: 'py-0',
-          link: 'flex-col gap-1 px-3',
-          linkLeadingIcon: 'size-5',
-          linkLabel: 'text-[10px]/3 font-normal',
-        }"
-      />
-    </nav>
+    <UNavigationMenu
+      :items="navItems"
+      :ui="{
+        root: 'fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default',
+        list: 'w-screen py-2 px-4 sm:px-6 lg:px-8',
+        item: 'flex-1 py-0',
+        link: 'flex-col gap-1 px-3',
+        linkLeadingIcon: 'size-5',
+        linkLabel: 'text-[10px]/3 font-normal',
+      }"
+    />
 
     <UButton
       icon="i-lucide-plus"

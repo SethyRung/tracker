@@ -10,5 +10,5 @@ export default defineEventHandler(async (event) => {
     orderBy: (c, { asc }) => [asc(c.sortOrder), asc(c.name)],
   });
 
-  return createResponse({ code: ApiResponseCode.Success }, { categories: rows });
+  return createResponse({ code: ApiResponseCode.Success }, rows);
 });
