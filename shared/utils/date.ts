@@ -137,3 +137,21 @@ export function activeDaysInMonth(value: string, joinedAt: Date, leftAt: Date | 
 
   return dayjs(endDate).diff(dayjs(startDate), "day") + 1;
 }
+
+/**
+ * Get the ordinal suffix for a day of the month (1–31).
+ */
+export function dayOrdinal(day: number) {
+  const rem100 = day % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}

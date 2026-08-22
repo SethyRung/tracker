@@ -7,26 +7,11 @@ useHead({ title: "Categories · Tricker" });
 const { user } = useUserSession();
 const { roomId } = useScopedRoom();
 
-const toast = useToast();
-
-const recurringTypeItems = [
-  {
-    label: "Unlimited",
-    value: "unlimited",
-    description: "Log as many entries as you want in a month.",
-  },
-  {
-    label: "Once a month",
-    value: "once",
-    description: "One entry per month — a second is blocked; edit the existing one.",
-  },
-  {
-    label: "Monthly recurring",
-    value: "recurring",
-    description:
-      "Auto-post each month with a default amount; edit any time while the month is open.",
-  },
-];
+const typeMeta = {
+  unlimited: { label: "Unlimited", color: "neutral" },
+  once: { label: "Once", color: "info" },
+  recurring: { label: "Recurring", color: "primary" },
+} as const;
 
 const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
 const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
@@ -50,9 +35,24 @@ const categories = computed(() =>
 type Category = (typeof categories.value)[number];
 
 const categoryToRemove = ref<Category | null>(null);
+const editing = ref<Category | null>(null);
+const formOpen = ref(false);
 
+function editCategory(category: Category) {
+  editing.value = category;
+  formOpen.value = true;
+}
+
+function templateAmount(template: NonNullable<Category["template"]>) {
+  return formatMoney({ amount_minor: template.amountMinor, currency: template.currency });
+}
+
+watch(formOpen, (value) => {
+  if (!value) editing.value = null;
+});
+
+const UBadge = resolveComponent("UBadge");
 const UButton = resolveComponent("UButton");
-const USelect = resolveComponent("USelect");
 
 const columns: TableColumn<Category>[] = [
   {
@@ -62,60 +62,72 @@ const columns: TableColumn<Category>[] = [
   },
   {
     id: "recurringType",
-    header: "Recurring",
-    cell: ({ row }) =>
-      h(USelect, {
-        modelValue: row.original.recurringType,
-        items: recurringTypeItems,
-        class: "w-48",
-        disabled: !isAdmin.value,
-        "onUpdate:modelValue": async (v: Category["recurringType"]) => {
-          const cat = row.original;
+    header: "Type",
+    cell: ({ row }) => {
+      const meta = typeMeta[row.original.recurringType];
+      return h(UBadge, { label: meta.label, color: meta.color, variant: "subtle" });
+    },
+  },
+  {
+    id: "details",
+    header: "Schedule",
+    cell: ({ row }) => {
+      const template = row.original.template;
+      if (row.original.recurringType !== "recurring" || !template) {
+        return h("span", { class: "text-dimmed" }, "—");
+      }
 
-          if (!roomId.value || cat.recurringType === v) return;
-
-          try {
-            const res = await $fetch(`/api/rooms/${roomId.value}/categories/${cat.id}`, {
-              method: "PATCH",
-              body: { recurringType: v },
-            });
-            if (!isSuccessResponse(res)) throw new Error(res.status.message);
-            await refresh();
-          } catch (e) {
-            toast.add({
-              icon: "i-lucide-circle-x",
-              title: "Error",
-              description: e instanceof Error ? e.message : "Could not update category.",
-            });
-          }
-        },
-        ui: {
-          itemDescription: "text-wrap",
-        },
-      }),
+      return h("div", { class: "flex items-center gap-2" }, [
+        h("span", { class: "tabular-nums font-medium text-default" }, templateAmount(template)),
+        h(UBadge, {
+          color: "neutral",
+          variant: "subtle",
+          icon: "i-lucide-calendar-days",
+          label: `Every ${dayOrdinal(template.dayOfMonth)}`,
+        }),
+        template.isActive
+          ? null
+          : h(UBadge, {
+              color: "warning",
+              variant: "subtle",
+              icon: "i-lucide-circle-pause",
+              label: "Paused",
+            }),
+      ]);
+    },
+    meta: { class: { td: "whitespace-nowrap" } },
   },
   {
     id: "actions",
     header: "",
     cell: ({ row }) =>
       isAdmin.value
-        ? h(UButton, {
-            icon: "i-lucide-trash",
-            color: "error",
-            variant: "ghost",
-            "aria-label": "Remove category",
-            onClick: () => {
-              categoryToRemove.value = row.original;
-            },
-          })
+        ? h("div", { class: "flex items-center justify-end gap-1" }, [
+            h(UButton, {
+              icon: "i-lucide-pencil",
+              color: "neutral",
+              variant: "ghost",
+              "aria-label": "Edit category",
+              onClick: () => editCategory(row.original),
+            }),
+            h(UButton, {
+              icon: "i-lucide-trash",
+              color: "error",
+              variant: "ghost",
+              "aria-label": "Remove category",
+              onClick: () => {
+                categoryToRemove.value = row.original;
+              },
+            }),
+          ])
         : null,
-    meta: { class: { td: "text-right", th: "sr-only w-10" } },
+    meta: { class: { td: "text-right whitespace-nowrap", th: "sr-only w-10" } },
   },
 ];
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-6 space-y-6">
+  <UContainer class="max-w-3xl py-6 space-y-6">
     <div class="flex items-end justify-between gap-4">
       <div class="space-y-1">
         <p class="font-mono text-xs uppercase tracking-wider text-toned">Room</p>
@@ -123,9 +135,18 @@ const columns: TableColumn<Category>[] = [
         <p class="text-xs text-toned">{{ categories.length }} total</p>
       </div>
 
-      <CategoryForm v-if="isAdmin" :room-id="roomId" :members="members" @refresh="refresh">
-        <UButton icon="i-lucide-plus" label="Add" />
-      </CategoryForm>
+      <ClientOnly>
+        <CategoryForm
+          v-if="isAdmin"
+          v-model:open="formOpen"
+          :room-id="roomId"
+          :members="members"
+          :category="editing"
+          @refresh="refresh"
+        >
+          <UButton icon="i-lucide-plus" label="Add" @click="editing = null" />
+        </CategoryForm>
+      </ClientOnly>
     </div>
 
     <UTable :data="categories" :columns="columns" />

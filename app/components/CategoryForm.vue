@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CalendarDate } from "@internationalized/date";
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
@@ -9,8 +10,27 @@ interface Member {
   nickname?: string | null;
 }
 
-const props = defineProps<{ roomId: string; members: Member[] }>();
+interface CategoryTemplate {
+  currency: "USD" | "KHR";
+  amountMinor: number;
+  dayOfMonth: number;
+  isActive: boolean;
+  paidByMembershipId?: string | null;
+  memberSnapshot: Array<{ membershipId: string; weightBps: number }>;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  recurringType: "unlimited" | "once" | "recurring";
+  template?: CategoryTemplate | null;
+}
+
+const props = defineProps<{ roomId: string; members: Member[]; category?: Category | null }>();
 const emit = defineEmits<{ refresh: [] }>();
+const open = defineModel<boolean>("open", { default: false });
+
+const isEdit = computed(() => !!props.category?.id);
 
 const toast = useToast();
 
@@ -87,13 +107,38 @@ function isRecurring(data: Schema): data is Required<Schema> {
 }
 
 const state = reactive<Partial<Schema>>({
+  amountMajor: 0,
   dayOfMonth: 1,
   isActive: true,
   currency: "USD",
 });
-const weights = ref<Array<{ name: string; membershipId: string; weightBps: number }>>([]);
 
-const open = ref(false);
+const dayPickerMonth = new CalendarDate(2000, 1, 1);
+
+const dayOfMonthValue = computed({
+  get: () => new CalendarDate(dayPickerMonth.year, dayPickerMonth.month, state.dayOfMonth ?? 1),
+  set: (value) => {
+    if (value && "day" in value) state.dayOfMonth = value.day;
+  },
+});
+
+function dayOrdinal(day: number) {
+  const rem100 = day % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+const weights = ref<Array<{ name: string; membershipId: string; weightBps: number }>>([]);
+const hydrating = ref(false);
 
 const submitting = ref(false);
 
@@ -133,6 +178,7 @@ function equalSplit() {
 watch(
   () => state.recurringType,
   (type) => {
+    if (hydrating.value) return;
     if (type === "recurring") {
       weights.value = members.value.map((m) => ({
         name: m.displayName || m.nickname || "—",
@@ -144,25 +190,73 @@ watch(
   },
 );
 
+function defaultPayerId() {
+  return members.value.find((m) => m.userId === user.value?.id)?.id;
+}
+
+function memberLabel(membershipId: string) {
+  const member = members.value.find((m) => m.id === membershipId);
+  return member?.displayName || member?.nickname || "—";
+}
+
 function reset() {
+  hydrating.value = true;
   state.name = undefined;
   state.recurringType = undefined;
   state.currency = "USD";
-  state.amountMajor = undefined;
+  state.amountMajor = 0;
   state.dayOfMonth = 1;
   state.isActive = true;
-  state.paidByMembershipId = members.value.find((m) => m.userId === user.value?.id)?.id;
+  state.paidByMembershipId = defaultPayerId();
   weights.value = [];
+  nextTick(() => {
+    hydrating.value = false;
+  });
+}
+
+function populate(category: Category) {
+  hydrating.value = true;
+  state.name = category.name;
+  state.recurringType = category.recurringType;
+
+  const template = category.template;
+  if (category.recurringType === "recurring" && template) {
+    state.currency = template.currency;
+    state.amountMajor = toAmountMajor(template.currency, template.amountMinor);
+    state.dayOfMonth = template.dayOfMonth;
+    state.isActive = template.isActive;
+    state.paidByMembershipId = template.paidByMembershipId ?? defaultPayerId();
+    weights.value = template.memberSnapshot.map((w) => ({
+      name: memberLabel(w.membershipId),
+      membershipId: w.membershipId,
+      weightBps: w.weightBps,
+    }));
+  } else {
+    state.currency = "USD";
+    state.amountMajor = 0;
+    state.dayOfMonth = 1;
+    state.isActive = true;
+    state.paidByMembershipId = defaultPayerId();
+    weights.value = [];
+  }
+
+  nextTick(() => {
+    hydrating.value = false;
+  });
 }
 
 watch(
   open,
-  (value) => {
-    if (!value) reset();
+  async (value) => {
+    if (!value) {
+      reset();
+      return;
+    }
+    await nextTick();
+    if (props.category) populate(props.category);
+    else reset();
   },
-  {
-    immediate: true,
-  },
+  { immediate: true },
 );
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -183,24 +277,44 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
     const body = isRecurring(data)
       ? {
-          ...data,
+          name: data.name,
+          recurringType: data.recurringType,
+          currency: data.currency,
           amountMinor: toAmountMinor(data.currency, data.amountMajor),
-          memberSnapshot: weights.value,
+          dayOfMonth: data.dayOfMonth,
+          isActive: data.isActive,
+          paidByMembershipId: data.paidByMembershipId,
+          memberSnapshot: weights.value.map(({ membershipId, weightBps }) => ({
+            membershipId,
+            weightBps,
+          })),
         }
       : { name: data.name, recurringType: data.recurringType };
 
-    const res = await $fetch(`/api/rooms/${props.roomId}/categories`, { method: "POST", body });
+    const res =
+      isEdit.value && props.category
+        ? await $fetch(`/api/rooms/${props.roomId}/categories/${props.category.id}`, {
+            method: "PATCH",
+            body,
+          })
+        : await $fetch(`/api/rooms/${props.roomId}/categories`, { method: "POST", body });
 
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    if (!res || res.status.code !== ApiResponseCode.Success) {
+      throw new Error(res?.status.message || "Could not save category.");
+    }
 
+    const updated = isEdit.value;
     open.value = false;
-    toast.add({ icon: "i-lucide-circle-check", title: "Category created" });
+    toast.add({
+      icon: "i-lucide-circle-check",
+      title: updated ? "Category updated" : "Category created",
+    });
     emit("refresh");
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",
       title: "Error",
-      description: e instanceof Error ? e.message : "Could not add category.",
+      description: e instanceof Error ? e.message : "Could not save category.",
     });
   } finally {
     submitting.value = false;
@@ -212,8 +326,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   <component
     :is="OverlayComponent.is"
     v-model:open="open"
-    title="New category"
-    description="Add a label to organise entries in this room."
+    :title="isEdit ? 'Edit category' : 'New category'"
+    :description="
+      isEdit
+        ? 'Update this category and its recurring settings.'
+        : 'Add a label to organise entries in this room.'
+    "
     v-bind="OverlayComponent.props"
   >
     <slot />
@@ -283,13 +401,30 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             name="dayOfMonth"
             description="Posted on this day each month."
           >
-            <UInputNumber
-              v-model="state.dayOfMonth"
-              :min="1"
-              :max="31"
-              size="lg"
-              :ui="{ root: 'w-full' }"
-            />
+            <UPopover>
+              <UButton
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-calendar"
+                size="lg"
+                block
+                :label="dayOrdinal(state.dayOfMonth ?? 1)"
+                :ui="{ base: 'justify-start' }"
+              />
+
+              <template #content="{ close }">
+                <UCalendar
+                  v-model="dayOfMonthValue"
+                  prevent-deselect
+                  :month-controls="false"
+                  :year-controls="false"
+                  :view-control="false"
+                  :week-starts-on="1"
+                  :ui="{ header: 'hidden' }"
+                  @update:model-value="close"
+                />
+              </template>
+            </UPopover>
           </UFormField>
 
           <UFormField label="Active" name="isActive" orientation="horizontal">
@@ -329,7 +464,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UButton
         type="submit"
         form="category-form"
-        label="Add"
+        :label="isEdit ? 'Save' : 'Add'"
         size="lg"
         :block="!isMD"
         :loading="submitting"
