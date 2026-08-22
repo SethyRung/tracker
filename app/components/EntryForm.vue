@@ -1,62 +1,60 @@
-<script setup lang="ts" generic="false">
-import { parseAbsolute } from "@internationalized/date";
-import type { FormSubmitEvent, TableColumn } from "@nuxt/ui";
-import { z } from "zod";
+<script setup lang="ts">
+import { CalendarDate, parseAbsolute, today } from "@internationalized/date";
+import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
 
-const UAvatar = resolveComponent("UAvatar");
-const UIcon = resolveComponent("UIcon");
-const UInputNumber = resolveComponent("UInputNumber");
-
-interface MemberRow {
+interface Member {
   id: string;
+  userId: string;
   displayName: string;
+  nickname?: string | null;
 }
-interface CategoryRow {
+
+interface Category {
   id: string;
   name: string;
   recurringType?: "unlimited" | "once" | "recurring";
 }
-interface EntryInitial {
+
+interface Entry {
+  id: string;
   notes: string | null;
   currency: string;
   amountMinor: number;
   date: string;
   paidByMembershipId: string;
   categoryId: string | null;
+  templateId?: string | null;
   weights: Array<{ membershipId: string; weightBps: number }>;
 }
 
 const props = withDefaults(
   defineProps<{
-    members: MemberRow[];
-    categories: CategoryRow[];
-    // Category IDs whose once-per-month slot is already taken for the form's
-    // target month. On the create form we hide `once` categories in this set
-    // (server would reject a duplicate anyway) plus every `recurring` category
-    // (those are managed via templates, not manually). Edit forms ignore this.
+    roomId: string;
+    members: Member[];
+    categories: Category[];
     blockedCategoryIds?: string[];
-    disabled?: boolean;
-    initial?: EntryInitial | null;
+    entry?: Entry | null;
   }>(),
-  { disabled: false, initial: null, blockedCategoryIds: () => [] },
+  { blockedCategoryIds: () => [] },
 );
 
-const emit = defineEmits<{
-  submit: [{ data: FormState; weights: Array<{ membershipId: string; weightBps: number }> }];
-}>();
+const emit = defineEmits<{ refresh: [] }>();
+const open = defineModel<boolean>("open", { default: false });
 
+const isEdit = computed(() => !!props.entry?.id);
+const isRecurringEntry = computed(
+  () =>
+    !!props.entry?.templateId ||
+    props.categories.find((c) => c.id === props.entry?.categoryId)?.recurringType === "recurring",
+);
+
+const toast = useToast();
 const { user } = useUserSession();
 
-const route = useRoute();
-const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
+const members = computed(() => props.members);
 
-const paidByDefault = computed(
-  () => props.members.find((m) => m.id === user.value?.id) ?? props.members[0],
-);
-
-const todayIso = new Date().toISOString();
-
-const formSchema = z.object({
+const schema = z.object({
   description: z.string().max(500, "Description must be at most 500 characters").optional(),
   amountMajor: z
     .number({ message: "Amount is required" })
@@ -68,39 +66,54 @@ const formSchema = z.object({
     .refine((d) => !Number.isNaN(new Date(d).getTime()), "Invalid date")
     .refine((d) => new Date(d).getTime() <= Date.now(), "Date cannot be in the future"),
   categoryId: z.string().min(1, "Category is required"),
-  paidByMembershipId: z.string().min(1, "Paid by is required"),
+  paidByMembershipId: z.string().min(1, "Pick who pays"),
   attendees: z.array(z.string()).min(1, "At least one attendee is required"),
 });
 
-type FormState = z.infer<typeof formSchema>;
+type Schema = z.output<typeof schema>;
 
-const state = reactive<FormState>({
-  description: "",
+const state = reactive<Partial<Schema>>({
   amountMajor: 0,
   currency: "USD",
-  date: todayIso,
-  categoryId: "",
-  paidByMembershipId: paidByDefault.value?.id ?? "",
+  date: new Date().toISOString(),
   attendees: [],
 });
 
+function toCalendarDate(iso: string) {
+  const zoned = parseAbsolute(iso, "Asia/Phnom_Penh");
+  return new CalendarDate(zoned.year, zoned.month, zoned.day);
+}
+
+function toDateIso(value: CalendarDate) {
+  return value.toDate("Asia/Phnom_Penh").toISOString();
+}
+
+const maxDate = today("Asia/Phnom_Penh");
+
 const dateValue = computed({
-  get: () => (state.date ? parseAbsolute(state.date, "Asia/Phnom_Penh") : undefined),
-  set: (v) => {
-    if (!v) state.date = "";
-    else state.date = v.toDate().toISOString();
+  get: () => (state.date ? toCalendarDate(state.date) : undefined),
+  set: (value) => {
+    if (!value || !("year" in value)) state.date = "";
+    else state.date = toDateIso(new CalendarDate(value.year, value.month, value.day));
   },
 });
 
+function formatDateLabel(iso?: string) {
+  if (!iso) return "Pick a date";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "Asia/Phnom_Penh",
+  }).format(new Date(iso));
+}
+
 const memberCheckboxItems = computed(() =>
-  props.members.map((m) => ({ label: m.displayName, value: m.id })),
+  members.value.map((m) => ({ label: m.displayName || m.nickname || "—", value: m.id })),
 );
 
-const weights = ref<Array<{ membershipId: string; weightBps: number }>>([]);
-const suppressRebalance = ref(false);
-
 const displayCategories = computed(() => {
-  if (props.initial) return props.categories;
+  if (props.entry) return props.categories;
   const blocked = new Set(props.blockedCategoryIds ?? []);
   return props.categories.filter((c) => {
     if (c.recurringType === "recurring") return false;
@@ -109,11 +122,37 @@ const displayCategories = computed(() => {
   });
 });
 
-function memberName(mid: string) {
-  return props.members.find((m) => m.id === mid)?.displayName ?? "—";
-}
+const weights = ref<Array<{ name: string; membershipId: string; weightBps: number }>>([]);
+const hydrating = ref(false);
+const submitting = ref(false);
 
-function rebalance() {
+const { isMD } = useBreakpoints();
+
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+
+const OverlayComponent = computed(() => {
+  return {
+    is: isMD.value ? UModal : UDrawer,
+    props: isMD.value
+      ? { scrollable: true, ui: { footer: "justify-end" } }
+      : { handleOnly: true, fixed: true },
+  };
+});
+
+const shareState = computed(() => {
+  const current = weights.value.reduce((s, w) => s + w.weightBps, 0) / 100;
+  const valid = Math.abs(current - 100) <= 0.01;
+
+  return {
+    current,
+    target: 100,
+    valid,
+    message: valid ? undefined : `Shares must total 100% (currently ${current.toFixed(2)}%)`,
+  };
+});
+
+function equalSplit() {
   const n = weights.value.length;
   if (n === 0) return;
   const base = Math.floor(10000 / n);
@@ -122,243 +161,319 @@ function rebalance() {
   if (remainder > 0 && weights.value[0]) weights.value[0].weightBps += remainder;
 }
 
-watch(
-  () => state.attendees,
-  (next) => {
-    weights.value = next.map((mid) => {
-      const existing = weights.value.find((w) => w.membershipId === mid);
-      return existing ?? { membershipId: mid, weightBps: 0 };
-    });
-    if (!suppressRebalance.value) rebalance();
-  },
-);
+function defaultPayerId() {
+  return members.value.find((m) => m.userId === user.value?.id)?.id ?? members.value[0]?.id;
+}
 
-// Default new entries to every active member with an equal split (SPEC §7b/§8).
-watch(
-  () => props.members,
-  (m) => {
-    if (m.length > 0 && state.attendees.length === 0) {
-      state.attendees = m.map((mm) => mm.id);
-    }
-  },
-  { immediate: true },
-);
-
-// Pre-fill from an existing entry (edit page). Preserves the loaded weights by
-// suppressing the equal-split rebalance during the attendees change.
-async function populate(data: EntryInitial) {
-  suppressRebalance.value = true;
-  weights.value = data.weights.map((w) => ({
-    membershipId: w.membershipId,
-    weightBps: w.weightBps,
-  }));
-  state.description = data.notes ?? "";
-  state.currency = data.currency as (typeof state)["currency"];
-  state.amountMajor = toAmountMajor(data.currency as Currency, data.amountMinor);
-  state.date = data.date ? new Date(data.date).toISOString() : "";
-  state.paidByMembershipId = data.paidByMembershipId;
-  state.categoryId = data.categoryId ?? "";
-  state.attendees = weights.value.map((w) => w.membershipId);
-  await nextTick();
-  suppressRebalance.value = false;
+function memberLabel(membershipId: string) {
+  const member = members.value.find((m) => m.id === membershipId);
+  return member?.displayName || member?.nickname || "—";
 }
 
 watch(
-  () => props.initial,
-  (val) => {
-    if (val) void populate(val);
+  () => state.attendees,
+  (next) => {
+    const ids = next ?? [];
+    weights.value = ids.map((mid) => {
+      const existing = weights.value.find((w) => w.membershipId === mid);
+      return existing ?? { name: memberLabel(mid), membershipId: mid, weightBps: 0 };
+    });
+    if (!hydrating.value) equalSplit();
+  },
+);
+
+function reset() {
+  hydrating.value = true;
+  state.description = undefined;
+  state.amountMajor = 0;
+  state.currency = "USD";
+  state.date = toDateIso(today("Asia/Phnom_Penh"));
+  state.categoryId = undefined;
+  state.paidByMembershipId = defaultPayerId();
+  weights.value = members.value.map((m) => ({
+    name: m.displayName || m.nickname || "—",
+    membershipId: m.id,
+    weightBps: 0,
+  }));
+  state.attendees = members.value.map((m) => m.id);
+  equalSplit();
+  nextTick(() => {
+    hydrating.value = false;
+  });
+}
+
+function populate(entry: Entry) {
+  hydrating.value = true;
+  state.description = entry.notes ?? undefined;
+  state.currency = entry.currency as Schema["currency"];
+  state.amountMajor = toAmountMajor(entry.currency as Currency, entry.amountMinor);
+  state.date = entry.date ? toDateIso(toCalendarDate(new Date(entry.date).toISOString())) : "";
+  state.paidByMembershipId = entry.paidByMembershipId;
+  state.categoryId = entry.categoryId ?? undefined;
+  weights.value = entry.weights.map((w) => ({
+    name: memberLabel(w.membershipId),
+    membershipId: w.membershipId,
+    weightBps: w.weightBps,
+  }));
+  state.attendees = weights.value.map((w) => w.membershipId);
+  nextTick(() => {
+    hydrating.value = false;
+  });
+}
+
+watch(
+  open,
+  async (value) => {
+    if (!value) {
+      reset();
+      return;
+    }
+    await nextTick();
+    if (isRecurringEntry.value) {
+      open.value = false;
+      toast.add({
+        icon: "i-lucide-circle-x",
+        title: "Edit this in Categories",
+        description: "Recurring entries are managed from the category template.",
+      });
+      return;
+    }
+    if (props.entry) populate(props.entry);
+    else reset();
   },
   { immediate: true },
 );
 
-const totalWeight = computed(() => weights.value.reduce((s, w) => s + w.weightBps, 0));
-const totalWeightPct = computed(() => totalWeight.value / 100);
-const attendeeError = computed(() =>
-  Math.abs(totalWeightPct.value - 100) > 0.01
-    ? `Shares must total 100.00% (currently ${totalWeightPct.value.toFixed(2)}%)`
-    : undefined,
-);
+watch(members, (list) => {
+  if (!open.value || hydrating.value || isEdit.value) return;
+  if (list.length > 0 && (!state.attendees || state.attendees.length === 0)) {
+    state.attendees = list.map((m) => m.id);
+  }
+  if (!state.paidByMembershipId) state.paidByMembershipId = defaultPayerId();
+});
 
-const columns: TableColumn<(typeof weights.value)[number]>[] = [
-  {
-    id: "member",
-    cell: ({ row }) =>
-      h("div", { class: "flex items-center gap-2" }, [
-        h(UAvatar, { alt: memberName(row.original.membershipId) }),
-        h("span", { class: "text-sm font-medium truncate" }, memberName(row.original.membershipId)),
-      ]),
-  },
-  {
-    id: "share",
-    cell: ({ row }) =>
-      h(UInputNumber, {
-        modelValue: row.original.weightBps / 100,
-        min: 0,
-        max: 100,
-        orientation: "vertical",
-        class: "w-full",
-        disabled: props.disabled,
-        "onUpdate:modelValue": (v: number | null) => {
-          row.original.weightBps = Math.round(Number(v ?? 0) * 100);
-        },
-      }),
-    footer: ({ column }) => {
-      const total =
-        column.getFacetedRowModel().rows.reduce((acc, row) => acc + row.original.weightBps, 0) /
-        100;
-      return h(
-        "div",
-        {
-          class: ["flex items-center gap-2", total !== 100 ? "text-error" : "text-primary"],
-        },
-        [
-          h("span", { class: "text-sm font-medium" }, `Total: ${total}%`),
-          h(UIcon, {
-            name: total === 100 ? "i-lucide-check-circle" : "i-lucide-triangle-alert",
-          }),
-        ],
-      );
-    },
-    meta: { class: { td: "w-40" } },
-  },
-];
+async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (!props.roomId || submitting.value || isRecurringEntry.value) return;
 
-function onValidSubmit(event: FormSubmitEvent<FormState>) {
-  if (attendeeError.value) return;
-  emit("submit", { data: event.data, weights: weights.value });
+  if (!shareState.value.valid) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Shares must total 100%",
+      description: shareState.value.message,
+    });
+    return;
+  }
+
+  const { data } = event;
+  const amountMinor = toAmountMinor(data.currency, data.amountMajor);
+  const memberSnapshot = weights.value.map(({ membershipId, weightBps }) => ({
+    membershipId,
+    weightBps,
+  }));
+
+  submitting.value = true;
+  try {
+    const res =
+      isEdit.value && props.entry
+        ? await $fetch(`/api/rooms/${props.roomId}/entries/${props.entry.id}`, {
+            method: "PATCH",
+            body: {
+              categoryId: data.categoryId || null,
+              amountMinor,
+              date: data.date,
+              paidByMembershipId: data.paidByMembershipId,
+              notes: data.description || null,
+              weights: memberSnapshot,
+            },
+          })
+        : await $fetch(`/api/rooms/${props.roomId}/entries`, {
+            method: "POST",
+            body: {
+              categoryId: data.categoryId || null,
+              currency: data.currency,
+              amountMinor,
+              date: data.date,
+              paidByMembershipId: data.paidByMembershipId,
+              notes: data.description || null,
+              weights: memberSnapshot,
+            },
+          });
+
+    if (!res || res.status.code !== ApiResponseCode.Success) {
+      throw new Error(res?.status.message || "Could not save entry.");
+    }
+
+    const updated = isEdit.value;
+    open.value = false;
+    toast.add({
+      icon: "i-lucide-circle-check",
+      title: updated ? "Entry updated" : "Entry created",
+    });
+    emit("refresh");
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not save entry.",
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 
 <template>
-  <UTheme
-    :props="{
-      inputDate: {
-        size: 'lg',
-        ui: {
-          base: 'w-full',
-        },
-      },
-      inputNumber: {
-        size: 'lg',
-        ui: {
-          root: 'w-full',
-        },
-      },
-      select: {
-        size: 'lg',
-        ui: {
-          base: 'w-full',
-        },
-      },
-      selectMenu: {
-        size: 'lg',
-        ui: {
-          base: 'w-full',
-        },
-      },
-      textarea: {
-        size: 'lg',
-        ui: {
-          root: 'w-full',
-        },
-      },
-    }"
+  <component
+    :is="OverlayComponent.is"
+    v-model:open="open"
+    :title="isEdit ? 'Edit entry' : 'New entry'"
+    :description="
+      isEdit ? 'Update this bill. Changes apply to this entry only.' : 'Log a bill for this room.'
+    "
+    v-bind="OverlayComponent.props"
   >
-    <UForm :schema="formSchema" :state="state" class="space-y-6" @submit="onValidSubmit">
-      <div class="grid grid-cols-2 gap-4">
+    <slot />
+
+    <template #body>
+      <UForm id="entry-form" :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
         <UFormField label="Amount" name="amountMajor" required>
-          <UInputNumber v-model="state.amountMajor" :min="0" :disabled="disabled" />
+          <UInputNumber v-model="state.amountMajor" :min="0" size="lg" :ui="{ root: 'w-full' }" />
         </UFormField>
 
-        <UFormField label="Currency" name="currency">
-          <USelect v-model="state.currency" :items="['USD', 'KHR']" :disabled="disabled" />
+        <UFormField label="Currency" name="currency" required>
+          <URadioGroup
+            v-model="state.currency"
+            :items="[
+              { label: 'USD', value: 'USD' },
+              { label: 'KHR', value: 'KHR' },
+            ]"
+            variant="table"
+            orientation="horizontal"
+            indicator="hidden"
+            size="lg"
+            :disabled="isEdit"
+            :ui="{ item: 'flex-1 justify-center' }"
+          />
         </UFormField>
-      </div>
 
-      <UFormField label="Description" name="description">
-        <UTextarea
-          v-model="state.description"
-          placeholder="e.g. Morning groceries"
-          :rows="4"
-          :autoresize="true"
-          :disabled="disabled"
-        />
-      </UFormField>
+        <UFormField label="Description" name="description">
+          <UTextarea
+            v-model="state.description"
+            placeholder="e.g. Morning groceries"
+            :rows="3"
+            autoresize
+            size="lg"
+            :ui="{ root: 'w-full' }"
+          />
+        </UFormField>
 
-      <div class="grid sm:grid-cols-2 gap-4">
         <UFormField label="Date" name="date" required>
-          <UInputDate v-model="dateValue" granularity="minute" :disabled="disabled" />
+          <UPopover>
+            <UButton
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-calendar"
+              size="lg"
+              block
+              :label="formatDateLabel(state.date)"
+              :ui="{ base: 'justify-start' }"
+            />
+
+            <template #content="{ close }">
+              <UCalendar
+                v-model="dateValue"
+                prevent-deselect
+                :week-starts-on="1"
+                :max-value="maxDate"
+                @update:model-value="close"
+              />
+            </template>
+          </UPopover>
         </UFormField>
+
         <UFormField label="Paid by" name="paidByMembershipId" required>
-          <USelectMenu
+          <USelect
             v-model="state.paidByMembershipId"
-            :items="members.map((m) => ({ label: m.displayName, value: m.id }))"
-            value-key="value"
-            :disabled="disabled"
+            :items="members"
+            label-key="displayName"
+            value-key="id"
+            size="lg"
+            class="w-full"
           />
         </UFormField>
-      </div>
 
-      <UFormField label="Category" name="categoryId" required>
-        <div v-if="categories.length === 0" class="text-sm text-toned">No categories yet.</div>
-        <div v-else-if="displayCategories.length === 0" class="text-sm text-toned">
-          No categories available — recurring ones are managed on the
-          <NuxtLink :to="`/rooms/${roomId}/categories`" class="text-primary underline">
-            Recurring
-          </NuxtLink>
-          page; once-a-month categories can be logged once per month.
-        </div>
-        <URadioGroup
-          v-else
-          v-model="state.categoryId"
-          :items="displayCategories"
-          label-key="name"
-          value-key="id"
-          variant="table"
-          orientation="horizontal"
-          indicator="hidden"
-          :ui="{
-            item: 'flex-1',
-          }"
-          :disabled="disabled"
-        />
-      </UFormField>
-
-      <UFormField label="Attendees" name="attendees" required>
-        <div v-if="members.length === 0" class="text-sm text-toned">No members yet.</div>
-        <UCheckboxGroup
-          v-else
-          v-model="state.attendees"
-          :items="memberCheckboxItems"
-          variant="table"
-          orientation="horizontal"
-          indicator="hidden"
-          :disabled="disabled"
-        />
-      </UFormField>
-
-      <UFormField v-if="weights.length > 0" label="Shares percent" :error="attendeeError">
-        <template #hint>
-          <UButton
-            label="Reset to equal"
-            size="xs"
-            variant="soft"
-            :disabled="disabled"
-            @click="rebalance"
+        <UFormField label="Category" name="categoryId" required>
+          <div v-if="categories.length === 0" class="text-sm text-toned">No categories yet.</div>
+          <div v-else-if="displayCategories.length === 0" class="text-sm text-toned">
+            No categories available — recurring ones are managed on the
+            <NuxtLink :to="`/rooms/${roomId}/categories`" class="text-primary underline">
+              Recurring
+            </NuxtLink>
+            page; once-a-month categories can be logged once per month.
+          </div>
+          <URadioGroup
+            v-else
+            v-model="state.categoryId"
+            :items="displayCategories"
+            label-key="name"
+            value-key="id"
+            variant="table"
+            orientation="horizontal"
+            indicator="hidden"
+            size="lg"
+            :ui="{ item: 'flex-1' }"
           />
-        </template>
+        </UFormField>
 
-        <UTable
-          :data="weights"
-          :columns="columns"
-          :ui="{
-            root: 'w-full',
-            thead: 'hidden',
-          }"
-        />
-      </UFormField>
+        <UFormField label="Attendees" name="attendees" required>
+          <div v-if="members.length === 0" class="text-sm text-toned">No members yet.</div>
+          <UCheckboxGroup
+            v-else
+            v-model="state.attendees"
+            :items="memberCheckboxItems"
+            variant="table"
+            orientation="horizontal"
+            indicator="hidden"
+            size="lg"
+          />
+        </UFormField>
 
-      <slot name="actions" :total-weight="totalWeight" :attendee-error="attendeeError" />
-    </UForm>
-  </UTheme>
+        <UFormField v-if="weights.length > 0" label="Shares" :error="shareState.message">
+          <template #hint>
+            <UButton label="Reset to equal" size="xs" variant="soft" @click="equalSplit" />
+          </template>
+
+          <ul class="space-y-3">
+            <li v-for="w in weights" :key="w.membershipId" class="flex items-center gap-3">
+              <span class="flex-1 text-base truncate">{{ w.name }}</span>
+              <UInputNumber
+                :model-value="w.weightBps / 100"
+                :min="0"
+                :max="100"
+                size="lg"
+                orientation="vertical"
+                class="w-28"
+                @update:model-value="
+                  (v: number | null) => (w.weightBps = Math.round(Number(v ?? 0) * 100))
+                "
+              />
+            </li>
+          </ul>
+        </UFormField>
+      </UForm>
+    </template>
+
+    <template #footer="{ close }">
+      <UButton v-if="isMD" label="Cancel" color="neutral" variant="ghost" @click="close" />
+
+      <UButton
+        type="submit"
+        form="entry-form"
+        :label="isEdit ? 'Save' : 'Add'"
+        size="lg"
+        :block="!isMD"
+        :loading="submitting"
+      />
+    </template>
+  </component>
 </template>
