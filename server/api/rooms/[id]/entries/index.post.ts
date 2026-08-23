@@ -111,30 +111,28 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = newId();
-  await db.transaction(async (tx) => {
-    await tx.insert(schema.entries).values({
-      id,
-      roomId,
-      categoryId: body.categoryId ?? null,
-      currency: body.currency,
-      amountMinor: body.amountMinor,
-      date: body.date,
-      paidByMembershipId: body.paidByMembershipId,
-      notes: body.notes ?? null,
-      status,
-      templateId,
-      createdByUserId: ctx.userId,
-    });
-    if (body.weights.length > 0) {
-      await tx.insert(schema.entryWeights).values(
-        body.weights.map((w) => ({
-          entryId: id,
-          membershipId: w.membershipId,
-          weightBps: w.weightBps,
-        })),
-      );
-    }
+  await db.insert(schema.entries).values({
+    id,
+    roomId,
+    categoryId: body.categoryId ?? null,
+    currency: body.currency,
+    amountMinor: body.amountMinor,
+    date: body.date,
+    paidByMembershipId: body.paidByMembershipId,
+    notes: body.notes ?? null,
+    status,
+    templateId,
+    createdByUserId: ctx.userId,
   });
+  if (body.weights.length > 0) {
+    await db.insert(schema.entryWeights).values(
+      body.weights.map((w) => ({
+        entryId: id,
+        membershipId: w.membershipId,
+        weightBps: w.weightBps,
+      })),
+    );
+  }
 
   const created = await db.query.entries.findFirst({
     where: (e, { eq }) => eq(e.id, id),

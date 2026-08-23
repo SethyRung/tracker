@@ -169,38 +169,36 @@ export default defineEventHandler(async (event) => {
   if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
   if (body.recurringType !== undefined) updates.recurringType = body.recurringType;
 
-  await db.transaction(async (tx) => {
-    if (Object.keys(updates).length > 0) {
-      await tx
-        .update(schema.categories)
-        .set(updates)
-        .where(and(eq(schema.categories.id, cid), eq(schema.categories.roomId, roomId)));
-    }
+  if (Object.keys(updates).length > 0) {
+    await db
+      .update(schema.categories)
+      .set(updates)
+      .where(and(eq(schema.categories.id, cid), eq(schema.categories.roomId, roomId)));
+  }
 
-    if (createTemplate) {
-      await tx.insert(schema.recurringTemplates).values({
-        id: newId(),
-        roomId,
-        categoryId: cid,
-        currency: createTemplate.currency,
-        amountMinor: createTemplate.amountMinor,
-        dayOfMonth: createTemplate.dayOfMonth,
-        isActive: createTemplate.isActive,
-        paidByMembershipId: createTemplate.paidByMembershipId ?? null,
-        memberSnapshot: createTemplate.memberSnapshot,
-      });
-    } else if (templateUpdates && existingTemplate) {
-      await tx
-        .update(schema.recurringTemplates)
-        .set(templateUpdates)
-        .where(
-          and(
-            eq(schema.recurringTemplates.id, existingTemplate.id),
-            eq(schema.recurringTemplates.roomId, roomId),
-          ),
-        );
-    }
-  });
+  if (createTemplate) {
+    await db.insert(schema.recurringTemplates).values({
+      id: newId(),
+      roomId,
+      categoryId: cid,
+      currency: createTemplate.currency,
+      amountMinor: createTemplate.amountMinor,
+      dayOfMonth: createTemplate.dayOfMonth,
+      isActive: createTemplate.isActive,
+      paidByMembershipId: createTemplate.paidByMembershipId ?? null,
+      memberSnapshot: createTemplate.memberSnapshot,
+    });
+  } else if (templateUpdates && existingTemplate) {
+    await db
+      .update(schema.recurringTemplates)
+      .set(templateUpdates)
+      .where(
+        and(
+          eq(schema.recurringTemplates.id, existingTemplate.id),
+          eq(schema.recurringTemplates.roomId, roomId),
+        ),
+      );
+  }
 
   const updated = await db.query.categories.findFirst({
     where: (c, { and, eq }) => and(eq(c.id, cid), eq(c.roomId, roomId)),

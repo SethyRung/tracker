@@ -136,23 +136,21 @@ export default defineEventHandler(async (event) => {
   if (body.paidByMembershipId !== undefined) updates.paidByMembershipId = body.paidByMembershipId;
   if (body.notes !== undefined) updates.notes = body.notes ?? null;
 
-  await db.transaction(async (tx) => {
-    if (Object.keys(updates).length > 1) {
-      await tx.update(schema.entries).set(updates).where(eq(schema.entries.id, eid));
+  if (Object.keys(updates).length > 1) {
+    await db.update(schema.entries).set(updates).where(eq(schema.entries.id, eid));
+  }
+  if (body.weights) {
+    await db.delete(schema.entryWeights).where(eq(schema.entryWeights.entryId, eid));
+    if (body.weights.length > 0) {
+      await db.insert(schema.entryWeights).values(
+        body.weights.map((w) => ({
+          entryId: eid,
+          membershipId: w.membershipId,
+          weightBps: w.weightBps,
+        })),
+      );
     }
-    if (body.weights) {
-      await tx.delete(schema.entryWeights).where(eq(schema.entryWeights.entryId, eid));
-      if (body.weights.length > 0) {
-        await tx.insert(schema.entryWeights).values(
-          body.weights.map((w) => ({
-            entryId: eid,
-            membershipId: w.membershipId,
-            weightBps: w.weightBps,
-          })),
-        );
-      }
-    }
-  });
+  }
 
   const updated = await db.query.entries.findFirst({
     where: (e, { eq }) => eq(e.id, eid),

@@ -169,19 +169,17 @@ export async function materializeRecurringDrafts(
       continue;
     }
 
-    await db.transaction(async (tx) => {
-      await tx.insert(entries).values({
-        ...planned.draft,
-        createdByUserId,
-      });
-      await tx.insert(entryWeights).values(
-        planned.weights.map((w) => ({
-          entryId: planned.draft.id,
-          membershipId: w.membershipId,
-          weightBps: w.weightBps,
-        })),
-      );
+    await db.insert(entries).values({
+      ...planned.draft,
+      createdByUserId,
     });
+    await db.insert(entryWeights).values(
+      planned.weights.map((w) => ({
+        entryId: planned.draft.id,
+        membershipId: w.membershipId,
+        weightBps: w.weightBps,
+      })),
+    );
     draftsCreated++;
   }
 
