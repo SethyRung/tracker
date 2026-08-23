@@ -42,31 +42,36 @@ interface CategoryRow {
   name: string;
 }
 
-const dashboardFetch = useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
-  query: { month: yyyymm },
-  transform: (r) => ({
-    entries: (r?.data?.entries ?? []) as EntryRow[],
-    members: (r?.data?.members ?? []) as MemberRow[],
-    categories: (r?.data?.categories ?? []) as CategoryRow[],
-  }),
-  default: () => ({
-    entries: [] as EntryRow[],
-    members: [] as MemberRow[],
-    categories: [] as CategoryRow[],
-  }),
-});
-const monthFetch = useFetch(() => `/api/rooms/${roomId.value}/months/${yyyymm.value}`, {
-  transform: (r) => (r?.data ?? null) as MonthSnapshot | null,
-  default: () => null as MonthSnapshot | null,
-});
-const [{ data: dashboard }, { data: monthSnapshot, refresh: refreshMonth }] = await Promise.all([
-  dashboardFetch,
-  monthFetch,
-]);
+const { data: dashboard, status: dashStatus } = useLazyFetch(
+  () => `/api/rooms/${roomId.value}/dashboard`,
+  {
+    query: { month: yyyymm },
+    transform: (r) => ({
+      entries: (r?.data?.entries ?? []) as EntryRow[],
+      members: (r?.data?.members ?? []) as MemberRow[],
+      categories: (r?.data?.categories ?? []) as CategoryRow[],
+    }),
+    default: () => ({
+      entries: [] as EntryRow[],
+      members: [] as MemberRow[],
+      categories: [] as CategoryRow[],
+    }),
+  },
+);
+const { data: monthSnapshot, refresh: refreshMonth } = useFetch(
+  () => `/api/rooms/${roomId.value}/months/${yyyymm.value}`,
+  {
+    lazy: true,
+    transform: (r) => (r?.data ?? null) as MonthSnapshot | null,
+    default: () => null as MonthSnapshot | null,
+  },
+);
 
 const entries = computed(() => dashboard.value?.entries ?? []);
 const members = computed(() => dashboard.value?.members ?? []);
 const categories = computed(() => dashboard.value?.categories ?? []);
+
+const loading = computed(() => dashStatus.value === "pending");
 
 const closingMonth = ref(false);
 
@@ -204,70 +209,79 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
       class="mb-4"
     />
 
-    <UCard class="mb-4">
-      <template #header>
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">Totals this month</h2>
-      </template>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-lg bg-elevated p-3">
-          <p class="text-xs font-semibold text-toned mb-2">USD</p>
-          <p class="text-lg font-bold text-default tabular-nums">
-            {{ formatAmount("USD", totalsByCurrency.USD ?? 0) }}
-          </p>
-        </div>
-        <div class="rounded-lg bg-elevated p-3">
-          <p class="text-xs font-semibold text-toned mb-2">KHR</p>
-          <p class="text-lg font-bold text-default tabular-nums">
-            {{ formatAmount("KHR", totalsByCurrency.KHR ?? 0) }}
-          </p>
-        </div>
-      </div>
-    </UCard>
+    <div v-if="loading" class="space-y-4">
+      <USkeleton class="h-28 rounded-xl" />
+      <USkeleton class="h-64 rounded-xl" />
+    </div>
 
-    <UAlert
-      v-if="drafts.length > 0"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-clipboard-list"
-      :title="`${drafts.length} draft${drafts.length === 1 ? '' : 's'} to publish`"
-      class="mb-4"
-    />
-
-    <UCard>
-      <template #header>
-        <div class="flex items-center justify-between">
+    <template v-else>
+      <UCard class="mb-4">
+        <template #header>
           <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
-            Entries ({{ sortedEntries.length }})
+            Totals this month
           </h2>
+        </template>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-elevated p-3">
+            <p class="text-xs font-semibold text-toned mb-2">USD</p>
+            <p class="text-lg font-bold text-default tabular-nums">
+              {{ formatAmount("USD", totalsByCurrency.USD ?? 0) }}
+            </p>
+          </div>
+          <div class="rounded-lg bg-elevated p-3">
+            <p class="text-xs font-semibold text-toned mb-2">KHR</p>
+            <p class="text-lg font-bold text-default tabular-nums">
+              {{ formatAmount("KHR", totalsByCurrency.KHR ?? 0) }}
+            </p>
+          </div>
         </div>
-      </template>
+      </UCard>
 
-      <ul v-if="sortedEntries.length > 0" class="divide-y divide-default">
-        <li v-for="e in sortedEntries" :key="e.id" class="py-3 space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-toned">{{ formatDate(e.date) }}</span>
-            <span class="text-sm font-medium text-default">· {{ catName(e.categoryId) }}</span>
-            <UBadge v-if="e.status === 'draft'" color="warning" variant="subtle" size="xs">
-              Draft
-            </UBadge>
-          </div>
-          <NuxtLink
-            :to="`/rooms/${roomId}/entries?edit=${e.id}`"
-            class="text-sm text-default hover:text-primary"
-          >
-            {{ e.notes ?? "—" }}
-          </NuxtLink>
-          <div class="flex items-center justify-between text-xs text-toned">
-            <span>
-              {{ formatAmount(e.currency, e.amountMinor) }}
-              paid by {{ memberLabel(e.paidByMembershipId) }}
-            </span>
-            <span>{{ splitSummary(e) }}</span>
-          </div>
-        </li>
-      </ul>
+      <UAlert
+        v-if="drafts.length > 0"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-clipboard-list"
+        :title="`${drafts.length} draft${drafts.length === 1 ? '' : 's'} to publish`"
+        class="mb-4"
+      />
 
-      <p v-else class="text-sm text-toned text-center py-6">No entries this month.</p>
-    </UCard>
+      <UCard>
+        <template #header>
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
+              Entries ({{ sortedEntries.length }})
+            </h2>
+          </div>
+        </template>
+
+        <ul v-if="sortedEntries.length > 0" class="divide-y divide-default">
+          <li v-for="e in sortedEntries" :key="e.id" class="py-3 space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-toned">{{ formatDate(e.date) }}</span>
+              <span class="text-sm font-medium text-default">· {{ catName(e.categoryId) }}</span>
+              <UBadge v-if="e.status === 'draft'" color="warning" variant="subtle" size="xs">
+                Draft
+              </UBadge>
+            </div>
+            <NuxtLink
+              :to="`/rooms/${roomId}/entries?edit=${e.id}`"
+              class="text-sm text-default hover:text-primary"
+            >
+              {{ e.notes ?? "—" }}
+            </NuxtLink>
+            <div class="flex items-center justify-between text-xs text-toned">
+              <span>
+                {{ formatAmount(e.currency, e.amountMinor) }}
+                paid by {{ memberLabel(e.paidByMembershipId) }}
+              </span>
+              <span>{{ splitSummary(e) }}</span>
+            </div>
+          </li>
+        </ul>
+
+        <p v-else class="text-sm text-toned text-center py-6">No entries this month.</p>
+      </UCard>
+    </template>
   </UContainer>
 </template>

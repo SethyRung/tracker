@@ -18,7 +18,7 @@ const {
   data: entriesRes,
   refresh: refreshEntries,
   status: entriesStatus,
-} = await useFetch(() => `/api/rooms/${roomId.value}/entries`);
+} = useLazyFetch(() => `/api/rooms/${roomId.value}/entries`);
 
 const entries = computed(() => (isSuccessResponse(entriesRes.value) ? entriesRes.value.data : []));
 type Entry = (typeof entries.value)[number];

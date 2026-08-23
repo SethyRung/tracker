@@ -8,9 +8,11 @@ const { roomId } = useScopedRoom();
 
 const { user } = useUserSession();
 
-const { data, refresh: refreshMembers } = await useFetch(
-  () => `/api/rooms/${roomId.value}/members`,
-);
+const {
+  data,
+  refresh: refreshMembers,
+  status: membersStatus,
+} = useLazyFetch(() => `/api/rooms/${roomId.value}/members`);
 
 const members = computed(() => {
   if (!isSuccessResponse(data.value)) {
@@ -108,7 +110,7 @@ const columns: TableColumn<Member>[] = [
       />
     </div>
 
-    <UTable :data="members" :columns="columns" />
+    <UTable :data="members" :columns="columns" :loading="membersStatus === 'pending'" />
 
     <MembersInviteModal v-model:open="inviteOpen" :room-id="roomId" />
     <MembersRemoveModal

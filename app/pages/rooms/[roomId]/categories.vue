@@ -13,12 +13,12 @@ const typeMeta = {
   recurring: { label: "Recurring", color: "primary" },
 } as const;
 
-const membersFetch = useFetch(() => `/api/rooms/${roomId.value}/members`);
-const categoriesFetch = useFetch(() => `/api/rooms/${roomId.value}/categories`);
-const [{ data: membersData }, { data: categoriesData, refresh }] = await Promise.all([
-  membersFetch,
-  categoriesFetch,
-]);
+const { data: membersData } = useLazyFetch(() => `/api/rooms/${roomId.value}/members`);
+const {
+  data: categoriesData,
+  refresh,
+  status: categoriesStatus,
+} = useLazyFetch(() => `/api/rooms/${roomId.value}/categories`);
 
 const members = computed(() =>
   isSuccessResponse(membersData.value) ? membersData.value.data : [],
@@ -168,7 +168,7 @@ const columns: TableColumn<Category>[] = [
       </ClientOnly>
     </div>
 
-    <UTable :data="categories" :columns="columns" />
+    <UTable :data="categories" :columns="columns" :loading="categoriesStatus === 'pending'" />
 
     <CategoriesRemoveModal
       :open="categoryToRemove !== null"

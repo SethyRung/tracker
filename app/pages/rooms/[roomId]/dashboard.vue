@@ -109,7 +109,7 @@ const recentColumns: TableColumn<(typeof recentEntries.value)[number]>[] = [
   {
     accessorKey: "date",
     header: "Date",
-    cell: ({ row }) => toDayJS(row.original.date).format("MMM d"),
+    cell: ({ row }) => toDayJS(row.original.date).format("MMM DD, YYYY"),
     meta: { class: { td: "whitespace-nowrap" } },
   },
   {
@@ -162,7 +162,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
       />
     </header>
 
-    <div v-if="dashStatus.value === 'pending'" class="space-y-6">
+    <div v-if="dashStatus === 'pending'" class="space-y-6">
       <div class="grid grid-cols-2 gap-4">
         <USkeleton v-for="i in 2" :key="i" class="h-24 rounded-xl" />
       </div>
