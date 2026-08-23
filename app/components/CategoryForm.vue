@@ -65,7 +65,7 @@ const schema = z
       .max(40, "Keep it under 40 characters"),
     recurringType: z.enum(["unlimited", "once", "recurring"], "Recurring type is required"),
     currency: z.enum(["USD", "KHR"]).optional(),
-    amountMajor: z.number().positive("Amount must be greater than 0").optional(),
+    amountMajor: z.number().optional(),
     dayOfMonth: z.number().int().min(1).max(31).optional(),
     isActive: z.boolean().optional(),
     paidByMembershipId: z.string().min(1, "Pick who pays").optional(),
@@ -75,7 +75,7 @@ const schema = z
     if (data.currency == null) {
       ctx.addIssue({ code: "custom", path: ["currency"], message: "Required" });
     }
-    if (data.amountMajor == null) {
+    if (data.amountMajor == null || data.amountMajor <= 0) {
       ctx.addIssue({
         code: "custom",
         path: ["amountMajor"],
