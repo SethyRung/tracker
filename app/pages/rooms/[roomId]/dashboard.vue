@@ -1,3 +1,24 @@
+<script lang="ts">
+interface DashboardMember {
+  id: string;
+  userId: string;
+  role: "admin" | "member";
+  displayName: string;
+  color?: string | null;
+}
+
+interface DashboardEntry {
+  id: string;
+  status: "draft" | "published";
+  currency: "USD" | "KHR";
+  amountMinor: number;
+  paidByMembershipId: string;
+  date: string;
+  notes?: string | null;
+  categoryId?: string | null;
+}
+</script>
+
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 
@@ -9,28 +30,30 @@ const { user } = useUserSession();
 
 const currentMonth = computed(() => monthKey());
 
-const dashboardFetch = useFetch(() => `/api/rooms/${roomId.value}/dashboard`, {
-  query: { month: currentMonth },
-  transform: (r) => ({
-    entries: r?.data?.entries ?? [],
-    members: r?.data?.members ?? [],
-    categories: r?.data?.categories ?? [],
-  }),
-});
-const snapshotFetch = useFetch(() => `/api/rooms/${roomId.value}/months/${currentMonth.value}`, {
-  transform: (r) => r?.data,
-});
-const [{ data: dashboard, status: dashStatus }, { data: snapshotRes }] = await Promise.all([
-  dashboardFetch,
-  snapshotFetch,
-]);
+const { data, status: dashStatus } = useAuthAsyncData(
+  "room-dashboard",
+  async (requestFetch) => {
+    const [dashRes, snapRes] = await Promise.all([
+      requestFetch(`/api/rooms/${roomId.value}/dashboard`, {
+        query: { month: currentMonth.value },
+      }),
+      requestFetch(`/api/rooms/${roomId.value}/months/${currentMonth.value}`),
+    ]);
+    return {
+      entries: dashRes?.data?.entries ?? [],
+      members: dashRes?.data?.members ?? [],
+      categories: dashRes?.data?.categories ?? [],
+      snapshot: snapRes?.data ?? null,
+    };
+  },
+  { lazy: true },
+);
 
-const members = computed(() => dashboard.value?.members ?? []);
-const categories = computed(() => dashboard.value?.categories ?? []);
-const entries = computed(() => dashboard.value?.entries ?? []);
+const members = computed<DashboardMember[]>(() => data.value?.members ?? []);
+const entries = computed<DashboardEntry[]>(() => data.value?.entries ?? []);
 
 const monthLabel = computed(() => toDayJS(currentMonth.value, "YYYY-MM").format("MMMM YYYY"));
-const monthStatus = computed(() => snapshotRes.value?.status ?? "open");
+const monthStatus = computed(() => (data.value?.snapshot?.status ?? "open") as "open" | "closed");
 const monthClosed = computed(() => monthStatus.value === "closed");
 
 const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));
@@ -65,8 +88,6 @@ const paidByMember = computed(() => {
     .map(([id, t]) => ({ id, ...t }))
     .sort((a, b) => b.USD - a.USD || b.KHR - a.KHR);
 });
-
-const loading = computed(() => dashStatus.value === "pending" && !dashboard.value);
 
 function money(amountMinor: number, currency: string) {
   return formatMoney({ amount_minor: amountMinor, currency: currency as "USD" | "KHR" });
@@ -141,7 +162,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
       />
     </header>
 
-    <div v-if="loading" class="space-y-6">
+    <div v-if="dashStatus.value === 'pending'" class="space-y-6">
       <div class="grid grid-cols-2 gap-4">
         <USkeleton v-for="i in 2" :key="i" class="h-24 rounded-xl" />
       </div>
