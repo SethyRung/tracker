@@ -12,22 +12,33 @@ const yyyymm = computed(() => route.params.yyyymm as string);
 
 const monthLabel = computed(() => toDayJS(yyyymm.value, "YYYY-MM").format("MMMM YYYY"));
 
-const monthFetch = useFetch(() => `/api/rooms/${roomId.value}/months/${yyyymm.value}`, {
-  transform: (r) => (isSuccessResponse(r) ? r.data : null),
-});
-const settleFetch = useFetch(() => `/api/rooms/${roomId.value}/settle/${yyyymm.value}`, {
-  transform: (r) => (isSuccessResponse(r) ? r.data : null),
-});
-const [
-  { data: monthSnapshot, refresh: refreshMonth },
-  { data: settleRes, refresh: refreshSettle },
-] = await Promise.all([monthFetch, settleFetch]);
-
-type SettleData = NonNullable<typeof settleRes.value>;
-
-const plans = computed<SettleData["usd"][]>(() =>
-  settleRes.value ? [settleRes.value.usd, settleRes.value.khr] : [],
+const {
+  data,
+  status: settleStatus,
+  refresh,
+} = useAuthAsyncData(
+  `room-settle:${roomId.value}:${yyyymm.value}`,
+  async (requestFetch) => {
+    const [monthRes, settleRes] = await Promise.all([
+      requestFetch(`/api/rooms/${roomId.value}/months/${yyyymm.value}`),
+      requestFetch(`/api/rooms/${roomId.value}/settle/${yyyymm.value}`),
+    ]);
+    return {
+      snapshot: isSuccessResponse(monthRes) ? monthRes.data : null,
+      settle: isSuccessResponse(settleRes) ? settleRes.data : null,
+    };
+  },
+  { lazy: true },
 );
+
+watch(yyyymm, () => void refresh());
+
+type SettleData = NonNullable<NonNullable<typeof data.value>["settle"]>;
+
+const plans = computed<SettleData["usd"][]>(() => {
+  const settle = data.value?.settle;
+  return settle ? [settle.usd, settle.khr] : [];
+});
 
 function signedBalance(balance: number, formatted: string) {
   if (balance > 0) return `+${formatted}`;
@@ -35,7 +46,7 @@ function signedBalance(balance: number, formatted: string) {
   return formatted;
 }
 
-const monthClosed = computed(() => monthSnapshot.value?.status === "closed");
+const monthClosed = computed(() => data.value?.snapshot?.status === "closed");
 
 const closingMonth = ref(false);
 const showCloseModal = ref(false);
@@ -58,7 +69,7 @@ async function runMonthAction(action: "close" | "reopen") {
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     showCloseModal.value = false;
-    await Promise.all([refreshMonth(), refreshSettle()]);
+    await refresh();
     toast.add({
       icon: "i-lucide-circle-check",
       title: action === "close" ? "Month closed" : "Month reopened",
@@ -107,7 +118,13 @@ async function runMonthAction(action: "close" | "reopen") {
       </div>
     </div>
 
-    <p v-if="!settleRes" class="text-sm text-toned text-center py-12">Loading…</p>
+    <div v-if="settleStatus === 'pending'" class="grid md:grid-cols-2 gap-4">
+      <USkeleton v-for="i in 2" :key="i" class="h-72 rounded-xl" />
+    </div>
+
+    <p v-else-if="settleStatus === 'error'" class="text-sm text-toned text-center py-12">
+      Could not load settlement.
+    </p>
 
     <div v-else class="grid md:grid-cols-2 gap-4">
       <UCard v-for="plan in plans" :key="plan.currency" variant="outline">
