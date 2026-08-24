@@ -1,8 +1,6 @@
 import { inArray, isNotNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 
-const PURGE_AFTER_DAYS = 30;
-
 export default defineTask({
   meta: {
     name: "rooms:purge",
@@ -16,7 +14,7 @@ export default defineTask({
 
     const now = new Date();
     const expiredIds = tombstones
-      .filter((room) => isPurgeEligible(room, now, PURGE_AFTER_DAYS))
+      .filter((room) => isPurgeEligible(room, now, ROOM_PURGE_AFTER_DAYS))
       .map((room) => room.id);
 
     if (expiredIds.length === 0) {

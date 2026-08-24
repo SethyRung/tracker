@@ -9,6 +9,9 @@ export function canDeleteRoom(
   return activeMembers.length === 1 && activeMembers[0]?.id === callerMembershipId;
 }
 
+export const ROOM_DELETE_ARCHIVE_TOLERANCE_MS = 2000;
+export const ROOM_PURGE_AFTER_DAYS = 30;
+
 export function wasArchivedByRoomDelete(
   membership: { leftAt: Date | null },
   roomDeletedAt: Date | null,
