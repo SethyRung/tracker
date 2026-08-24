@@ -42,6 +42,7 @@ export default defineNuxtConfig({
     },
     scheduledTasks: {
       "0 17 * * *": ["recurring:materialize"],
+      "0 18 * * *": ["rooms:purge"],
     },
   },
 
