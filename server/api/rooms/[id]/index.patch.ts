@@ -3,7 +3,7 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const bodySchema = z.object({
-  name: z.string().min(1).max(80).optional(),
+  name: z.string().trim().min(1).max(80).optional(),
   usdEnabled: z.boolean().optional(),
   khrEnabled: z.boolean().optional(),
 });
@@ -13,6 +13,13 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, bodySchema.parse);
+
+  if (body.usdEnabled === false && body.khrEnabled === false) {
+    return createResponse({
+      code: ApiResponseCode.InvalidRequest,
+      message: "Pick at least one currency.",
+    });
+  }
 
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name;

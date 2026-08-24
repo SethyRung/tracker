@@ -53,6 +53,8 @@ async function onConfirm() {
     :title="`Delete ${roomName}?`"
     v-bind="OverlayComponent.props"
   >
+    <slot></slot>
+
     <template #body>
       <p class="text-toned">
         This room will disappear from everyone's lists. History is kept for 30 days in case it needs

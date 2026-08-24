@@ -39,23 +39,6 @@ const joinOpen = ref(false);
     <div v-else-if="rooms.length === 0" class="text-center py-12 space-y-3">
       <UIcon name="i-lucide-house" class="size-10 text-dimmed mx-auto" />
       <p class="text-sm text-muted">You're not in any room yet.</p>
-      <div class="flex items-center justify-center gap-2 pt-1">
-        <UButton
-          icon="i-lucide-plus"
-          label="Create your first room"
-          to="/onboarding/room"
-          color="primary"
-          variant="soft"
-        />
-
-        <UButton
-          icon="i-lucide-ticket"
-          label="Join with invite code"
-          color="neutral"
-          variant="outline"
-          @click="joinOpen = true"
-        />
-      </div>
     </div>
 
     <div v-else class="grid gap-4 sm:grid-cols-2">
