@@ -168,7 +168,7 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
     <div class="space-y-1">
       <p class="font-mono text-xs uppercase tracking-wider text-toned">Account</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Profile</h1>
-      <p class="text-xs text-toned">Your photo, name, and password for this login.</p>
+      <p class="text-xs text-toned">Your photo, name, password, and how you appear in each room.</p>
     </div>
 
     <USkeleton v-if="loading" class="h-64 rounded-xl" />
@@ -219,6 +219,8 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
           <UButton type="submit" label="Save name" :loading="savingName" :disabled="!nameDirty" />
         </UForm>
       </UCard>
+
+      <AccountRoomProfile :memberships="account?.memberships ?? []" @saved="refresh()" />
 
       <UCard variant="outline" :ui="{ body: 'p-5' }">
         <UForm
