@@ -12,6 +12,14 @@ const { signOut } = useUserSession();
       }"
     >
       <template #right>
+        <UButton
+          icon="i-lucide-user"
+          to="/account"
+          color="neutral"
+          variant="ghost"
+          aria-label="Account"
+        />
+
         <UColorModeButton />
 
         <UButton

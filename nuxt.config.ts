@@ -71,6 +71,7 @@ export default defineNuxtConfig({
     "/sign-up": { auth: "guest" },
     "/forgot-password": { auth: "guest" },
     "/reset-password": { auth: "guest" },
+    "/account": { auth: "user" },
     "/onboarding/**": { auth: "user" },
     "/rooms/**": { auth: "user" },
     "/rooms": { auth: "user" },

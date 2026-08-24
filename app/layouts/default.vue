@@ -39,6 +39,14 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       <template #right>
         <RoomSwitcher />
 
+        <UButton
+          icon="i-lucide-user"
+          to="/account"
+          color="neutral"
+          variant="ghost"
+          aria-label="Account"
+        />
+
         <UColorModeButton />
 
         <UButton
