@@ -32,6 +32,67 @@ watch(
 
 const nameDirty = computed(() => nameState.name.trim() !== (account.value?.name ?? ""));
 
+const MAX_AVATAR_BYTES = 1024 * 1024;
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploadingAvatar = ref(false);
+
+const avatarInitials = computed(() =>
+  (account.value?.name ?? "")
+    .split(/\s+/)
+    .map((part) => part.charAt(0))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase(),
+);
+
+function onPickAvatar(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Use an image file",
+      description: "Avatars must be an image such as JPG, PNG, or WebP.",
+    });
+    return;
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Image too large",
+      description: "Avatars must be 1 MB or smaller.",
+    });
+    return;
+  }
+  void uploadAvatar(file);
+}
+
+async function uploadAvatar(file: File) {
+  if (uploadingAvatar.value) return;
+  uploadingAvatar.value = true;
+  try {
+    const body = new FormData();
+    body.append("avatar", file);
+    const res = await $fetch<ApiResponse<{ image: string }>>("/api/account/avatar", {
+      method: "POST",
+      body,
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    await Promise.all([refresh(), fetchSession({ force: true })]);
+    toast.add({ icon: "i-lucide-circle-check", title: "Photo updated" });
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not upload your photo.",
+    });
+  } finally {
+    uploadingAvatar.value = false;
+  }
+}
+
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -107,7 +168,7 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
     <div class="space-y-1">
       <p class="font-mono text-xs uppercase tracking-wider text-toned">Account</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Profile</h1>
-      <p class="text-xs text-toned">Your name and password for this login.</p>
+      <p class="text-xs text-toned">Your photo, name, and password for this login.</p>
     </div>
 
     <USkeleton v-if="loading" class="h-64 rounded-xl" />
@@ -118,6 +179,33 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
           <div class="space-y-1">
             <h2 class="text-sm font-medium text-default">Identity</h2>
             <p class="text-sm text-toned">Email is your login and cannot be changed.</p>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <UAvatar
+              :src="account?.image ?? undefined"
+              :alt="account?.name ?? 'Avatar'"
+              :text="avatarInitials"
+              size="xl"
+            />
+            <div class="space-y-2">
+              <p class="text-sm text-toned">JPG, PNG, or WebP. Max 1 MB.</p>
+              <UButton
+                label="Upload photo"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                :loading="uploadingAvatar"
+                @click="fileInput?.click()"
+              />
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="sr-only"
+                @change="onPickAvatar"
+              />
+            </div>
           </div>
 
           <UFormField label="Email" name="email">

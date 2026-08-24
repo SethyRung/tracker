@@ -29,6 +29,7 @@ export default defineNuxtConfig({
   },
 
   hub: {
+    blob: true,
     db: {
       dialect: "postgresql",
       driver: process.env.DATABASE_DRIVER as any,
