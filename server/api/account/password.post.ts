@@ -19,13 +19,9 @@ export default defineEventHandler(async (event) => {
       headers: event.headers,
     });
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error && typeof error.message === "string"
-        ? error.message
-        : "Could not change password.";
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
-      message,
+      message: getErrorMessage(error, "Could not change password."),
     });
   }
 

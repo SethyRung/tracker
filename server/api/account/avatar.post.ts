@@ -13,13 +13,9 @@ export default defineEventHandler(async (event) => {
   try {
     ensureBlob(file, { maxSize: "1MB", types: ["image"] });
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error && typeof error.message === "string"
-        ? error.message
-        : "Upload an image under 1 MB.";
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
-      message,
+      message: getErrorMessage(error, "Upload an image under 1 MB."),
     });
   }
 

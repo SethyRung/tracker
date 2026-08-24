@@ -222,7 +222,6 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
 
       <AccountRoomProfile
         :memberships="account?.memberships ?? []"
-        :identity-image="account?.image"
         @saved="refresh()"
       />
 

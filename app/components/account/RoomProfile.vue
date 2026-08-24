@@ -16,7 +16,6 @@ export interface RoomMembershipProfile {
 
 const props = defineProps<{
   memberships: RoomMembershipProfile[];
-  identityImage?: string | null;
 }>();
 
 const emit = defineEmits<{
