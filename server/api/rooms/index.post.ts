@@ -22,14 +22,15 @@ export default defineEventHandler(async (event) => {
     { id: newId(), name: "Supplies", sortOrder: 3, recurringType: "unlimited" as const },
   ];
 
+  await db.insert(schema.rooms).values({
+    id: roomId,
+    name: body.name,
+    createdByUserId: session.user.id,
+    usdEnabled: body.usdEnabled,
+    khrEnabled: body.khrEnabled,
+  });
+
   await Promise.all([
-    db.insert(schema.rooms).values({
-      id: roomId,
-      name: body.name,
-      createdByUserId: session.user.id,
-      usdEnabled: body.usdEnabled,
-      khrEnabled: body.khrEnabled,
-    }),
     db.insert(schema.roomMemberships).values({
       id: membershipId,
       roomId,
