@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -11,16 +12,24 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "#auth/schema";
 
-export const rooms = pgTable("rooms", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  createdByUserId: text("created_by_user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "restrict" }),
-  usdEnabled: boolean("usd_enabled").notNull().default(true),
-  khrEnabled: boolean("khr_enabled").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const rooms = pgTable(
+  "rooms",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    usdEnabled: boolean("usd_enabled").notNull().default(true),
+    khrEnabled: boolean("khr_enabled").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+    deletedByUserId: text("deleted_by_user_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+  },
+  (t) => [index("rooms_deleted_at_idx").on(t.deletedAt)],
+);
 
 export const roomMemberships = pgTable("room_memberships", {
   id: text("id").primaryKey(),
