@@ -23,6 +23,14 @@ const items = computed<DropdownMenuItem[]>(() => {
     }
     list.push({ type: "separator" });
   }
+  if (currentRoom.value?.role === "admin" && currentRoomId.value) {
+    list.push({
+      label: "Room settings",
+      icon: "i-lucide-settings",
+      to: `/rooms/${currentRoomId.value}/settings`,
+    });
+    list.push({ type: "separator" });
+  }
   list.push({ label: "Create new room", icon: "i-lucide-plus", to: "/onboarding/room" });
   list.push({ label: "Join with invite code", icon: "i-lucide-ticket", to: "/rooms" });
   return list;
