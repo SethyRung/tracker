@@ -16,6 +16,7 @@ export interface RoomMembershipProfile {
 
 const props = defineProps<{
   memberships: RoomMembershipProfile[];
+  identityImage?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -45,10 +46,6 @@ const roomItems = computed(() =>
 const schema = z.object({
   displayName: z.string().trim().min(1, "Name is required").max(80, "Keep it under 80 characters"),
   nickname: z.string().max(80).optional(),
-  avatarUrl: z
-    .string()
-    .optional()
-    .refine((value) => !value || /^https?:\/\//.test(value), "Enter a valid URL"),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Pick a color"),
 });
 type Schema = z.output<typeof schema>;
@@ -56,7 +53,6 @@ type Schema = z.output<typeof schema>;
 const state = reactive<Schema>({
   displayName: "",
   nickname: "",
-  avatarUrl: "",
   color: MEMBER_COLORS[0],
 });
 const saving = ref(false);
@@ -64,7 +60,6 @@ const saving = ref(false);
 function syncFromMembership(membership: RoomMembershipProfile) {
   state.displayName = membership.displayName;
   state.nickname = membership.nickname ?? "";
-  state.avatarUrl = membership.avatarUrl ?? "";
   state.color = membership.color ?? MEMBER_COLORS[0];
 }
 
@@ -82,7 +77,6 @@ const dirty = computed(() => {
   return (
     state.displayName.trim() !== membership.displayName ||
     (state.nickname ?? "") !== (membership.nickname ?? "") ||
-    (state.avatarUrl ?? "") !== (membership.avatarUrl ?? "") ||
     state.color !== (membership.color ?? MEMBER_COLORS[0])
   );
 });
@@ -97,7 +91,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       body: {
         displayName: event.data.displayName,
         nickname: event.data.nickname || null,
-        avatarUrl: event.data.avatarUrl || null,
         color: event.data.color,
       },
     });
@@ -142,10 +135,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
       <UFormField label="Nickname" name="nickname">
         <UInput v-model="state.nickname" :ui="{ root: 'w-full' }" />
-      </UFormField>
-
-      <UFormField label="Avatar URL" name="avatarUrl">
-        <UInput v-model="state.avatarUrl" placeholder="https://" :ui="{ root: 'w-full' }" />
       </UFormField>
 
       <UFormField label="Color" name="color">
