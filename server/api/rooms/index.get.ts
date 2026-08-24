@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const [rooms, allMembers] = await Promise.all([
     db.query.rooms.findMany({
-      where: (r, { inArray }) => inArray(r.id, roomIds),
+      where: (r, { and, inArray }) => and(inArray(r.id, roomIds), isRoomActiveCondition()),
     }),
     db.query.roomMemberships.findMany({
       where: (m, { and, inArray, eq }) => and(inArray(m.roomId, roomIds), eq(m.isActive, true)),

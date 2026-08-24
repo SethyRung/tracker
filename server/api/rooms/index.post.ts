@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const room = await db.query.rooms.findFirst({
-    where: (r, { eq }) => eq(r.id, roomId),
+    where: (r, { and, eq }) => and(eq(r.id, roomId), isRoomActiveCondition()),
   });
 
   if (!room) {

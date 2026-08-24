@@ -42,6 +42,16 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  const room = await db.query.rooms.findFirst({
+    where: (r, { and, eq }) => and(eq(r.id, row.roomId), isRoomActiveCondition()),
+  });
+  if (!room) {
+    return createResponse({
+      code: ApiResponseCode.NotFound,
+      message: "This invite link is no longer valid.",
+    });
+  }
+
   const existing = await db.query.roomMemberships.findFirst({
     where: (m, { eq, and }) =>
       and(eq(m.roomId, row.roomId), eq(m.userId, session.user.id), eq(m.isActive, true)),

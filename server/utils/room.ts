@@ -1,16 +1,24 @@
 import type { H3Event } from "h3";
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, isNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 
 export function newId(): string {
   return crypto.randomUUID();
 }
 
+export function isRoomActiveCondition() {
+  return isNull(schema.rooms.deletedAt);
+}
+
 export async function requireRoomContext(event: H3Event, roomId: string) {
   const session = await requireUserSession(event);
   const userId = session.user.id;
 
-  const rooms = await db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
+  const rooms = await db
+    .select()
+    .from(schema.rooms)
+    .where(and(eq(schema.rooms.id, roomId), isRoomActiveCondition()))
+    .limit(1);
   const room = rooms[0];
 
   if (!room) {

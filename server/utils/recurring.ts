@@ -6,6 +6,7 @@ import {
   entryWeights,
   recurringTemplates,
   roomMemberships,
+  rooms,
 } from "hub:db:schema";
 
 export interface MaterializeOptions {
@@ -47,14 +48,14 @@ export async function materializeRecurringDrafts(
     })
     .from(recurringTemplates)
     .innerJoin(categories, eq(categories.id, recurringTemplates.categoryId))
+    .innerJoin(rooms, eq(rooms.id, recurringTemplates.roomId))
     .where(
-      options.roomId
-        ? and(
-            eq(recurringTemplates.isActive, true),
-            eq(recurringTemplates.roomId, options.roomId),
-            eq(categories.recurringType, "recurring"),
-          )
-        : and(eq(recurringTemplates.isActive, true), eq(categories.recurringType, "recurring")),
+      and(
+        eq(recurringTemplates.isActive, true),
+        eq(categories.recurringType, "recurring"),
+        isRoomActiveCondition(),
+        options.roomId ? eq(recurringTemplates.roomId, options.roomId) : undefined,
+      ),
     );
 
   const templatesProcessed = templateRows.length;
