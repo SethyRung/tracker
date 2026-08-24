@@ -56,6 +56,7 @@ const state = reactive<Schema>({
   color: MEMBER_COLORS[0],
 });
 const saving = ref(false);
+const colorChip = computed(() => ({ backgroundColor: state.color }));
 
 function syncFromMembership(membership: RoomMembershipProfile) {
   state.displayName = membership.displayName;
@@ -138,18 +139,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UFormField>
 
       <UFormField label="Color" name="color">
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="swatch in MEMBER_COLORS"
-            :key="swatch"
-            type="button"
-            class="size-8 rounded-full ring-2 ring-offset-2 ring-offset-default"
-            :class="state.color === swatch ? 'ring-default' : 'ring-transparent'"
-            :style="{ backgroundColor: swatch }"
-            :aria-label="`Color ${swatch}`"
-            @click="state.color = swatch"
-          />
-        </div>
+        <UPopover>
+          <UButton type="button" label="Choose color" color="neutral" variant="outline">
+            <template #leading>
+              <span :style="colorChip" class="size-3 rounded-full" />
+            </template>
+          </UButton>
+
+          <template #content>
+            <UColorPicker v-model="state.color" format="hex" class="p-2" />
+          </template>
+        </UPopover>
       </UFormField>
 
       <UButton type="submit" label="Save room profile" :loading="saving" :disabled="!dirty" />
