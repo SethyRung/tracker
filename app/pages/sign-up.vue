@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { z } from "zod";
+import * as z from "zod";
 
 definePageMeta({
   layout: "auth",

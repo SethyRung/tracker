@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { z } from "zod";
+import * as z from "zod";
 
 definePageMeta({
   auth: { only: "user" },

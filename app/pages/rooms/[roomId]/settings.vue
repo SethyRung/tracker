@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { z } from "zod";
+import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { ApiResponse } from "#shared/types/response";
 
