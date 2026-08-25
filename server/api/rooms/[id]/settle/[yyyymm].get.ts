@@ -1,4 +1,6 @@
-import { db } from "@nuxthub/db";
+import { asc, eq } from "drizzle-orm";
+import { db, schema } from "@nuxthub/db";
+import { user } from "#auth/schema";
 
 export interface SettleMemberView {
   membershipId: string;
@@ -50,16 +52,23 @@ export default defineEventHandler(async (event) => {
 
   const [plans, memberRows] = await Promise.all([
     settleRoom({ roomId, yyyymm }),
-    db.query.roomMemberships.findMany({
-      columns: { id: true, displayName: true, nickname: true, color: true },
-      where: (m, { eq }) => eq(m.roomId, roomId),
-      orderBy: (m) => m.joinedAt,
-    }),
+    db.select({
+        id: schema.roomMemberships.id,
+        nickname: schema.roomMemberships.nickname,
+        color: schema.roomMemberships.color,
+        userName: user.name,
+      })
+      .from(schema.roomMemberships)
+      .leftJoin(user, eq(user.id, schema.roomMemberships.userId))
+      .where(eq(schema.roomMemberships.roomId, roomId))
+      .orderBy(asc(schema.roomMemberships.joinedAt)),
   ]);
 
   const memberById = new Map(memberRows.map((m) => [m.id, m]));
-  const nameOf = (membershipId: string) =>
-    memberById.get(membershipId)?.displayName ?? "Removed member";
+  const nameOf = (membershipId: string) => {
+    const m = memberById.get(membershipId);
+    return m ? (m.nickname ?? m.userName ?? "Removed member") : "Removed member";
+  };
   const colorOf = (membershipId: string) => memberById.get(membershipId)?.color ?? null;
 
   const toView = (currency: Currency, result: SettlementResult): SettleCurrencyView => {

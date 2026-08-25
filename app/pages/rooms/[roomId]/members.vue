@@ -42,7 +42,7 @@ const columns: TableColumn<Member>[] = [
       h("div", { class: "flex items-center gap-3" }, [
         h(UAvatar, {
           src: row.original.avatarUrl,
-          text: row.original.displayName
+          text: (row.original.nickname ?? row.original.userName ?? "")
             .split(/\s+/)
             .map((p) => p.charAt(0))
             .slice(0, 2)
@@ -50,10 +50,7 @@ const columns: TableColumn<Member>[] = [
             .toUpperCase(),
         }),
         h("p", { class: "text-sm font-medium text-default truncate" }, [
-          row.original.displayName,
-          row.original.nickname
-            ? h("span", { class: "text-toned font-normal" }, ` "${row.original.nickname}"`)
-            : null,
+          row.original.nickname ?? row.original.userName ?? "—",
         ]),
       ]),
   },

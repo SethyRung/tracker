@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { z } from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
-
 useHead({ title: "Join room · Tricker" });
 
 const route = useRoute();
@@ -9,25 +6,15 @@ const toast = useToast();
 const { fetchSession } = useUserSession();
 
 const token = computed(() => (route.params.token as string | undefined) ?? "");
-
-const schema = z.object({
-  displayName: z.string().min(1, "Display name is required").max(80),
-});
-type Schema = z.output<typeof schema>;
-
-const state = reactive<Partial<Schema>>({ displayName: "" });
 const submitting = ref(false);
 
-async function onAccept(event: FormSubmitEvent<Schema>) {
+async function onAccept() {
   if (submitting.value) return;
   submitting.value = true;
   try {
     const res = await $fetch("/api/rooms/join", {
       method: "POST",
-      body: {
-        token: token.value,
-        displayName: event.data.displayName.trim(),
-      },
+      body: { token: token.value },
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
 
@@ -49,30 +36,20 @@ async function onAccept(event: FormSubmitEvent<Schema>) {
     <div class="space-y-1">
       <p class="font-mono text-xs uppercase tracking-wider text-toned">Invite</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Join a room</h1>
-      <p class="text-xs text-toned">Pick a display name to use inside this household.</p>
+      <p class="text-xs text-toned">
+        You'll appear as your account name. Set a per-room nickname later from your account.
+      </p>
     </div>
 
     <UCard variant="outline">
-      <UForm :schema="schema" :state="state" class="space-y-6" @submit="onAccept">
-        <UFormField label="Display name" name="displayName" required>
-          <UInput
-            v-model="state.displayName"
-            placeholder="Your name in this room"
-            size="lg"
-            :ui="{ root: 'w-full' }"
-            autocomplete="name"
-          />
-        </UFormField>
-
-        <UButton
-          type="submit"
-          label="Join room"
-          size="lg"
-          block
-          :loading="submitting"
-          :disabled="submitting"
-        />
-      </UForm>
+      <UButton
+        label="Join room"
+        size="lg"
+        block
+        :loading="submitting"
+        :disabled="submitting"
+        @click="onAccept"
+      />
     </UCard>
   </UContainer>
 </template>

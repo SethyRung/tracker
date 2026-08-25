@@ -3,7 +3,6 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const updateMemberSchema = z.object({
-  displayName: z.string().min(1).max(80).optional(),
   nickname: z.string().max(80).nullable().optional(),
   avatarUrl: z.string().url().nullable().optional(),
   color: z
@@ -34,7 +33,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const updates: Record<string, unknown> = {};
-  if (body.displayName !== undefined && isAdmin) updates.displayName = body.displayName;
   if (body.nickname !== undefined) updates.nickname = body.nickname;
   if (body.avatarUrl !== undefined) updates.avatarUrl = body.avatarUrl;
   if (body.color !== undefined) updates.color = body.color;

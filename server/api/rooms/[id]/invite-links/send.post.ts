@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { db } from "@nuxthub/db";
+import { user } from "#auth/schema";
 import { z } from "zod";
 
 const createInviteSchema = z.object({
@@ -12,13 +15,20 @@ export default defineEventHandler(async (event) => {
 
   const { joinUrl } = await createInviteLink(ctx.membership.id, roomId);
 
+  const inviterRow = await db
+    .select({ name: user.name })
+    .from(user)
+    .where(eq(user.id, ctx.userId))
+    .limit(1);
+  const inviterName = ctx.membership.nickname ?? inviterRow[0]?.name ?? "";
+
   const responses = await Promise.all(
     emails.map(async (email) =>
       sendInviteEmail({
         to: email,
         url: joinUrl,
         roomName: ctx.room.name,
-        inviterName: ctx.membership.displayName,
+        inviterName,
       }),
     ),
   );

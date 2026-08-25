@@ -1,4 +1,6 @@
-import { db } from "@nuxthub/db";
+import { and, asc, eq } from "drizzle-orm";
+import { db, schema } from "@nuxthub/db";
+import { user } from "#auth/schema";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -31,10 +33,13 @@ export default defineEventHandler(async (event) => {
         ),
       orderBy: (e, { asc }) => [asc(e.date), asc(e.createdAt)],
     }),
-    db.query.roomMemberships.findMany({
-      where: (m, { eq, and }) => and(eq(m.roomId, roomId), eq(m.isActive, true)),
-      orderBy: (m) => m.joinedAt,
-    }),
+    db.select({ membership: schema.roomMemberships, userName: user.name })
+      .from(schema.roomMemberships)
+      .leftJoin(user, eq(user.id, schema.roomMemberships.userId))
+      .where(
+        and(eq(schema.roomMemberships.roomId, roomId), eq(schema.roomMemberships.isActive, true)),
+      )
+      .orderBy(asc(schema.roomMemberships.joinedAt)),
     db.query.categories.findMany({
       where: (c, { eq }) => eq(c.roomId, roomId),
     }),
@@ -61,8 +66,13 @@ export default defineEventHandler(async (event) => {
     weights: weightsByEntry.get(e.id) ?? [],
   }));
 
+  const members = memberRows.map(({ membership, userName }) => ({
+    ...membership,
+    userName: (userName ?? "") as string,
+  }));
+
   return createResponse(
     { code: ApiResponseCode.Success },
-    { entries: entriesData, members: memberRows, categories: categoryRows },
+    { entries: entriesData, members, categories: categoryRows },
   );
 });

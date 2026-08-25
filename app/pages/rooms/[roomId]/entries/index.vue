@@ -26,7 +26,10 @@ type Entry = (typeof entries.value)[number];
 const memberById = computed(() => new Map(members.value.map((m) => [m.id, m])));
 const catName = (id: string | null) =>
   id ? (categories.value.find((c) => c.id === id)?.name ?? "—") : "—";
-const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
+const memberLabel = (id: string) => {
+  const m = memberById.value.get(id);
+  return m ? (m.nickname ?? m.userName ?? "—") : "—";
+};
 
 function isRecurring(e: Entry) {
   if (e.templateId) return true;

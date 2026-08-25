@@ -6,8 +6,8 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 interface Member {
   id: string;
   userId: string;
-  displayName: string;
-  nickname?: string | null;
+  nickname: string | null;
+  userName: string;
 }
 
 interface CategoryTemplate {
@@ -181,7 +181,7 @@ watch(
     if (hydrating.value) return;
     if (type === "recurring") {
       weights.value = members.value.map((m) => ({
-        name: m.displayName || m.nickname || "—",
+        name: m.nickname ?? m.userName ?? "—",
         membershipId: m.id,
         weightBps: 0,
       }));
@@ -194,9 +194,13 @@ function defaultPayerId() {
   return members.value.find((m) => m.userId === user.value?.id)?.id;
 }
 
+const memberItems = computed(() =>
+  members.value.map((m) => ({ label: m.nickname ?? m.userName ?? "—", value: m.id })),
+);
+
 function memberLabel(membershipId: string) {
   const member = members.value.find((m) => m.id === membershipId);
-  return member?.displayName || member?.nickname || "—";
+  return member?.nickname ?? member?.userName ?? "—";
 }
 
 function reset() {
@@ -387,9 +391,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           <UFormField label="Paid by" name="paidByMembershipId" required>
             <USelect
               v-model="state.paidByMembershipId"
-              :items="members"
-              label-key="displayName"
-              value-key="id"
+              :items="memberItems"
+              label-key="label"
+              value-key="value"
               size="lg"
               class="w-full"
             />

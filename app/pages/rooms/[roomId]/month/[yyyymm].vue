@@ -32,7 +32,8 @@ interface EntryRow {
 interface MemberRow {
   id: string;
   userId: string;
-  displayName: string;
+  nickname: string | null;
+  userName: string;
   color: string | null;
   role: string;
 }
@@ -116,7 +117,10 @@ async function toggleMonth() {
 const memberById = computed(() => new Map((members.value ?? []).map((m) => [m.id, m])));
 const catName = (id: string | null) =>
   id ? ((categories.value ?? []).find((c) => c.id === id)?.name ?? "—") : "—";
-const memberLabel = (id: string) => memberById.value.get(id)?.displayName ?? "—";
+const memberLabel = (id: string) => {
+  const m = memberById.value.get(id);
+  return m ? (m.nickname ?? m.userName ?? "—") : "—";
+};
 
 const drafts = computed(() => (entries.value ?? []).filter((e) => e.status === "draft"));
 const published = computed(() => (entries.value ?? []).filter((e) => e.status === "published"));

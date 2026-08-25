@@ -3,7 +3,6 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const bodySchema = z.strictObject({
-  displayName: z.string().trim().min(1).max(80).optional(),
   nickname: z
     .union([z.string().trim().max(80), z.literal("")])
     .nullable()
@@ -25,7 +24,6 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse);
 
   const updates: Record<string, unknown> = {};
-  if (body.displayName !== undefined) updates.displayName = body.displayName;
   if (body.nickname !== undefined) updates.nickname = body.nickname === "" ? null : body.nickname;
   if (body.avatarUrl !== undefined)
     updates.avatarUrl = body.avatarUrl === "" ? null : body.avatarUrl;

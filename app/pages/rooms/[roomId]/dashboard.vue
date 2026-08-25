@@ -3,7 +3,8 @@ interface DashboardMember {
   id: string;
   userId: string;
   role: "admin" | "member";
-  displayName: string;
+  nickname: string | null;
+  userName: string;
   color?: string | null;
 }
 
@@ -96,10 +97,12 @@ function member(id: string) {
   return memberById.value.get(id);
 }
 function memberLabel(id: string) {
-  return member(id)?.displayName ?? "—";
+  const m = member(id);
+  return m ? (m.nickname ?? m.userName ?? "—") : "—";
 }
 function memberInitials(id: string) {
-  const name = member(id)?.displayName ?? "?";
+  const m = member(id);
+  const name = m ? (m.nickname ?? m.userName ?? "?") : "?";
   return name.slice(0, 1).toUpperCase();
 }
 

@@ -8,7 +8,6 @@ export interface RoomMembershipProfile {
   id: string;
   roomId: string;
   roomName: string;
-  displayName: string;
   nickname: string | null;
   avatarUrl: string | null;
   color: string | null;
@@ -43,14 +42,12 @@ const roomItems = computed(() =>
 );
 
 const schema = z.object({
-  displayName: z.string().trim().min(1, "Name is required").max(80, "Keep it under 80 characters"),
   nickname: z.string().max(80).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Pick a color"),
 });
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Schema>({
-  displayName: "",
   nickname: "",
   color: MEMBER_COLORS[0],
 });
@@ -58,7 +55,6 @@ const saving = ref(false);
 const colorChip = computed(() => ({ backgroundColor: state.color }));
 
 function syncFromMembership(membership: RoomMembershipProfile) {
-  state.displayName = membership.displayName;
   state.nickname = membership.nickname ?? "";
   state.color = membership.color ?? MEMBER_COLORS[0];
 }
@@ -75,7 +71,6 @@ const dirty = computed(() => {
   const membership = selected.value;
   if (!membership) return false;
   return (
-    state.displayName.trim() !== membership.displayName ||
     (state.nickname ?? "") !== (membership.nickname ?? "") ||
     state.color !== (membership.color ?? MEMBER_COLORS[0])
   );
@@ -89,7 +84,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     const res = await $fetch<ApiResponse<unknown>>(`/api/rooms/${membership.roomId}/membership`, {
       method: "PATCH",
       body: {
-        displayName: event.data.displayName,
         nickname: event.data.nickname || null,
         color: event.data.color,
       },
@@ -129,12 +123,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UFormField>
       <p v-else class="text-sm font-medium text-default">{{ selected?.roomName }}</p>
 
-      <UFormField label="Display name" name="displayName" required>
-        <UInput v-model="state.displayName" :ui="{ root: 'w-full' }" />
-      </UFormField>
-
-      <UFormField label="Nickname" name="nickname">
-        <UInput v-model="state.nickname" :ui="{ root: 'w-full' }" />
+      <UFormField label="Nickname" name="nickname" help="Optional. Leave blank to use your account name.">
+        <UInput v-model="state.nickname" :ui="{ root: 'w-full' }" placeholder="Your account name" />
       </UFormField>
 
       <UFormField label="Color" name="color">

@@ -4,7 +4,6 @@ import { z } from "zod";
 
 const bodySchema = z.object({
   token: z.string().min(1).max(64),
-  displayName: z.string().min(1).max(80),
   color: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
@@ -78,7 +77,6 @@ export default defineEventHandler(async (event) => {
     roomId: row.roomId,
     userId: session.user.id,
     role: "member",
-    displayName: body.displayName,
     color,
     sharePercentBps: Math.floor(10000 / Math.max(1, usedColors.length + 1)),
   });

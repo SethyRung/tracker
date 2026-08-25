@@ -36,7 +36,6 @@ export default defineEventHandler(async (event) => {
       roomId,
       userId: session.user.id,
       role: "admin",
-      displayName: session.user.name ?? session.user.email,
       sharePercentBps: 10000,
     }),
     ...categoryRows.map((cat) =>

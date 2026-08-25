@@ -4,19 +4,14 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 
 const open = defineModel<boolean>("open");
 
-const { user } = useUserSession();
 const { refresh } = useRoomMemberships();
 
 const schema = z.object({
   inviteInput: z.string().min(1, "Paste your invite code or link"),
-  displayName: z.string().min(1, "Display name is required").max(80),
 });
 type Schema = z.output<typeof schema>;
 
-const state = reactive<Partial<Schema>>({
-  inviteInput: "",
-  displayName: user.value?.name ?? user.value?.email ?? "",
-});
+const state = reactive<Partial<Schema>>({ inviteInput: "" });
 
 const submitting = ref(false);
 const submitError = ref("");
@@ -24,7 +19,6 @@ const submitError = ref("");
 watch(open, (isOpen) => {
   if (isOpen) {
     state.inviteInput = "";
-    state.displayName = user.value?.name ?? user.value?.email ?? "";
     submitError.value = "";
   }
 });
@@ -41,10 +35,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
     const res = await $fetch("/api/rooms/join", {
       method: "POST",
-      body: {
-        token,
-        displayName: (event.data.displayName ?? "").trim(),
-      },
+      body: { token },
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
 
@@ -77,16 +68,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             size="lg"
             :ui="{ root: 'w-full' }"
             autofocus
-          />
-        </UFormField>
-
-        <UFormField label="Display name" name="displayName" required>
-          <UInput
-            v-model="state.displayName"
-            placeholder="Your name in this room"
-            size="lg"
-            :ui="{ root: 'w-full' }"
-            autocomplete="name"
           />
         </UFormField>
 

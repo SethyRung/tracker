@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   roomId: string;
-  member: { id: string; displayName: string } | null;
+  member: { id: string; nickname: string | null; userName: string } | null;
 }>();
 
 const emits = defineEmits<{
@@ -11,6 +11,11 @@ const emits = defineEmits<{
 const open = defineModel<boolean>("open");
 
 const toast = useToast();
+const memberLabel = computed(() => {
+  const m = props.member;
+  return m ? (m.nickname ?? m.userName ?? "") : "";
+});
+
 const busy = ref(false);
 
 const { isMD } = useBreakpoints();
@@ -49,7 +54,7 @@ async function onConfirm() {
   <component
     :is="OverlayComponent.is"
     v-model:open="open"
-    :title="`Remove ${member?.displayName ?? ''}?`"
+    :title="`Remove ${memberLabel}?`"
     v-bind="OverlayComponent.props"
   >
     <slot />

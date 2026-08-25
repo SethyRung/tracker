@@ -6,8 +6,8 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 interface Member {
   id: string;
   userId: string;
-  displayName: string;
-  nickname?: string | null;
+  nickname: string | null;
+  userName: string;
 }
 
 interface Category {
@@ -109,7 +109,11 @@ function formatDateLabel(iso?: string) {
 }
 
 const memberCheckboxItems = computed(() =>
-  members.value.map((m) => ({ label: m.displayName || m.nickname || "—", value: m.id })),
+  members.value.map((m) => ({ label: m.nickname ?? m.userName ?? "—", value: m.id })),
+);
+
+const memberItems = computed(() =>
+  members.value.map((m) => ({ label: m.nickname ?? m.userName ?? "—", value: m.id })),
 );
 
 const displayCategories = computed(() => {
@@ -167,7 +171,7 @@ function defaultPayerId() {
 
 function memberLabel(membershipId: string) {
   const member = members.value.find((m) => m.id === membershipId);
-  return member?.displayName || member?.nickname || "—";
+  return member?.nickname ?? member?.userName ?? "—";
 }
 
 watch(
@@ -191,7 +195,7 @@ function reset() {
   state.categoryId = undefined;
   state.paidByMembershipId = defaultPayerId();
   weights.value = members.value.map((m) => ({
-    name: m.displayName || m.nickname || "—",
+    name: m.nickname ?? m.userName ?? "—",
     membershipId: m.id,
     weightBps: 0,
   }));
@@ -394,9 +398,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UFormField label="Paid by" name="paidByMembershipId" required>
           <USelect
             v-model="state.paidByMembershipId"
-            :items="members"
-            label-key="displayName"
-            value-key="id"
+            :items="memberItems"
             size="lg"
             class="w-full"
           />

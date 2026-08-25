@@ -26,7 +26,6 @@ export default defineEventHandler(async (event) => {
         id: m.id,
         roomId: room.id,
         roomName: room.name,
-        displayName: m.displayName,
         nickname: m.nickname,
         avatarUrl: m.avatarUrl,
         color: m.color,

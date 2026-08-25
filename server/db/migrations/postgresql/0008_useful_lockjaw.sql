@@ -1,0 +1,1 @@
+ALTER TABLE "room_memberships" DROP COLUMN "display_name";

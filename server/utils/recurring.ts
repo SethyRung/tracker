@@ -70,10 +70,10 @@ export async function materializeRecurringDrafts(
   }
 
   const roomIds = Array.from(new Set(templateRows.map((t) => t.roomId)));
-  const membersByRoom = new Map<string, Array<{ id: string; displayName: string }>>();
+  const membersByRoom = new Map<string, Array<{ id: string }>>();
   for (const rid of roomIds) {
     const rows = await db
-      .select({ id: roomMemberships.id, displayName: roomMemberships.displayName })
+      .select({ id: roomMemberships.id })
       .from(roomMemberships)
       .where(and(eq(roomMemberships.roomId, rid), eq(roomMemberships.isActive, true)))
       .orderBy(roomMemberships.joinedAt);

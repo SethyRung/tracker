@@ -42,7 +42,6 @@ export const roomMemberships = pgTable("room_memberships", {
   role: text("role", { enum: ["admin", "member"] })
     .notNull()
     .default("member"),
-  displayName: text("display_name").notNull(),
   nickname: text("nickname"),
   avatarUrl: text("avatar_url"),
   color: text("color"),
