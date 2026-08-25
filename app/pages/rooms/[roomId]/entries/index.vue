@@ -60,6 +60,12 @@ function canPublish(e: Entry) {
 }
 
 const entryToRemove = ref<Entry | null>(null);
+const removeOpen = computed({
+  get: () => entryToRemove.value !== null,
+  set: (value) => {
+    if (!value) entryToRemove.value = null;
+  },
+});
 const editing = ref<Entry | null>(null);
 const formOpen = ref(false);
 const publishingId = ref<string | null>(null);
@@ -107,6 +113,26 @@ watch(
   },
   { immediate: true },
 );
+
+async function onRemoveEntry(close: () => void) {
+  const entry = entryToRemove.value;
+  if (!entry) return;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/entries/${entry.id}`, {
+      method: "DELETE",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    toast.add({ icon: "i-lucide-circle-check", title: "Deleted" });
+    close();
+    await refreshEntries();
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not delete entry.",
+    });
+  }
+}
 
 async function onPublish(entry: Entry) {
   if (publishingId.value) return;
@@ -284,11 +310,11 @@ function onRowSelect(_e: Event, row: { original: Entry }) {
       @select="onRowSelect"
     />
 
-    <EntriesRemoveModal
-      :open="entryToRemove !== null"
-      :room-id="roomId"
-      :entry="entryToRemove"
-      @removed="refreshEntries()"
+    <RemoveModal
+      v-model:open="removeOpen"
+      title="Delete this entry?"
+      description="This entry will be permanently removed from the room."
+      :on-delete="onRemoveEntry"
     />
   </UContainer>
 </template>

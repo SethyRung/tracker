@@ -34,9 +34,36 @@ const categories = computed(() =>
 
 type Category = (typeof categories.value)[number];
 
+const toast = useToast();
 const categoryToRemove = ref<Category | null>(null);
+const removeOpen = computed({
+  get: () => categoryToRemove.value !== null,
+  set: (value) => {
+    if (!value) categoryToRemove.value = null;
+  },
+});
 const editing = ref<Category | null>(null);
 const formOpen = ref(false);
+
+async function onRemoveCategory(close: () => void) {
+  const category = categoryToRemove.value;
+  if (!category) return;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/categories/${category.id}`, {
+      method: "DELETE",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    toast.add({ icon: "i-lucide-circle-check", title: "Removed" });
+    close();
+    await refresh();
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not remove category.",
+    });
+  }
+}
 
 function editCategory(category: Category) {
   editing.value = category;
@@ -170,11 +197,11 @@ const columns: TableColumn<Category>[] = [
 
     <UTable :data="categories" :columns="columns" :loading="categoriesStatus === 'pending'" />
 
-    <CategoriesRemoveModal
-      :open="categoryToRemove !== null"
-      :room-id="roomId"
-      :category="categoryToRemove"
-      @removed="refresh"
+    <RemoveModal
+      v-model:open="removeOpen"
+      :title="`Remove ${categoryToRemove?.name ?? ''}?`"
+      description="Existing entries keep their label but new entries can't be assigned to this category."
+      :on-delete="onRemoveCategory"
     />
   </UContainer>
 </template>

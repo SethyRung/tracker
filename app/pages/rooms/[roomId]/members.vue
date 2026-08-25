@@ -33,7 +33,39 @@ const UAvatar = resolveComponent("UAvatar");
 const UBadge = resolveComponent("UBadge");
 const UButton = resolveComponent("UButton");
 
+const toast = useToast();
 const memberToRemove = ref<Member | null>(null);
+const memberToRemoveLabel = computed(() => {
+  const member = memberToRemove.value;
+  return member ? (member.nickname ?? member.userName ?? "") : "";
+});
+const removeOpen = computed({
+  get: () => memberToRemove.value !== null,
+  set: (value) => {
+    if (!value) memberToRemove.value = null;
+  },
+});
+
+async function onRemoveMember(close: () => void) {
+  const member = memberToRemove.value;
+  if (!member) return;
+  try {
+    const res = await $fetch(`/api/rooms/${roomId.value}/members/${member.id}`, {
+      method: "DELETE",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    toast.add({ icon: "i-lucide-circle-check", title: "Removed" });
+    close();
+    await refreshMembers();
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not remove member.",
+    });
+  }
+}
+
 const columns: TableColumn<Member>[] = [
   {
     id: "member",
@@ -110,11 +142,11 @@ const columns: TableColumn<Member>[] = [
     <UTable :data="members" :columns="columns" :loading="membersStatus === 'pending'" />
 
     <MembersInviteModal v-model:open="inviteOpen" :room-id="roomId" />
-    <MembersRemoveModal
-      :open="memberToRemove !== null"
-      :room-id="roomId"
-      :member="memberToRemove"
-      @removed="refreshMembers"
+    <RemoveModal
+      v-model:open="removeOpen"
+      :title="`Remove ${memberToRemoveLabel}?`"
+      description="They'll lose access to this room and can rejoin with a new invite if needed."
+      :on-delete="onRemoveMember"
     />
   </UContainer>
 </template>
