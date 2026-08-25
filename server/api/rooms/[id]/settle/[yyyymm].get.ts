@@ -52,7 +52,8 @@ export default defineEventHandler(async (event) => {
 
   const [plans, memberRows] = await Promise.all([
     settleRoom({ roomId, yyyymm }),
-    db.select({
+    db
+      .select({
         id: schema.roomMemberships.id,
         nickname: schema.roomMemberships.nickname,
         color: schema.roomMemberships.color,

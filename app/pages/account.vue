@@ -220,10 +220,7 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
         </UForm>
       </UCard>
 
-      <AccountRoomProfile
-        :memberships="account?.memberships ?? []"
-        @saved="refresh()"
-      />
+      <AccountRoomProfile :memberships="account?.memberships ?? []" @saved="refresh()" />
 
       <UCard variant="outline" :ui="{ body: 'p-5' }">
         <UForm

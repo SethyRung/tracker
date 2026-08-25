@@ -33,7 +33,8 @@ export default defineEventHandler(async (event) => {
         ),
       orderBy: (e, { asc }) => [asc(e.date), asc(e.createdAt)],
     }),
-    db.select({ membership: schema.roomMemberships, userName: user.name })
+    db
+      .select({ membership: schema.roomMemberships, userName: user.name })
       .from(schema.roomMemberships)
       .leftJoin(user, eq(user.id, schema.roomMemberships.userId))
       .where(

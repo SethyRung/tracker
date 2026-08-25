@@ -5,7 +5,10 @@ export function isSuccessResponse<T>(res?: ApiResponse<T> | null): res is ApiRes
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
-  return error && typeof error === "object" && "message" in error && typeof error.message === "string"
+  return error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
     ? error.message
     : fallback;
 }

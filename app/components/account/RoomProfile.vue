@@ -123,7 +123,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UFormField>
       <p v-else class="text-sm font-medium text-default">{{ selected?.roomName }}</p>
 
-      <UFormField label="Nickname" name="nickname" help="Optional. Leave blank to use your account name.">
+      <UFormField
+        label="Nickname"
+        name="nickname"
+        help="Optional. Leave blank to use your account name."
+      >
         <UInput v-model="state.nickname" :ui="{ root: 'w-full' }" placeholder="Your account name" />
       </UFormField>
 
