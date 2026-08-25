@@ -43,11 +43,7 @@ const emit = defineEmits<{ refresh: [] }>();
 const open = defineModel<boolean>("open", { default: false });
 
 const isEdit = computed(() => !!props.entry?.id);
-const isRecurringEntry = computed(
-  () =>
-    !!props.entry?.templateId ||
-    props.categories.find((c) => c.id === props.entry?.categoryId)?.recurringType === "recurring",
-);
+const isMaterialized = computed(() => !!props.entry?.templateId);
 
 const toast = useToast();
 const { user } = useUserSession();
@@ -129,6 +125,7 @@ const displayCategories = computed(() => {
 const weights = ref<Array<{ name: string; membershipId: string; weightBps: number }>>([]);
 const hydrating = ref(false);
 const submitting = ref(false);
+const resetting = ref(false);
 
 const { isMD } = useBreakpoints();
 
@@ -233,15 +230,6 @@ watch(
       return;
     }
     await nextTick();
-    if (isRecurringEntry.value) {
-      open.value = false;
-      toast.add({
-        icon: "i-lucide-circle-x",
-        title: "Edit this in Categories",
-        description: "Recurring entries are managed from the category template.",
-      });
-      return;
-    }
     if (props.entry) populate(props.entry);
     else reset();
   },
@@ -257,7 +245,7 @@ watch(members, (list) => {
 });
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (!props.roomId || submitting.value || isRecurringEntry.value) return;
+  if (!props.roomId || submitting.value) return;
 
   if (!shareState.value.valid) {
     toast.add({
@@ -324,6 +312,29 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     submitting.value = false;
   }
 }
+
+async function resetToTemplate() {
+  const entry = props.entry;
+  if (!entry?.id || !entry?.templateId || resetting.value) return;
+  resetting.value = true;
+  try {
+    const res = await $fetch(`/api/rooms/${props.roomId}/entries/${entry.id}/reset-to-template`, {
+      method: "POST",
+    });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    populate(res.data);
+    toast.add({ icon: "i-lucide-rotate-ccw", title: "Reset to template" });
+    emit("refresh");
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not reset entry.",
+    });
+  } finally {
+    resetting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -340,6 +351,26 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
     <template #body>
       <UForm id="entry-form" :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
+        <UAlert
+          v-if="isMaterialized"
+          icon="i-lucide-repeat"
+          title="Auto-posted from a recurring template"
+          description="Your edits apply to this entry only and won't change the template. Future months keep using the template."
+          variant="subtle"
+          :actions="[
+            {
+              icon: 'i-lucide-rotate-ccw',
+              label: 'Reset to template',
+              variant: 'soft',
+              loading: resetting,
+              onClick: resetToTemplate,
+            },
+          ]"
+          :ui="{
+            wrapper: 'text-default',
+          }"
+        />
+
         <UFormField label="Amount" name="amountMajor" required>
           <UInputNumber v-model="state.amountMajor" :min="0" size="lg" :ui="{ root: 'w-full' }" />
         </UFormField>

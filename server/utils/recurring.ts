@@ -192,3 +192,90 @@ export async function materializeRecurringDrafts(
     templatesSkipped,
   };
 }
+
+// The template fields that get stamped onto a materialized entry. Reused by
+// category/template PATCH (syncCurrentEntry) and the entry reset endpoint.
+export interface TemplateRef {
+  id: string;
+  roomId: string;
+  currency: "USD" | "KHR";
+  amountMinor: number;
+  paidByMembershipId: string | null;
+  memberSnapshot: Array<{ membershipId: string; weightBps: number }>;
+}
+
+// Find the entry a template materialized in the current ICT month, if any.
+// Used to decide whether to offer "sync/delete this month's entry".
+export async function findCurrentMonthEntryForTemplate(
+  roomId: string,
+  templateId: string,
+): Promise<{ id: string } | null> {
+  const key = monthKey();
+  const range = monthRange(key);
+  const row = await db.query.entries.findFirst({
+    columns: { id: true },
+    where: (e, { and, eq, gte, lt }) =>
+      and(
+        eq(e.roomId, roomId),
+        eq(e.templateId, templateId),
+        gte(e.date, range.start.toDate()) as never,
+        lt(e.date, range.end.toDate()) as never,
+      ),
+  });
+  return row ?? null;
+}
+
+// Overwrite the template-controlled fields of an existing entry (amount,
+// currency, payer, weights) with the template's current values. Members who
+// have left the room are pruned and the remaining weights rescaled to
+// BPS_TOTAL, mirroring the materializer. Returns the refreshed entry + its
+// weights, or null when no active members remain.
+export async function syncEntryToTemplate(
+  entryId: string,
+  template: TemplateRef,
+): Promise<{ entry: NonNullable<Awaited<ReturnType<typeof db.query.entries.findFirst>>>; weights: Array<{ membershipId: string; weightBps: number }> } | null> {
+  const activeMembers = await db
+    .select({ id: roomMemberships.id })
+    .from(roomMemberships)
+    .where(and(eq(roomMemberships.roomId, template.roomId), eq(roomMemberships.isActive, true)))
+    .orderBy(roomMemberships.joinedAt);
+
+  const activeIds = new Set(activeMembers.map((m) => m.id));
+  if (activeIds.size === 0) return null;
+
+  const pruned = pruneSnapshot(template.memberSnapshot, activeIds);
+  if (!pruned) return null;
+
+  const oldest = activeMembers[0];
+  const payerId =
+    template.paidByMembershipId && activeIds.has(template.paidByMembershipId)
+      ? template.paidByMembershipId
+      : (oldest?.id ?? null);
+  if (!payerId) return null;
+
+  await db
+    .update(entries)
+    .set({
+      currency: template.currency,
+      amountMinor: template.amountMinor,
+      paidByMembershipId: payerId,
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.id, entryId));
+
+  await db.delete(entryWeights).where(eq(entryWeights.entryId, entryId));
+  await db.insert(entryWeights).values(
+    pruned.map((w) => ({
+      entryId,
+      membershipId: w.membershipId,
+      weightBps: w.weightBps,
+    })),
+  );
+
+  const entry = await db.query.entries.findFirst({ where: (e, { eq }) => eq(e.id, entryId) });
+  const weights = await db.query.entryWeights.findMany({
+    where: (w, { eq }) => eq(w.entryId, entryId),
+  });
+  if (!entry) return null;
+  return { entry, weights: weights as Array<{ membershipId: string; weightBps: number }> };
+}

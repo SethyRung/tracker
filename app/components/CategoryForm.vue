@@ -24,6 +24,7 @@ interface Category {
   name: string;
   recurringType: "unlimited" | "once" | "recurring";
   template?: CategoryTemplate | null;
+  currentEntryId?: string | null;
 }
 
 const props = defineProps<{ roomId: string; members: Member[]; category?: Category | null }>();
@@ -69,6 +70,7 @@ const schema = z
     dayOfMonth: z.number().int().min(1).max(31).optional(),
     isActive: z.boolean().optional(),
     paidByMembershipId: z.string().min(1, "Pick who pays").optional(),
+    syncCurrentEntry: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.recurringType !== "recurring") return;
@@ -111,7 +113,12 @@ const state = reactive<Partial<Schema>>({
   dayOfMonth: 1,
   isActive: true,
   currency: "USD",
+  syncCurrentEntry: false,
 });
+
+const canSyncCurrentEntry = computed(
+  () => !!props.category?.currentEntryId && isEdit.value && state.recurringType === "recurring",
+);
 
 const dayPickerMonth = new CalendarDate(2000, 1, 1);
 
@@ -212,6 +219,7 @@ function reset() {
   state.dayOfMonth = 1;
   state.isActive = true;
   state.paidByMembershipId = defaultPayerId();
+  state.syncCurrentEntry = false;
   weights.value = [];
   nextTick(() => {
     hydrating.value = false;
@@ -220,6 +228,7 @@ function reset() {
 
 function populate(category: Category) {
   hydrating.value = true;
+  state.syncCurrentEntry = false;
   state.name = category.name;
   state.recurringType = category.recurringType;
 
@@ -299,7 +308,22 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       isEdit.value && props.category
         ? await $fetch(`/api/rooms/${props.roomId}/categories/${props.category.id}`, {
             method: "PATCH",
-            body,
+            body: isRecurring(data)
+              ? {
+                  name: data.name,
+                  recurringType: data.recurringType,
+                  currency: data.currency,
+                  amountMinor: toAmountMinor(data.currency, data.amountMajor),
+                  dayOfMonth: data.dayOfMonth,
+                  isActive: data.isActive,
+                  paidByMembershipId: data.paidByMembershipId,
+                  memberSnapshot: weights.value.map(({ membershipId, weightBps }) => ({
+                    membershipId,
+                    weightBps,
+                  })),
+                  syncCurrentEntry: !!state.syncCurrentEntry,
+                }
+              : { name: data.name, recurringType: data.recurringType },
           })
         : await $fetch(`/api/rooms/${props.roomId}/categories`, { method: "POST", body });
 
@@ -433,6 +457,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
           <UFormField label="Active" name="isActive" orientation="horizontal">
             <USwitch v-model="state.isActive" size="lg" />
+          </UFormField>
+
+          <UFormField
+            v-if="canSyncCurrentEntry"
+            label="Update this month's entry too"
+            name="syncCurrentEntry"
+            orientation="horizontal"
+          >
+            <USwitch v-model="state.syncCurrentEntry" size="lg" />
           </UFormField>
 
           <UFormField label="Attendees" :error="shareState.message">

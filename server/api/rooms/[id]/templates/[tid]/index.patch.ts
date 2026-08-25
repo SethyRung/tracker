@@ -40,6 +40,7 @@ const bodySchema = z
     isActive: z.boolean().optional(),
     paidByMembershipId: z.string().min(1).nullish(),
     memberSnapshot: memberSnapshotSchema.optional(),
+    syncCurrentEntry: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No updates provided" });
 
@@ -99,6 +100,21 @@ export default defineEventHandler(async (event) => {
       await materializeRecurringDrafts({ roomId, monthKey: monthKey() });
     } catch (e) {
       console.error("[templates.patch] immediate materialization failed", e);
+    }
+  }
+
+  if (body.syncCurrentEntry) {
+    try {
+      await assertMonthOpen(roomId, monthKey());
+    } catch (e) {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: e instanceof Error ? e.message : "Current month is closed.",
+      });
+    }
+    const current = await findCurrentMonthEntryForTemplate(roomId, template.id);
+    if (current) {
+      await syncEntryToTemplate(current.id, template);
     }
   }
 

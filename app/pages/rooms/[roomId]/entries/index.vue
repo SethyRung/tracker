@@ -43,7 +43,6 @@ function canDelete(e: Entry) {
 }
 
 function canEdit(e: Entry) {
-  if (isRecurring(e)) return false;
   if (isAdmin.value) return true;
   if (e.status === "draft") return false;
   return e.createdByUserId === user.value?.id;
@@ -103,15 +102,6 @@ watch(
     if (typeof editId !== "string" || !editId) return;
     const found = entries.value.find((e) => e.id === editId);
     if (!found) return;
-    if (isRecurring(found)) {
-      void navigateTo(
-        found.categoryId
-          ? `/rooms/${roomId.value}/categories?edit=${found.categoryId}`
-          : `/rooms/${roomId.value}/categories`,
-        { replace: true },
-      );
-      return;
-    }
     editEntry(found);
     void navigateTo({ path: route.path, query: {} }, { replace: true });
   },
@@ -211,31 +201,32 @@ const columns: TableColumn<Entry>[] = [
               },
             })
           : null,
+        canEdit(row.original)
+          ? h(UButton, {
+              icon: "i-lucide-pencil",
+              color: "neutral",
+              variant: "ghost",
+              size: "xs",
+              "aria-label": "Edit",
+              onClick: (ev: Event) => {
+                ev.stopPropagation();
+                editEntry(row.original);
+              },
+            })
+          : null,
         isRecurring(row.original) && isAdmin.value
           ? h(UButton, {
               icon: "i-lucide-tag",
               color: "neutral",
               variant: "ghost",
               size: "xs",
-              "aria-label": "Edit category",
+              "aria-label": "Edit template",
               onClick: (ev: Event) => {
                 ev.stopPropagation();
                 editRecurring(row.original);
               },
             })
-          : canEdit(row.original)
-            ? h(UButton, {
-                icon: "i-lucide-pencil",
-                color: "neutral",
-                variant: "ghost",
-                size: "xs",
-                "aria-label": "Edit",
-                onClick: (ev: Event) => {
-                  ev.stopPropagation();
-                  editEntry(row.original);
-                },
-              })
-            : null,
+          : null,
         canDelete(row.original)
           ? h(UButton, {
               icon: "i-lucide-trash",
@@ -255,10 +246,6 @@ const columns: TableColumn<Entry>[] = [
 ];
 
 function onRowSelect(_e: Event, row: { original: Entry }) {
-  if (isRecurring(row.original)) {
-    if (isAdmin.value) editRecurring(row.original);
-    return;
-  }
   if (canEdit(row.original)) editEntry(row.original);
 }
 </script>
