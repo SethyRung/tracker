@@ -31,6 +31,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   <div class="min-h-screen flex flex-col font-sans">
     <UHeader
       title="Tricker"
+      to="/rooms"
       :toggle="false"
       :ui="{
         title: 'font-pixel-circle text-primary',
