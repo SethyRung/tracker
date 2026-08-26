@@ -2,7 +2,7 @@
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
-const open = defineModel<boolean>("open");
+const open = defineModel<boolean>("open", { default: false });
 
 const { refresh } = useRoomMemberships();
 
@@ -15,6 +15,14 @@ const state = reactive<Partial<Schema>>({ inviteInput: "" });
 
 const submitting = ref(false);
 const submitError = ref("");
+
+const { isMD } = useBreakpoints();
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+const OverlayComponent = computed(() => ({
+  is: isMD.value ? UModal : UDrawer,
+  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
+}));
 
 watch(open, (isOpen) => {
   if (isOpen) {
@@ -54,13 +62,23 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UModal
+  <component
+    :is="OverlayComponent.is"
     v-model:open="open"
     title="Join a room"
     description="Paste the invite code or link your admin sent you."
+    v-bind="OverlayComponent.props"
   >
+    <slot />
+
     <template #body>
-      <UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
+      <UForm
+        id="join-room-form"
+        :schema="schema"
+        :state="state"
+        class="space-y-5"
+        @submit="onSubmit"
+      >
         <UFormField label="Invite code or link" name="inviteInput" required>
           <UInput
             v-model="state.inviteInput"
@@ -78,16 +96,28 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           icon="i-lucide-circle-x"
           :title="submitError"
         />
-
-        <UButton
-          type="submit"
-          label="Join room"
-          size="lg"
-          block
-          :loading="submitting"
-          :disabled="submitting"
-        />
       </UForm>
     </template>
-  </UModal>
+
+    <template #footer="{ close }">
+      <UButton
+        v-if="isMD"
+        label="Cancel"
+        color="neutral"
+        variant="ghost"
+        :disabled="submitting"
+        @click="close"
+      />
+
+      <UButton
+        type="submit"
+        form="join-room-form"
+        label="Join room"
+        size="lg"
+        :block="!isMD"
+        :loading="submitting"
+        :disabled="submitting"
+      />
+    </template>
+  </component>
 </template>
