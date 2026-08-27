@@ -4,6 +4,7 @@ import type { DropdownMenuItem } from "@nuxt/ui";
 const { rooms, currentRoom, currentRoomId } = useRoomMemberships();
 
 const lastRoomId = useLastRoomId();
+const createOpen = ref(false);
 
 const otherRooms = computed(() => rooms.value.filter((r) => r.id !== currentRoomId.value));
 
@@ -31,7 +32,15 @@ const items = computed<DropdownMenuItem[]>(() => {
     });
     list.push({ type: "separator" });
   }
-  list.push({ label: "Create new room", icon: "i-lucide-plus", to: "/onboarding/room" });
+  list.push({
+    label: "Create new room",
+    icon: "i-lucide-plus",
+    onSelect: () => {
+      nextTick(() => {
+        createOpen.value = true;
+      });
+    },
+  });
   list.push({ label: "Join with invite code", icon: "i-lucide-ticket", to: "/rooms" });
   return list;
 });
@@ -47,4 +56,6 @@ const items = computed<DropdownMenuItem[]>(() => {
       variant="ghost"
     />
   </UDropdownMenu>
+
+  <CreateRoomForm v-model:open="createOpen" />
 </template>

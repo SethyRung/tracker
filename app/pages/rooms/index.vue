@@ -7,6 +7,7 @@ const { rooms, status } = useRoomMemberships();
 const lastRoomId = useLastRoomId();
 
 const loading = computed(() => status.value === "pending" && rooms.value.length === 0);
+const createOpen = ref(false);
 const joinOpen = ref(false);
 
 const lastRoom = computed(() => rooms.value.find((r) => r.id === lastRoomId.value) ?? null);
@@ -69,7 +70,13 @@ function roomMeta(r: (typeof rooms.value)[number]) {
       title="No rooms yet"
       description="Create a household or join one with an invite code."
       :actions="[
-        { icon: 'i-lucide-plus', label: 'Create room', to: '/onboarding/room' },
+        {
+          icon: 'i-lucide-plus',
+          label: 'Create room',
+          onClick: () => {
+            createOpen = true;
+          },
+        },
         {
           icon: 'i-lucide-ticket',
           label: 'Join room',
@@ -135,7 +142,7 @@ function roomMeta(r: (typeof rooms.value)[number]) {
     class="fixed inset-x-0 bottom-0 z-20 border-t border-default bg-default pb-[max(0.75rem,env(safe-area-inset-bottom))]"
   >
     <UContainer class="max-w-lg pt-3 grid grid-cols-2 gap-2">
-      <UButton block icon="i-lucide-plus" label="Create" to="/onboarding/room" />
+      <UButton block icon="i-lucide-plus" label="Create" @click="createOpen = true" />
       <UButton
         block
         icon="i-lucide-ticket"
@@ -147,5 +154,6 @@ function roomMeta(r: (typeof rooms.value)[number]) {
     </UContainer>
   </nav>
 
+  <CreateRoomForm v-model:open="createOpen" />
   <JoinRoomModal v-model:open="joinOpen" />
 </template>

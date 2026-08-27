@@ -30,7 +30,7 @@ Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **
 ## Layout agents get wrong
 
 - Pages: `/rooms/[roomId]/...` (param **`roomId`**). API: `/api/rooms/[id]/...` (param **`id`**, use `getRoomId(event)`).
-- Users can belong to **many** rooms. Logged-in `/` → `resolveRoomLanding` (exactly one room → that dashboard, else `/rooms`). `app/middleware/room.global.ts` only intercepts `/`. Onboarding is `/onboarding/room`, not forced.
+- Users can belong to **many** rooms. Logged-in `/` → `resolveRoomLanding` (exactly one room → that dashboard, else `/rooms`). `app/middleware/room.global.ts` only intercepts `/`. Create/join rooms from `/rooms` overlays — no onboarding flow.
 - `shared/` = isomorphic pure helpers. `server/utils/` = db-backed. **No `shared/schemas/`** — Zod is inline in each API route and form.
 - Room-scoped APIs: `requireRoomContext` / `requireRoomAdmin`. Return `createResponse` + `ApiResponseCode`, not raw bodies.
 

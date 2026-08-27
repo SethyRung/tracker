@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import * as z from "zod";
 
-definePageMeta({
-  auth: { only: "user" },
-  layout: "bare",
-});
-
-useHead({ title: "Create room · Tricker" });
+const open = defineModel<boolean>("open", { default: false });
 
 const { user, fetchSession } = useUserSession();
+const { refresh } = useRoomMemberships();
+const lastRoomId = useLastRoomId();
+const toast = useToast();
 
 const schema = z.object({
   name: z.string().min(1, "Give your room a name").max(80, "Keep it under 80 characters"),
@@ -56,23 +54,70 @@ const steps = [
 type StepValue = (typeof steps)[number]["value"];
 
 const currentStep = ref<StepValue>("name");
-
 const stepper = useTemplateRef("stepper");
 const form = useTemplateRef("form");
-
 const submitting = ref(false);
 const roomId = ref<string | null>(null);
 const inviteOpen = ref(false);
-const lastRoomId = useLastRoomId();
 
 const roomCreated = computed(() => roomId.value !== null);
 
-const toast = useToast();
+const { isMD } = useBreakpoints();
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+const OverlayComponent = computed(() => ({
+  is: isMD.value ? UModal : UDrawer,
+  props: isMD.value
+    ? { scrollable: true, ui: { footer: "justify-end" } }
+    : {
+        handleOnly: true,
+        fixed: true,
+        ui: { footer: "flex-col-reverse" },
+      },
+}));
+
+const overlayTitle = computed(() =>
+  currentStep.value === "invite" ? "Invite housemates" : "Create a room",
+);
+
+const overlayDescription = computed(() => {
+  switch (currentStep.value) {
+    case "name":
+      return "What do you call your home?";
+    case "currencies":
+      return "USD and KHR stay as parallel ledgers — no conversion.";
+    case "review":
+      return "Check these details, then create the room.";
+    case "invite":
+      return "You can do this later.";
+    default:
+      return "";
+  }
+});
+
+const continueLabel = computed(() => {
+  if (currentStep.value === "review") return "Create room";
+  if (currentStep.value === "invite") return "Go to room";
+  return "Continue";
+});
 
 const stepFields: Partial<Record<StepValue, (keyof Schema)[]>> = {
   name: ["name"],
   currencies: ["currencies"],
 };
+
+function reset() {
+  state.name = "";
+  state.currencies = ["USD", "KHR"];
+  currentStep.value = "name";
+  roomId.value = null;
+  inviteOpen.value = false;
+  submitting.value = false;
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) reset();
+});
 
 async function createRoom() {
   if (submitting.value) return false;
@@ -89,6 +134,8 @@ async function createRoom() {
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     roomId.value = res.data!.id;
+    lastRoomId.value = roomId.value;
+    await Promise.all([fetchSession({ force: true }), refresh()]);
     return true;
   } catch (e) {
     toast.add({
@@ -102,61 +149,53 @@ async function createRoom() {
   }
 }
 
+async function goToRoom() {
+  const id = roomId.value;
+  if (!id) return;
+  lastRoomId.value = id;
+  await navigateTo(`/rooms/${id}/dashboard`);
+}
+
 async function goNext() {
-  // Review step creates the room before advancing.
   if (currentStep.value === "review") {
-    if (await createRoom()) {
-      await fetchSession({ force: true });
-      stepper.value?.next();
-    }
+    if (await createRoom()) stepper.value?.next();
     return;
   }
 
-  // Validate the current step's fields before advancing.
   const fields = stepFields[currentStep.value];
   if (fields?.length) {
     const ok = await form.value?.validate({ name: fields, silent: true });
     if (!ok) return;
   }
 
-  if (stepper.value?.hasNext) stepper.value?.next();
-  else {
-    const id = roomId.value;
-    if (id) {
-      lastRoomId.value = id;
-      await navigateTo(`/rooms/${id}/dashboard`);
-    } else {
-      await navigateTo("/rooms");
-    }
-  }
+  if (stepper.value?.hasNext) stepper.value.next();
+  else await goToRoom();
 }
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-6 space-y-6">
-    <div class="space-y-1">
-      <p class="font-mono text-xs uppercase tracking-wider text-toned">Onboarding</p>
-      <h1 class="font-pixel-circle text-2xl text-primary">Set up your room</h1>
-      <p class="text-xs text-toned">Name your household, pick currencies, and invite housemates.</p>
-    </div>
+  <component
+    :is="OverlayComponent.is"
+    v-model:open="open"
+    :title="overlayTitle"
+    :description="overlayDescription"
+    v-bind="OverlayComponent.props"
+  >
+    <slot />
 
-    <UForm ref="form" :schema="schema" :state="state">
-      <UStepper ref="stepper" v-model="currentStep" :items="steps" disabled size="sm" class="mb-6">
-        <template #name>
-          <UCard variant="outline">
-            <h2 class="text-2xl font-semibold text-default mb-1">
-              Welcome, {{ user?.name ?? "there" }}
-            </h2>
-            <p class="text-sm text-toned mb-6">Let's set up your room.</p>
-            <UFormField label="What do you call your home?" name="name" required>
-              <UInput v-model="state.name" size="lg" :ui="{ root: 'w-full' }" autofocus />
-            </UFormField>
-          </UCard>
-        </template>
+    <template #body>
+      <UForm ref="form" :schema="schema" :state="state">
+        <UStepper ref="stepper" v-model="currentStep" :items="steps" disabled size="sm">
+          <template #name>
+            <div class="space-y-4">
+              <p class="text-sm text-toned">Welcome, {{ user?.name ?? "there" }}.</p>
+              <UFormField label="Room name" name="name" required>
+                <UInput v-model="state.name" size="lg" :ui="{ root: 'w-full' }" autofocus />
+              </UFormField>
+            </div>
+          </template>
 
-        <template #currencies>
-          <UCard variant="outline">
-            <h2 class="text-lg font-semibold text-default mb-4">Which currencies do you use?</h2>
+          <template #currencies>
             <UFormField name="currencies">
               <UCheckboxGroup
                 v-model="state.currencies"
@@ -167,20 +206,9 @@ async function goNext() {
                 variant="card"
               />
             </UFormField>
-          </UCard>
-        </template>
+          </template>
 
-        <template #review>
-          <UCard variant="outline">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-clipboard-check" class="size-4 text-toned" />
-                <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
-                  Review your room
-                </h2>
-              </div>
-            </template>
-
+          <template #review>
             <ul class="divide-y divide-default">
               <li class="flex items-center justify-between gap-3 py-3">
                 <div class="flex items-center gap-2 text-toned">
@@ -221,23 +249,11 @@ async function goNext() {
                 </span>
               </li>
             </ul>
-          </UCard>
-        </template>
+          </template>
 
-        <template #invite>
-          <UCard variant="outline">
-            <template #header>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-user-plus" class="size-4 text-toned" />
-                <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
-                  Invite your housemates
-                </h2>
-              </div>
-            </template>
-
+          <template #invite>
             <div class="space-y-4">
-              <p class="text-sm text-toned">You can do this later.</p>
-
+              <p class="text-sm text-toned">Invite now or skip and do it from the room later.</p>
               <UButton
                 icon="i-lucide-user-plus"
                 label="Invite members"
@@ -245,31 +261,43 @@ async function goNext() {
                 @click="inviteOpen = true"
               />
             </div>
-          </UCard>
-        </template>
-      </UStepper>
+          </template>
+        </UStepper>
+      </UForm>
+    </template>
 
-      <div class="flex items-center">
-        <UButton
-          v-if="stepper?.hasPrev"
-          icon="i-lucide-arrow-left"
-          label="Back"
-          color="neutral"
-          variant="outline"
-          :disabled="roomCreated || submitting"
-          @click="stepper?.prev()"
-        />
+    <template #footer="{ close }">
+      <UButton
+        v-if="isMD && !roomCreated"
+        label="Cancel"
+        color="neutral"
+        variant="ghost"
+        :block="!isMD"
+        :disabled="submitting"
+        @click="close"
+      />
 
-        <UButton
-          label="Continue"
-          :loading="submitting"
-          trailing-icon="i-lucide-arrow-right"
-          class="ml-auto"
-          @click="goNext"
-        />
-      </div>
-    </UForm>
+      <UButton
+        v-if="stepper?.hasPrev"
+        :icon="isMD ? 'i-lucide-arrow-left' : ''"
+        label="Back"
+        color="neutral"
+        variant="outline"
+        :block="!isMD"
+        :disabled="roomCreated || submitting"
+        @click="stepper?.prev()"
+      />
 
-    <MembersInviteModal v-if="roomId" v-model:open="inviteOpen" :room-id="roomId" />
-  </UContainer>
+      <UButton
+        :label="continueLabel"
+        size="lg"
+        :block="!isMD"
+        :loading="submitting"
+        :trailing-icon="isMD ? 'i-lucide-arrow-right' : ''"
+        @click="goNext"
+      />
+    </template>
+  </component>
+
+  <MembersInviteModal v-if="roomId" v-model:open="inviteOpen" :room-id="roomId" />
 </template>
