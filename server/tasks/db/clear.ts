@@ -24,10 +24,10 @@ export default defineTask({
   },
   async run() {
     const env = process.env.NODE_ENV;
-    if (!env && env !== "development") {
+    if (env !== "development") {
       return {
         result: "skipped",
-        reason: `db:clear is disabled in NODE_ENV=${process.env.NODE_ENV ?? "<unset>"}`,
+        reason: `db:clear is disabled in NODE_ENV=${env ?? "<unset>"}`,
       };
     }
 

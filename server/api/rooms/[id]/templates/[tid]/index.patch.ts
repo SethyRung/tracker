@@ -46,10 +46,7 @@ const bodySchema = z
 
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const tid = getRouterParam(event, "tid");
-  if (!tid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const tid = getTemplateId(event);
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, bodySchema.parse);
@@ -61,12 +58,7 @@ export default defineEventHandler(async (event) => {
   if (body.isActive !== undefined) updates.isActive = body.isActive;
   if (body.paidByMembershipId !== undefined) {
     if (body.paidByMembershipId) {
-      const paidBy = body.paidByMembershipId;
-      const payer = await db.query.roomMemberships.findFirst({
-        columns: { id: true },
-        where: (m, { eq, and }) =>
-          and(eq(m.id, paidBy), eq(m.roomId, roomId), eq(m.isActive, true)),
-      });
+      const payer = await findActiveRoomMember(roomId, body.paidByMembershipId);
       if (!payer) {
         return createResponse({
           code: ApiResponseCode.InvalidRequest,
@@ -104,14 +96,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (body.syncCurrentEntry) {
-    try {
-      await assertMonthOpen(roomId, monthKey());
-    } catch (e) {
-      return createResponse({
-        code: ApiResponseCode.InvalidRequest,
-        message: e instanceof Error ? e.message : "Current month is closed.",
-      });
-    }
+    const closed = await closedMonthResponse(roomId, monthKey());
+    if (closed) return closed;
     const current = await findCurrentMonthEntryForTemplate(roomId, template.id);
     if (current) {
       await syncEntryToTemplate(current.id, template);

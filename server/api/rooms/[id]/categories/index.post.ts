@@ -95,11 +95,7 @@ export default defineEventHandler(async (event) => {
   const template = body.recurringType === "recurring" ? templateFields.parse(body) : null;
 
   if (template?.paidByMembershipId) {
-    const paidBy = template.paidByMembershipId;
-    const payer = await db.query.roomMemberships.findFirst({
-      columns: { id: true },
-      where: (m, { eq, and }) => and(eq(m.id, paidBy), eq(m.roomId, roomId), eq(m.isActive, true)),
-    });
+    const payer = await findActiveRoomMember(roomId, template.paidByMembershipId);
     if (!payer) {
       return createResponse({
         code: ApiResponseCode.InvalidRequest,

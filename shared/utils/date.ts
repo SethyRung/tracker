@@ -35,7 +35,7 @@ export function isValidMonthKey(value: unknown): boolean {
  * @returns The month key, e.g. `"2026-08"`.
  */
 export function monthKey(date?: Date): string {
-  return dayjs(date).format("YYYY-MM");
+  return dayjs(date).tz(PHNOM_PENH_TZ).format("YYYY-MM");
 }
 
 /**

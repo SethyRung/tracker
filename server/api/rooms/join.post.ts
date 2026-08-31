@@ -25,16 +25,14 @@ export default defineEventHandler(async (event) => {
       message: "This invite link is no longer valid.",
     });
   }
-  const row = link;
-
-  if (row.usedAt !== null) {
+  if (link.usedAt !== null) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
       message: "This invite link has already been used.",
     });
   }
 
-  if (now().isAfter(row.expiresAt)) {
+  if (now().isAfter(link.expiresAt)) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
       message: "This invite link has expired.",
@@ -42,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const room = await db.query.rooms.findFirst({
-    where: (r, { and, eq }) => and(eq(r.id, row.roomId), isRoomActiveCondition()),
+    where: (r, { and, eq }) => and(eq(r.id, link.roomId), isRoomActiveCondition()),
   });
   if (!room) {
     return createResponse({
@@ -53,19 +51,19 @@ export default defineEventHandler(async (event) => {
 
   const existing = await db.query.roomMemberships.findFirst({
     where: (m, { eq, and }) =>
-      and(eq(m.roomId, row.roomId), eq(m.userId, session.user.id), eq(m.isActive, true)),
+      and(eq(m.roomId, link.roomId), eq(m.userId, session.user.id), eq(m.isActive, true)),
   });
 
   if (existing) {
     return createResponse(
       { code: ApiResponseCode.Success },
-      { roomId: row.roomId, membershipId: existing.id, alreadyMember: true },
+      { roomId: link.roomId, membershipId: existing.id, alreadyMember: true },
     );
   }
 
   const usedColors = await db.query.roomMemberships.findMany({
     columns: { color: true },
-    where: (m, { eq }) => eq(m.roomId, row.roomId),
+    where: (m, { eq }) => eq(m.roomId, link.roomId),
   });
 
   const color =
@@ -74,7 +72,7 @@ export default defineEventHandler(async (event) => {
   const membershipId = newId();
   await db.insert(schema.roomMemberships).values({
     id: membershipId,
-    roomId: row.roomId,
+    roomId: link.roomId,
     userId: session.user.id,
     role: "member",
     color,
@@ -85,5 +83,5 @@ export default defineEventHandler(async (event) => {
     .set({ usedAt: new Date(), usedByMembershipId: membershipId })
     .where(eq(schema.inviteLinks.tokenHash, tokenHash));
 
-  return createResponse({ code: ApiResponseCode.Success }, { roomId: row.roomId, membershipId });
+  return createResponse({ code: ApiResponseCode.Success }, { roomId: link.roomId, membershipId });
 });

@@ -1,6 +1,5 @@
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
-import { db } from "hub:db";
-import { entries, entryWeights, roomMemberships } from "hub:db:schema";
+import { db, schema } from "@nuxthub/db";
 
 import {
   settle,
@@ -19,26 +18,20 @@ export interface SettleOptions {
   yyyymm: string;
 }
 
-// Loads the month's published entries (with weights) and members, then runs
-// the settlement algorithm per currency. The full members set (active +
-// inactive) is passed so departed members referenced by historical entry
-// weights still resolve by id.
 export async function settleRoom(
   options: SettleOptions,
 ): Promise<{ USD: CurrencyPlan; KHR: CurrencyPlan }> {
   const { start, end } = monthRange(options.yyyymm);
 
-  // All room members (active + inactive) — departed members are still
-  // referenced by the weights on old entries and must resolve by id.
   const memberRows = await db
     .select({
-      id: roomMemberships.id,
-      joinedAt: roomMemberships.joinedAt,
-      leftAt: roomMemberships.leftAt,
+      id: schema.roomMemberships.id,
+      joinedAt: schema.roomMemberships.joinedAt,
+      leftAt: schema.roomMemberships.leftAt,
     })
-    .from(roomMemberships)
-    .where(eq(roomMemberships.roomId, options.roomId))
-    .orderBy(asc(roomMemberships.joinedAt));
+    .from(schema.roomMemberships)
+    .where(eq(schema.roomMemberships.roomId, options.roomId))
+    .orderBy(asc(schema.roomMemberships.joinedAt));
 
   const members: SettlementMember[] = memberRows.map((m) => ({
     id: m.id,
@@ -46,37 +39,34 @@ export async function settleRoom(
     leftAt: m.leftAt,
   }));
 
-  // Published entries in the target month for this room. Drafts are ignored
-  // (SPEC §8: drafts don't count in settlement).
   const entryRows = await db
     .select({
-      id: entries.id,
-      currency: entries.currency,
-      amountMinor: entries.amountMinor,
-      paidByMembershipId: entries.paidByMembershipId,
+      id: schema.entries.id,
+      currency: schema.entries.currency,
+      amountMinor: schema.entries.amountMinor,
+      paidByMembershipId: schema.entries.paidByMembershipId,
     })
-    .from(entries)
+    .from(schema.entries)
     .where(
       and(
-        eq(entries.roomId, options.roomId),
-        eq(entries.status, "published"),
-        gte(entries.date, start.toDate()),
-        lt(entries.date, end.toDate()),
+        eq(schema.entries.roomId, options.roomId),
+        eq(schema.entries.status, "published"),
+        gte(schema.entries.date, start.toDate()),
+        lt(schema.entries.date, end.toDate()),
       ),
     );
 
-  // Weights for those entries in a single query.
   const finalWeightRows = entryRows.length
     ? await db
         .select({
-          entryId: entryWeights.entryId,
-          membershipId: entryWeights.membershipId,
-          weightBps: entryWeights.weightBps,
+          entryId: schema.entryWeights.entryId,
+          membershipId: schema.entryWeights.membershipId,
+          weightBps: schema.entryWeights.weightBps,
         })
-        .from(entryWeights)
+        .from(schema.entryWeights)
         .where(
           inArray(
-            entryWeights.entryId,
+            schema.entryWeights.entryId,
             entryRows.map((e) => e.id),
           ),
         )
@@ -84,8 +74,9 @@ export async function settleRoom(
 
   const weightsByEntry = new Map<string, Array<{ membershipId: string; weightBps: number }>>();
   for (const w of finalWeightRows) {
-    if (!weightsByEntry.has(w.entryId)) weightsByEntry.set(w.entryId, []);
-    weightsByEntry.get(w.entryId)!.push({ membershipId: w.membershipId, weightBps: w.weightBps });
+    const list = weightsByEntry.get(w.entryId) ?? [];
+    list.push({ membershipId: w.membershipId, weightBps: w.weightBps });
+    weightsByEntry.set(w.entryId, list);
   }
 
   const toSettlementEntries = (currency: "USD" | "KHR"): SettlementEntry[] =>

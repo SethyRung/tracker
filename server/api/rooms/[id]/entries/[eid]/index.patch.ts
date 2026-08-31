@@ -41,85 +41,45 @@ const updateEntrySchema = z.object({
   weights: weightsSchema.optional(),
 });
 
-interface EntryShape {
-  id: string;
-  roomId: string;
-  categoryId: string | null;
-  currency: "USD" | "KHR";
-  amountMinor: number;
-  date: Date;
-  paidByMembershipId: string;
-  notes: string | null;
-  status: "draft" | "published";
-  templateId: string | null;
-  createdByUserId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-interface EntryWithWeights extends EntryShape {
-  weights: { entryId: string; membershipId: string; weightBps: number }[];
-}
-
-function canMutate(entry: EntryShape, isAdmin: boolean, isOwner: boolean) {
-  if (isAdmin) return true;
-  if (entry.status === "published") return isOwner;
-  return false;
-}
-
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const eid = getRouterParam(event, "eid");
-  if (!eid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const eid = getEntryId(event);
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, updateEntrySchema.parse);
 
-  const entry = await db.query.entries.findFirst({
-    where: (e, { eq, and }) => and(eq(e.id, eid), eq(e.roomId, roomId)),
-  });
+  const entry = await findRoomEntry(roomId, eid);
   if (!entry) {
     return createResponse({
       code: ApiResponseCode.NotFound,
       message: "Entry not found",
     });
   }
-  const isAdmin = ctx.role === "admin";
-  const isOwner = entry.createdByUserId === ctx.userId;
-  if (!canMutate(entry, isAdmin, isOwner)) {
+  if (!canMutateEntry(entry, ctx)) {
     return createResponse({
       code: ApiResponseCode.Forbidden,
-      message:
-        entry.status === "draft"
-          ? "Only an admin can edit a draft entry."
-          : "Only the creator or an admin can edit this entry.",
+      message: entryMutationForbiddenMessage(entry.status, "edit"),
     });
   }
 
-  try {
-    await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
-    if (body.date) await assertMonthOpen(roomId, monthKeyFromDate(body.date));
-  } catch (e) {
+  const closed = await closedMonthResponse(roomId, monthKey(entry.date));
+  if (closed) return closed;
+  if (body.date) {
+    const nextClosed = await closedMonthResponse(roomId, monthKey(body.date));
+    if (nextClosed) return nextClosed;
+  }
+
+  if (
+    body.weights &&
+    !(await areActiveAttendees(
+      roomId,
+      body.weights.map((w) => w.membershipId),
+    ))
+  ) {
     return createResponse({
       code: ApiResponseCode.InvalidRequest,
-      message: e instanceof Error ? e.message : "Month is closed.",
+      message: "One or more attendees are not active members of this room.",
     });
-  }
-
-  if (body.weights && body.weights.length > 0) {
-    const attendeeIds = new Set(body.weights.map((w) => w.membershipId));
-    const active = await db.query.roomMemberships.findMany({
-      columns: { id: true },
-      where: (m, { eq, and, inArray }) =>
-        and(eq(m.roomId, roomId), eq(m.isActive, true), inArray(m.id, [...attendeeIds])),
-    });
-    if (active.length !== attendeeIds.size) {
-      return createResponse({
-        code: ApiResponseCode.InvalidRequest,
-        message: "One or more attendees are not active members of this room.",
-      });
-    }
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -133,24 +93,10 @@ export default defineEventHandler(async (event) => {
     await db.update(schema.entries).set(updates).where(eq(schema.entries.id, eid));
   }
   if (body.weights) {
-    await db.delete(schema.entryWeights).where(eq(schema.entryWeights.entryId, eid));
-    if (body.weights.length > 0) {
-      await db.insert(schema.entryWeights).values(
-        body.weights.map((w) => ({
-          entryId: eid,
-          membershipId: w.membershipId,
-          weightBps: w.weightBps,
-        })),
-      );
-    }
+    await replaceEntryWeights(eid, body.weights);
   }
 
-  const updated = await db.query.entries.findFirst({
-    where: (e, { eq }) => eq(e.id, eid),
-  });
-  const weights = await db.query.entryWeights.findMany({
-    where: (w, { eq }) => eq(w.entryId, eid),
-  });
-  const result = { ...updated!, weights } as EntryWithWeights;
-  return createResponse({ code: ApiResponseCode.Success }, result);
+  const updated = await findRoomEntry(roomId, eid);
+  const weights = await findEntryWeights(eid);
+  return createResponse({ code: ApiResponseCode.Success }, { ...updated!, weights });
 });

@@ -1,17 +1,10 @@
-import { db } from "@nuxthub/db";
-
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const eid = getRouterParam(event, "eid");
-  if (!eid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const eid = getEntryId(event);
 
   await requireRoomContext(event, roomId);
 
-  const entry = await db.query.entries.findFirst({
-    where: (e, { eq, and }) => and(eq(e.id, eid), eq(e.roomId, roomId)),
-  });
+  const entry = await findRoomEntry(roomId, eid);
   if (!entry) {
     return createResponse({
       code: ApiResponseCode.NotFound,
@@ -19,9 +12,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const weights = await db.query.entryWeights.findMany({
-    where: (w, { eq }) => eq(w.entryId, eid),
-  });
+  const weights = await findEntryWeights(eid);
 
   return createResponse({ code: ApiResponseCode.Success }, { ...entry, weights });
 });

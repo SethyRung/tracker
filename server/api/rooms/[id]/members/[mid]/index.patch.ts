@@ -15,10 +15,7 @@ const updateMemberSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const mid = getRouterParam(event, "mid");
-  if (!mid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const mid = getMembershipId(event);
 
   const ctx = await requireRoomContext(event, roomId);
   const body = await readValidatedBody(event, updateMemberSchema.parse);

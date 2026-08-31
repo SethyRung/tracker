@@ -1,5 +1,5 @@
 import type { H3Event } from "h3";
-import { and, eq, asc, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 
 export function newId(): string {
@@ -43,11 +43,19 @@ export async function requireRoomContext(event: H3Event, roomId: string) {
   }
 
   return {
-    room: room,
-    membership: membership,
+    room,
+    membership,
     role: membership.role,
     userId,
   };
+}
+
+export async function findActiveRoomMember(roomId: string, membershipId: string) {
+  return db.query.roomMemberships.findFirst({
+    columns: { id: true },
+    where: (m, { eq, and }) =>
+      and(eq(m.id, membershipId), eq(m.roomId, roomId), eq(m.isActive, true)),
+  });
 }
 
 export async function requireRoomAdmin(event: H3Event, roomId: string) {
@@ -60,7 +68,10 @@ export async function requireRoomAdmin(event: H3Event, roomId: string) {
 
 export async function promoteAdminOnDeparture(roomId: string) {
   const remaining = await db
-    .select()
+    .select({
+      id: schema.roomMemberships.id,
+      joinedAt: schema.roomMemberships.joinedAt,
+    })
     .from(schema.roomMemberships)
     .where(
       and(
@@ -68,9 +79,8 @@ export async function promoteAdminOnDeparture(roomId: string) {
         eq(schema.roomMemberships.role, "member"),
         eq(schema.roomMemberships.isActive, true),
       ),
-    )
-    .orderBy(asc(schema.roomMemberships.joinedAt));
-  const next = remaining[0];
+    );
+  const next = pickNextAdmin(remaining);
   if (!next) {
     throw createError({
       statusCode: 403,

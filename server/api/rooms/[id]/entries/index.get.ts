@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
       if (query.status) parts.push(eq(e.status, query.status));
       if (query.categoryId) parts.push(eq(e.categoryId, query.categoryId));
       if (query.month) {
-        const range = monthRange(query.month ?? "");
+        const range = monthRange(query.month);
         parts.push(gte(e.date, range.start.toDate()));
         parts.push(lt(e.date, range.end.toDate()));
       }

@@ -74,21 +74,9 @@ function hasTemplateFields(body: z.output<typeof updateCategorySchema>): boolean
   );
 }
 
-async function assertActivePayer(roomId: string, paidByMembershipId: string) {
-  const payer = await db.query.roomMemberships.findFirst({
-    columns: { id: true },
-    where: (m, { eq, and }) =>
-      and(eq(m.id, paidByMembershipId), eq(m.roomId, roomId), eq(m.isActive, true)),
-  });
-  return !!payer;
-}
-
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const cid = getRouterParam(event, "cid");
-  if (!cid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const cid = getCategoryId(event);
 
   await requireRoomAdmin(event, roomId);
   const body = await readValidatedBody(event, updateCategorySchema.parse);
@@ -157,7 +145,7 @@ export default defineEventHandler(async (event) => {
 
   const paidBy = createTemplate?.paidByMembershipId ?? body.paidByMembershipId;
   if (paidBy && (createTemplate || body.paidByMembershipId !== undefined)) {
-    if (!(await assertActivePayer(roomId, paidBy))) {
+    if (!(await findActiveRoomMember(roomId, paidBy))) {
       return createResponse({
         code: ApiResponseCode.InvalidRequest,
         message: "Payer must be an active member of this room.",
@@ -227,14 +215,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (template && body.syncCurrentEntry) {
-    try {
-      await assertMonthOpen(roomId, monthKey());
-    } catch (e) {
-      return createResponse({
-        code: ApiResponseCode.InvalidRequest,
-        message: e instanceof Error ? e.message : "Current month is closed.",
-      });
-    }
+    const closed = await closedMonthResponse(roomId, monthKey());
+    if (closed) return closed;
     const current = await findCurrentMonthEntryForTemplate(roomId, template.id);
     if (current) {
       await syncEntryToTemplate(current.id, template);

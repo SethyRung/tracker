@@ -17,9 +17,9 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomContext(event, roomId);
   const query = await getValidatedQuery(event, querySchema.parse);
-  const range = monthRange(query.month ?? "");
-  const start = range.start.toDate();
-  const end = range.end.toDate();
+  const range = query.month ? monthRange(query.month) : null;
+  const start = range?.start.toDate();
+  const end = range?.end.toDate();
 
   const [entryRows, memberRows, categoryRows] = await Promise.all([
     db.query.entries.findMany({
@@ -28,8 +28,8 @@ export default defineEventHandler(async (event) => {
           eq(e.roomId, roomId),
           query.status ? eq(e.status, query.status) : undefined,
           query.categoryId ? eq(e.categoryId, query.categoryId) : undefined,
-          query.month ? gte(e.date, start) : undefined,
-          query.month ? lt(e.date, end) : undefined,
+          start ? gte(e.date, start) : undefined,
+          end ? lt(e.date, end) : undefined,
         ),
       orderBy: (e, { asc }) => [asc(e.date), asc(e.createdAt)],
     }),

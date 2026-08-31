@@ -1,14 +1,8 @@
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const yyyymm = getRouterParam(event, "yyyymm");
-  if (!yyyymm) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const yyyymm = getMonthKeyParam(event);
   if (!isValidMonthKey(yyyymm)) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: `Invalid month key: ${yyyymm}`,
-    });
+    return invalidMonthKeyResponse(yyyymm);
   }
 
   await requireRoomContext(event, roomId);

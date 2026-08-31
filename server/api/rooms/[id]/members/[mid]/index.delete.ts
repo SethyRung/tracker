@@ -3,10 +3,7 @@ import { db, schema } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const mid = getRouterParam(event, "mid");
-  if (!mid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const mid = getMembershipId(event);
 
   await requireRoomAdmin(event, roomId);
 

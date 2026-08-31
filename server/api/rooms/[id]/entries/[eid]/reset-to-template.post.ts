@@ -2,16 +2,11 @@ import { db } from "@nuxthub/db";
 
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
-  const eid = getRouterParam(event, "eid");
-  if (!eid) {
-    throw createError({ statusCode: 400, statusMessage: "Missing id" });
-  }
+  const eid = getEntryId(event);
 
   const ctx = await requireRoomContext(event, roomId);
 
-  const entry = await db.query.entries.findFirst({
-    where: (e, { and, eq }) => and(eq(e.id, eid), eq(e.roomId, roomId)),
-  });
+  const entry = await findRoomEntry(roomId, eid);
   if (!entry) {
     return createResponse({ code: ApiResponseCode.NotFound, message: "Entry not found" });
   }
@@ -31,14 +26,8 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  try {
-    await assertMonthOpen(roomId, monthKeyFromDate(entry.date));
-  } catch (e) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: e instanceof Error ? e.message : "Month is closed.",
-    });
-  }
+  const closed = await closedMonthResponse(roomId, monthKey(entry.date));
+  if (closed) return closed;
 
   const template = await db.query.recurringTemplates.findFirst({
     where: (t, { eq }) => eq(t.id, entry.templateId!),
@@ -58,5 +47,8 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  return createResponse({ code: ApiResponseCode.Success }, { ...result.entry, weights: result.weights });
+  return createResponse(
+    { code: ApiResponseCode.Success },
+    { ...result.entry, weights: result.weights },
+  );
 });
