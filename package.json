@@ -25,7 +25,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@nuxt/ui": "^4.11.1",
     "@nuxthub/core": "^0.10.8",
-    "@onmax/nuxt-better-auth": "^0.1.2",
+    "@nuxtjs/better-auth": "^0.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@vueuse/core": "^15.0.0",
     "@vueuse/nuxt": "^15.0.0",

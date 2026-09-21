@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     "@nuxt/ui",
     "@vueuse/nuxt",
     "@nuxthub/core",
-    "@onmax/nuxt-better-auth",
+    "@nuxtjs/better-auth",
     "@nuxt/test-utils/module",
   ],
 

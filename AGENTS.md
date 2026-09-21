@@ -30,7 +30,7 @@ Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **
 ## Layout agents get wrong
 
 - Pages: `/rooms/[roomId]/...` (param **`roomId`**). API: `/api/rooms/[id]/...` (param **`id`**, use `getRoomId(event)`).
-- Users can belong to **many** rooms. Logged-in `/` → `resolveRoomLanding` (exactly one room → that dashboard, else `/rooms`). `app/middleware/room.global.ts` only intercepts `/`. Create/join rooms from `/rooms` overlays — no onboarding flow.
+- Users can belong to **many** rooms. Logged-in `/` → `resolveRoomLanding` (exactly one room → that dashboard, else `/rooms`). `app/middleware/02.room.global.ts` only intercepts `/`. Create/join rooms from `/rooms` overlays — no onboarding flow.
 - `shared/` = isomorphic pure helpers. `server/utils/` = db-backed. **No `shared/schemas/`** — Zod is inline in each API route and form.
 - Room-scoped APIs: `requireRoomContext` / `requireRoomAdmin`. Return `createResponse` + `ApiResponseCode`, not raw bodies.
 
@@ -40,7 +40,7 @@ Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **
 - Prefer `import { db, schema } from "@nuxthub/db"`. Aliases `hub:db` / `hub:db:schema` exist; some older utils still use them.
 - `hub.db.casing` and `auth.schema.casing` are `snake_case`. JS fields camelCase (`amountMinor`); SQL columns snake_case (`amount_minor`).
 - Auth tables: `import { user } from "#auth/schema"`.
-- **Build gotcha**: `@onmax/nuxt-better-auth` jiti-loads `server/auth.config.ts` during Nuxt module setup, before Nitro aliases exist. A static import of `hub:db` / `hub:db:schema` (or anything that pulls them in) fails `bun run build`. Dynamic-import inside request-time fns only.
+- `server/auth.config.ts` is jiti-loaded during module setup. Static `hub:db` imports work as of `@nuxtjs/better-auth` 0.3.3 (Nuxt aliases are passed through), but keep request-time db access dynamic where practical.
 
 ## Domain
 
@@ -53,8 +53,8 @@ Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **
 
 ## Auth & email
 
-- Better-Auth via `@onmax/nuxt-better-auth`. Email+password; verification is sent on sign-up but `requireEmailVerification: false`. Config: `server/auth.config.ts` + `app/auth.config.ts`.
-- Protect with `routeRules` (`auth: "guest"` vs `"user"`). `app/middleware/auth.global.ts` is a no-op — don't add new auth middleware files.
+- Better-Auth via `@nuxtjs/better-auth`. Email+password; verification is sent on sign-up but `requireEmailVerification: false`. Config: `server/auth.config.ts` + `app/auth.config.ts`.
+- Protect with `routeRules` (`auth: "guest"` vs `"user"`). `app/middleware/01.auth.global.ts` is a no-op ordering shim — don't add new auth middleware files.
 - Redirects: login/logout → `/sign-in`; authenticated/guest → `/`.
 - Resend: if `NUXT_RESEND_API_KEY` is unset, `server/utils/email.ts` **warns and skips**. Do not assume send throws.
 
