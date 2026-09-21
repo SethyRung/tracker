@@ -5,8 +5,8 @@
       "source": "better-auth.nuxt.dev",
       "sourceUrl": "https://better-auth.nuxt.dev/",
       "sourceType": "well-known",
-      "computedHash": "cb62a8ac1df0559044ed654baac9e8d8b0f093e5b4c6ae7fea2fda8a13a612d8",
-      "wellKnownDigest": "sha256:23d5ed74ec87bf7e093fb25ed7f337262964ee39521d0823b66825a2fafb6aa1"
+      "computedHash": "13130f7361466f3379b96efb16cdd126708c9234aca831565c49473e274e3183",
+      "wellKnownDigest": "sha256:65499f92ab66c5c5a7aa5e0ac260ab990ef19dd9922663930742c8061a9f9a46"
     }
   }
 }

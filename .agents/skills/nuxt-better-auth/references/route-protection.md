@@ -13,11 +13,11 @@ Use route rules and page meta for navigation UX. Use `requireUserSession(event)`
 ```ts
 export default defineNuxtConfig({
   routeRules: {
-    "/app/**": { auth: "user" },
-    "/login": { auth: "guest" },
-    "/admin/**": { auth: { user: { role: "admin" } } },
+    '/app/**': { auth: { only: 'user', redirectTo: '/login' } },
+    '/login': { auth: { only: 'guest', redirectTo: '/app' } },
+    '/admin/**': { auth: { only: 'user', user: { role: 'admin' } } },
   },
-});
+})
 ```
 
 The same auth keys work under `nitro.routeRules`. If both `routeRules` and `nitro.routeRules` are set, the module reads `nitro.routeRules`.
@@ -30,6 +30,29 @@ The same auth keys work under `nitro.routeRules`. If both `routeRules` and `nitr
 - arrays inside a field mean OR matching
 - multiple fields mean AND matching
 - `false`: disable auth for that route/page
+
+The string forms remain available as shorthand. `auth: 'user'` redirects to the configured login fallback, and `auth: 'guest'` redirects to the configured guest fallback.
+
+## Redirects
+
+```ts
+export default defineNuxtConfig({
+  auth: {
+    redirects: {
+      login: '/login',
+      guest: '/',
+      authenticated: '/app',
+      logout: '/goodbye',
+    },
+    preserveRedirect: true,
+    redirectQueryKey: 'redirect',
+  },
+})
+```
+
+- Per-route `redirectTo` takes precedence over `auth.redirects.login` and `auth.redirects.guest`.
+- A validated local redirect query takes precedence over `auth.redirects.authenticated` after sign-in or sign-up.
+- `auth.redirects.logout` applies after sign-out unless the caller supplies `onSuccess`.
 
 ## Broad rules and internals
 
@@ -51,11 +74,11 @@ The same broad rules still apply to app-owned pages and app-owned `/api/**` hand
 <script setup lang="ts">
 definePageMeta({
   auth: {
-    only: "user",
-    redirectTo: "/login",
-    user: { role: ["admin", "owner"] },
+    only: 'user',
+    redirectTo: '/login',
+    user: { role: ['admin', 'owner'] },
   },
-});
+})
 </script>
 ```
 
