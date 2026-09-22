@@ -1,56 +1,10 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-@font-face {
-  font-family: "Geist Pixel Grid";
-  src: url("/fonts/GeistPixel/GeistPixel-Grid.ttf") format("truetype");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Pixel Line";
-  src: url("/fonts/GeistPixel/GeistPixel-Line.ttf") format("truetype");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Pixel Circle";
-  src: url("/fonts/GeistPixel/GeistPixel-Circle.ttf") format("truetype");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Pixel Square";
-  src: url("/fonts/GeistPixel/GeistPixel-Square.ttf") format("truetype");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Pixel Triangle";
-  src: url("/fonts/GeistPixel/GeistPixel-Triangle.ttf") format("truetype");
-  font-display: swap;
-}
-
 @theme static {
-  --color-primary-50: #f2f8ed;
-  --color-primary-100: #e6f0dd;
-  --color-primary-200: #c9dfb7;
-  --color-primary-300: #a7ca8c;
-  --color-primary-400: #87b467;
-  --color-primary-500: #699949;
-  --color-primary-600: #517937;
-  --color-primary-700: #3f5d2e;
-  --color-primary-800: #354b29;
-  --color-primary-900: #2f4126;
-  --color-primary-950: #162211;
-
   --font-sans: "Geist", sans-serif;
   --font-mono: "Geist Mono", sans-serif;
-  --font-pixel-circle: "Geist Pixel Circle", sans-serif;
-  --font-pixel-grid: "Geist Pixel Grid", sans-serif;
-  --font-pixel-line: "Geist Pixel Line", sans-serif;
-  --font-pixel-square: "Geist Pixel Square", sans-serif;
-  --font-pixel-triangle: "Geist Pixel Triangle", sans-serif;
+  --font-pixel: "Geist Pixel", sans-serif;
 }
 
 @utility no-scrollbar {
@@ -66,13 +20,16 @@
 ::-webkit-scrollbar {
   width: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--ui-bg-muted);
   border-radius: 5px;
 }
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--ui-bg-muted) transparent;

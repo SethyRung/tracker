@@ -59,14 +59,6 @@ export default defineNuxtConfig({
     },
   },
 
-  fonts: {
-    families: [
-      { name: "Geist", provider: "local" },
-      { name: "Geist Mono", provider: "local" },
-      { name: "Geist Pixel", provider: "local" },
-    ],
-  },
-
   routeRules: {
     "/sign-in": { auth: "guest" },
     "/sign-up": { auth: "guest" },
