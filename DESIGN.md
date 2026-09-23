@@ -1,94 +1,104 @@
 ---
 version: alpha
 name: Tricker
-description: Multi-tenant household bill tracker visual identity modeled after the Nuxt SaaS template (saas-template.nuxt.dev) built with Nuxt UI v4 and Tailwind CSS.
+description: Multi-tenant household bill tracker visual identity inspired by OpenRouter (openrouter.ai) — high-density engineering aesthetics, deep obsidian ink foundations, canonical Tailwind CSS lime primary interaction driver, crisp Plus Jakarta Sans typography, and hairline containment built natively on Nuxt UI v4 CSS variables and Tailwind CSS.
 colors:
-  primary: "#2563EB"
-  primary-hover: "#1D4ED8"
-  primary-subtle: "#EFF6FF"
-  accent: "#047857"
-  accent-subtle: "#EFFDF5"
-  neutral: "#0F172A"
-  neutral-muted: "#475569"
-  neutral-subtle: "#E2E8F0"
-  surface: "#FFFFFF"
-  surface-muted: "#F8FAFC"
-  surface-elevated: "#F1F5F9"
-  surface-dark: "#020617"
-  surface-dark-elevated: "#0F172A"
-  surface-dark-accented: "#1E293B"
-  error: "#B91C1C"
-  error-subtle: "#FEF2F2"
-  warning: "#B45309"
-  warning-subtle: "#FFFBEB"
+  primary: "#84cc16"
+  primary-dark: "#a3e635"
+  primary-hover: "#65a30d"
+  primary-subtle: "#1a2e05"
+  neutral-dark: "#18181b"
+  neutral-muted-dark: "#27272a"
+  neutral-light: "#ffffff"
+  neutral-muted-light: "#fafafa"
+  border-dark: "#27272a"
+  border-light: "#e4e4e7"
+  text-dark: "#ffffff"
+  text-dark-muted: "#a1a1aa"
+  text-light: "#18181b"
+  text-light-muted: "#71717a"
+  success: "#065f46"
+  success-subtle: "#ecfdf5"
+  error: "#b91c1c"
+  error-subtle: "#fef2f2"
+  warning: "#92400e"
+  warning-subtle: "#fffbeb"
+  info: "#075985"
+  info-subtle: "#f0f9ff"
 typography:
   display-hero:
-    fontFamily: Public Sans
+    fontFamily: Plus Jakarta Sans
     fontSize: 56px
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: -0.03em
-  h1:
-    fontFamily: Public Sans
-    fontSize: 44px
     fontWeight: 700
     lineHeight: 1.15
     letterSpacing: -0.025em
+  h1:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 40px
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: -0.02em
   h2:
-    fontFamily: Public Sans
-    fontSize: 32px
-    fontWeight: 600
+    fontFamily: Plus Jakarta Sans
+    fontSize: 30px
+    fontWeight: 700
     lineHeight: 1.25
     letterSpacing: -0.02em
   h3:
-    fontFamily: Public Sans
-    fontSize: 24px
+    fontFamily: Plus Jakarta Sans
+    fontSize: 20px
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: -0.015em
   h4:
-    fontFamily: Public Sans
-    fontSize: 18px
+    fontFamily: Plus Jakarta Sans
+    fontSize: 16px
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.35
     letterSpacing: -0.01em
   body-lg:
-    fontFamily: Public Sans
+    fontFamily: Plus Jakarta Sans
     fontSize: 18px
-    fontWeight: 400
+    fontWeight: 450
     lineHeight: 1.6
   body-md:
-    fontFamily: Public Sans
-    fontSize: 16px
-    fontWeight: 400
+    fontFamily: Plus Jakarta Sans
+    fontSize: 14px
+    fontWeight: 450
     lineHeight: 1.5
   body-sm:
-    fontFamily: Public Sans
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.5
+    fontFamily: Plus Jakarta Sans
+    fontSize: 13px
+    fontWeight: 450
+    lineHeight: 1.4
   label-md:
-    fontFamily: Public Sans
+    fontFamily: Plus Jakarta Sans
     fontSize: 14px
     fontWeight: 500
-    lineHeight: 1.4
+    lineHeight: 1.35
   label-sm:
-    fontFamily: Public Sans
+    fontFamily: Plus Jakarta Sans
     fontSize: 12px
     fontWeight: 500
-    lineHeight: 1.4
+    lineHeight: 1.35
     letterSpacing: 0.01em
-  code-inline:
-    fontFamily: ui-monospace, monospace
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.4
+  label-2xs:
+    fontFamily: Geist Mono, ui-monospace, monospace
+    fontSize: 11px
+    fontWeight: 500
+    lineHeight: 1.45
+    letterSpacing: 0.02em
   eyebrow:
-    fontFamily: Public Sans
+    fontFamily: Plus Jakarta Sans
     fontSize: 12px
     fontWeight: 600
     lineHeight: 1
     letterSpacing: 0.06em
+  code-mono:
+    fontFamily: Geist Mono, ui-monospace, monospace
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.4
 rounded:
   none: 0px
   xs: 2px
@@ -108,27 +118,33 @@ spacing:
   3xl: 64px
   4xl: 96px
   container-max: 1280px
-  header-height: 64px
+  header-height: 56px
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.lg}"
-    padding: "10px 20px"
+    textColor: "{colors.neutral-dark}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+    typography: "{typography.label-md}"
+  button-primary-dark:
+    backgroundColor: "{colors.primary-dark}"
+    textColor: "{colors.neutral-dark}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
     typography: "{typography.label-md}"
   button-primary-hover:
     backgroundColor: "{colors.primary-hover}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.lg}"
-  button-subtle:
+    textColor: "{colors.neutral-dark}"
+    rounded: "{rounded.md}"
+  button-subtle-lime:
     backgroundColor: "{colors.primary-subtle}"
-    textColor: "{colors.primary-hover}"
-    rounded: "{rounded.lg}"
-    padding: "10px 20px"
+    textColor: "{colors.primary-dark}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
     typography: "{typography.label-md}"
-  badge-accent:
-    backgroundColor: "{colors.accent-subtle}"
-    textColor: "{colors.accent}"
+  badge-success:
+    backgroundColor: "{colors.success-subtle}"
+    textColor: "{colors.success}"
     rounded: "{rounded.full}"
     padding: "4px 10px"
     typography: "{typography.label-sm}"
@@ -144,261 +160,233 @@ components:
     rounded: "{rounded.full}"
     padding: "4px 10px"
     typography: "{typography.label-sm}"
-  card-surface:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.xl}"
+  badge-info:
+    backgroundColor: "{colors.info-subtle}"
+    textColor: "{colors.info}"
+    rounded: "{rounded.full}"
+    padding: "4px 10px"
+    typography: "{typography.label-sm}"
+  table-header:
+    backgroundColor: "{colors.neutral-muted-light}"
+    textColor: "{colors.text-light-muted}"
+    typography: "{typography.label-2xs}"
+    padding: "8px 12px"
+  card-dark:
+    backgroundColor: "{colors.neutral-muted-dark}"
+    textColor: "{colors.text-dark}"
+    rounded: "{rounded.lg}"
     padding: "{spacing.lg}"
     typography: "{typography.body-md}"
-  card-muted:
-    backgroundColor: "{colors.surface-muted}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.xl}"
+  card-light:
+    backgroundColor: "{colors.neutral-light}"
+    textColor: "{colors.text-light}"
+    rounded: "{rounded.lg}"
     padding: "{spacing.lg}"
     typography: "{typography.body-md}"
-  card-divider:
-    backgroundColor: "{colors.neutral-subtle}"
+  card-divider-dark:
+    backgroundColor: "{colors.border-dark}"
     height: "1px"
     width: "100%"
-  input-field:
-    backgroundColor: "{colors.surface-elevated}"
-    textColor: "{colors.neutral}"
+  card-divider-light:
+    backgroundColor: "{colors.border-light}"
+    height: "1px"
+    width: "100%"
+  input-field-dark:
+    backgroundColor: "{colors.neutral-dark}"
+    textColor: "{colors.text-dark}"
     rounded: "{rounded.md}"
     padding: "8px 12px"
     typography: "{typography.body-sm}"
-  header-bar:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.neutral-muted}"
+  input-field-light:
+    backgroundColor: "{colors.neutral-muted-light}"
+    textColor: "{colors.text-light}"
+    rounded: "{rounded.md}"
+    padding: "8px 12px"
+    typography: "{typography.body-sm}"
+  header-bar-dark:
+    backgroundColor: "{colors.neutral-dark}"
+    textColor: "{colors.text-dark-muted}"
     height: "{spacing.header-height}"
     typography: "{typography.label-md}"
-  dark-card:
-    backgroundColor: "{colors.surface-dark-elevated}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.xl}"
-    padding: "{spacing.lg}"
-  dark-surface-accent:
-    backgroundColor: "{colors.surface-dark-accented}"
-    textColor: "{colors.surface}"
-    rounded: "{rounded.md}"
-  dark-canvas:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.surface}"
+  header-bar-light:
+    backgroundColor: "{colors.neutral-light}"
+    textColor: "{colors.text-light-muted}"
+    height: "{spacing.header-height}"
+    typography: "{typography.label-md}"
 ---
 
 ## Overview
 
-Architectural clarity meets high-velocity developer ergonomics. The Tricker visual identity delivers a modern, high-conversion software interface characterized by crisp typography, subtle spatial lighting, and refined hairline containment.
+High-density financial ergonomics meets developer infrastructure precision. Inspired by the visual identity of OpenRouter (openrouter.ai), Tricker treats household bill tracking not as a casual spreadsheet, but as a dual-ledger financial clearinghouse. The design language is engineered directly on top of `@nuxt/ui` v4's CSS variables theming architecture and Tailwind CSS v4, combining deep neutral canvas foundations, hairline perimeter containment, crisp geometric sans typography, and the canonical Tailwind CSS Lime (`#84cc16` / `#a3e635`) accent as the energetic interactive driver.
 
-The design embodies two complementary atmospheres:
+The design system operates across two tuned visual atmospheres:
 
-1. **Light Mode (Clean Precision):** Pure white and light slate surfaces anchored by crisp dark slate typography, providing an airy, publication-grade reading experience.
-2. **Dark Mode (Atmospheric Command):** Deep midnight slate (`#020617` / `#0F172A`) paired with glowing interactive elements, creating an immersive, distraction-free environment for modern software builders.
+1. **Dark Mode (Signature Developer Console):** Built on dark neutral surfaces (`--ui-bg: var(--ui-color-neutral-900)`, `#18181b`), elevated card surfaces (`--ui-bg-muted: var(--ui-color-neutral-800)`, `#27272a`), hairline border containment (`--ui-border: var(--ui-color-neutral-800)`), and electric Lime 400 (`--ui-primary: var(--ui-color-primary-400)`, `#a3e635`) interactive highlights.
+2. **Light Mode (Documentary Precision):** Grounded in clean white surfaces (`--ui-bg: white`, `#ffffff`), subtle neutral card groupings (`--ui-bg-muted: var(--ui-color-neutral-50)`, `#fafafa`), crisp dark text (`--ui-text-highlighted: var(--ui-color-neutral-900)`, `#18181b`), and Lime 500 (`--ui-primary: var(--ui-color-primary-500)`, `#84cc16`) callouts.
 
-The system is engineered natively on top of `@nuxt/ui` v4 and Tailwind CSS v4. Rather than inventing disparate ad-hoc classes, components build upon Nuxt UI semantic tokens:
+Rather than authoring arbitrary hardcoded colors, components strictly consume Nuxt UI semantic utility classes:
 
-- **Surface ramps:** `bg-default` (canvas base) → `bg-muted` (structural groupings) → `bg-elevated` (interactive cards and popovers) → `bg-accented` (active hover states).
-- **Text hierarchy:** `text-highlighted` (headlines and active titles) → `text-default` (body prose) → `text-muted` (descriptions and captions) → `text-dimmed` (placeholders and subtle metadata).
-- **Border containment:** `border-default` and `ring-default` resolving to 1px hairline perimeters.
-- **Lighting and Depth:** Ambient SVG linear top gradient backdrops (`HeroBackground`), dynamic mouse-tracking spotlight cards (`UPageCard spotlight`), and celestial particle canvas layers (`StarsBg`).
+- **Surface ramps:** `bg-default` (canvas base) -> `bg-muted` (structural groupings) -> `bg-elevated` (interactive cards and popovers) -> `bg-accented` (active hover states).
+- **Text ramps:** `text-highlighted` (headlines and active titles) -> `text-default` (body copy) -> `text-muted` (secondary descriptions) -> `text-dimmed` (timestamps and placeholders).
+- **Border ramps:** `border-default` and `ring-default` resolving to 1px hairline boundaries.
 
 ## Colors
 
-The palette is rooted in high-contrast slate neutrals, an energetic electric blue interaction driver, and an emerald accent hue for feature validation and branding.
+The color system strictly follows the [Nuxt UI CSS Variables Specification](https://ui.nuxt.com/docs/getting-started/theme/css-variables). With `primary: "lime"` and `neutral: "zinc"` declared in `app/app.config.ts`, the runtime theming engine resolves each CSS variable to specific shades of Tailwind CSS Lime and Zinc.
 
-### Primary Interaction Palette
+### Semantic Colors
 
-- **Primary (`#2563EB` / Blue 600):** The primary interaction driver. Used for solid call-to-action buttons, active navigation indicators, key links, and keyboard focus outlines (`outline-primary/25`). In dark mode, Nuxt UI automatically steps to Blue 400 (`#60A5FA`) or Blue 500 (`#3B82F6`) to maintain contrast on dark backgrounds.
-- **Primary Hover (`#1D4ED8` / Blue 700):** The pressed and hover state for primary solid interactive controls.
-- **Primary Subtle (`#EFF6FF` / Blue 50):** A delicate blue tint used for selected tabs, active list items, and subtle feature highlights.
+Each semantic utility class maps to a CSS variable that flips automatically between light and dark modes:
 
-### Brand & Feedback Accents
+| Utility Class                | CSS Variable   | Light Mode Shade              | Dark Mode Shade               | Hex (Light / Dark)    | Role                                       |
+| :--------------------------- | :------------- | :---------------------------- | :---------------------------- | :-------------------- | :----------------------------------------- |
+| `bg-primary`, `text-primary` | `--ui-primary` | `var(--ui-color-primary-500)` | `var(--ui-color-primary-400)` | `#84cc16` / `#a3e635` | Primary buttons, active tabs, key links    |
+| `bg-success`, `text-success` | `--ui-success` | `var(--ui-color-success-500)` | `var(--ui-color-success-400)` | `#10b981` / `#34d399` | Positive balances ("gets"), settled months |
+| `bg-error`, `text-error`     | `--ui-error`   | `var(--ui-color-error-500)`   | `var(--ui-color-error-400)`   | `#ef4444` / `#f87171` | Unbalanced shares, debt amounts ("owes")   |
+| `bg-warning`, `text-warning` | `--ui-warning` | `var(--ui-color-warning-500)` | `var(--ui-color-warning-400)` | `#f59e0b` / `#fbbf24` | Unreconciled entries, pending approvals    |
+| `bg-info`, `text-info`       | `--ui-info`    | `var(--ui-color-info-500)`    | `var(--ui-color-info-400)`    | `#0ea5e9` / `#38bdf8` | Dual-currency routing badges, API tips     |
 
-- **Accent (`#047857` / Emerald 700):** Iconic Nuxt-inspired emerald green. Used for success metrics, verification checkmarks (`i-lucide-circle-check`), and positive status badges. In dark mode, the accent shines at `#00DC82` / `#00C16A`.
-- **Accent Subtle (`#EFFDF5` / Emerald 50):** Background wash for success notifications and feature announcement pills.
-- **Error (`#B91C1C` / Red 700):** Critical alerts, validation errors, and destructive actions.
-- **Error Subtle (`#FEF2F2` / Red 50):** Background for error alert boxes and danger chips.
-- **Warning (`#B45309` / Amber 700):** Cautions, quota limits, and pending states.
-- **Warning Subtle (`#FFFBEB` / Amber 50):** Soft amber surface for warning notices.
+### Background Ramp
 
-### Slate Neutral Palette
+Background utilities map to `--ui-bg-*` CSS variables based on the zinc neutral scale:
 
-- **Neutral (`#0F172A` / Slate 900):** High-contrast dark ink used for display headlines, titles, and primary copy in light mode.
-- **Neutral Muted (`#475569` / Slate 600):** Secondary text, explanatory subtitles, table column headers, and neutral icons.
-- **Neutral Subtle (`#E2E8F0` / Slate 200):** Hairline borders, card rings, and subtle dividers.
-- **Surface (`#FFFFFF`):** Pure white canvas for light mode page backgrounds and elevated cards.
-- **Surface Muted (`#F8FAFC` / Slate 50):** Soft neutral tint for hero panels, section alternates, and subtle card surfaces.
-- **Surface Elevated (`#F1F5F9` / Slate 100):** Input background fills, hover highlights, and chips.
-- **Surface Dark (`#020617` / Slate 950):** Deep foundation canvas for dark mode.
-- **Surface Dark Elevated (`#0F172A` / Slate 900):** Dark mode cards, modals, and navigation dropdowns.
-- **Surface Dark Accented (`#1E293B` / Slate 800):** Dark mode card borders and active hover rings.
+| Utility Class | CSS Variable       | Light Mode                    | Dark Mode                     | Hex (Light / Dark)    | Role                                    |
+| :------------ | :----------------- | :---------------------------- | :---------------------------- | :-------------------- | :-------------------------------------- |
+| `bg-default`  | `--ui-bg`          | `white`                       | `var(--ui-color-neutral-900)` | `#ffffff` / `#18181b` | Canvas page foundation                  |
+| `bg-muted`    | `--ui-bg-muted`    | `var(--ui-color-neutral-50)`  | `var(--ui-color-neutral-800)` | `#fafafa` / `#27272a` | Card containers, section alternates     |
+| `bg-elevated` | `--ui-bg-elevated` | `var(--ui-color-neutral-100)` | `var(--ui-color-neutral-800)` | `#f4f4f5` / `#27272a` | Popovers, modal dialogues, input fills  |
+| `bg-accented` | `--ui-bg-accented` | `var(--ui-color-neutral-200)` | `var(--ui-color-neutral-700)` | `#e4e4e7` / `#3f3f46` | Active hover states, selected list rows |
+| `bg-inverted` | `--ui-bg-inverted` | `var(--ui-color-neutral-900)` | `white`                       | `#18181b` / `#ffffff` | Contrasting tooltips, inverse badges    |
+
+### Text Ramp
+
+Text utilities map to `--ui-text-*` CSS variables:
+
+| Utility Class      | CSS Variable            | Light Mode                    | Dark Mode                     | Hex (Light / Dark)    | Role                                  |
+| :----------------- | :---------------------- | :---------------------------- | :---------------------------- | :-------------------- | :------------------------------------ |
+| `text-dimmed`      | `--ui-text-dimmed`      | `var(--ui-color-neutral-400)` | `var(--ui-color-neutral-500)` | `#a1a1aa` / `#71717a` | Minor timestamps, placeholder hints   |
+| `text-muted`       | `--ui-text-muted`       | `var(--ui-color-neutral-500)` | `var(--ui-color-neutral-400)` | `#71717a` / `#a1a1aa` | Captions, secondary descriptions      |
+| `text-toned`       | `--ui-text-toned`       | `var(--ui-color-neutral-600)` | `var(--ui-color-neutral-300)` | `#52525b` / `#d4d4d8` | Eyebrow labels, category headers      |
+| `text-default`     | `--ui-text`             | `var(--ui-color-neutral-700)` | `var(--ui-color-neutral-200)` | `#3f3f46` / `#e4e4e7` | Standard body copy, list text         |
+| `text-highlighted` | `--ui-text-highlighted` | `var(--ui-color-neutral-900)` | `white`                       | `#18181b` / `#ffffff` | Headlines, monetary sums, card titles |
+| `text-inverted`    | `--ui-text-inverted`    | `white`                       | `var(--ui-color-neutral-900)` | `#ffffff` / `#18181b` | Text on inverted backgrounds          |
+
+### Border Ramp
+
+Border utilities map to `--ui-border-*` CSS variables:
+
+| Utility Class     | CSS Variable           | Light Mode                    | Dark Mode                     | Hex (Light / Dark)    | Role                                    |
+| :---------------- | :--------------------- | :---------------------------- | :---------------------------- | :-------------------- | :-------------------------------------- |
+| `border-default`  | `--ui-border`          | `var(--ui-color-neutral-200)` | `var(--ui-color-neutral-800)` | `#e4e4e7` / `#27272a` | Hairline perimeter rings, table rows    |
+| `border-muted`    | `--ui-border-muted`    | `var(--ui-color-neutral-200)` | `var(--ui-color-neutral-700)` | `#e4e4e7` / `#3f3f46` | Subtle dividers, card inner splits      |
+| `border-accented` | `--ui-border-accented` | `var(--ui-color-neutral-300)` | `var(--ui-color-neutral-700)` | `#d4d4d8` / `#3f3f46` | Active input borders, highlighted rings |
+
+### Focus Outlines
+
+Nuxt UI applies `focus-visible` outlines tinted with the component's `color` prop:
+
+- Primary elements (`color="primary"`): `outline-primary/25` with focus ring `var(--ui-primary)`.
+- Neutral elements (`color="neutral"`): `outline-inverted/25` with focus ring `var(--ui-border-inverted)`.
+
+### Accessibility & Contrast Rules
+
+- **Primary Lime Contrast:** Because Lime 400 (`#a3e635`) and Lime 500 (`#84cc16`) have very high luminance, text placed on top of `bg-primary` must use dark neutral ink (`#18181b` / `text-neutral-900`), delivering an accessible 8.9:1 to 11.7:1 WCAG AAA contrast ratio. Never place white text on a Lime background.
+- **Subtle Badges:** Pill badges use light tint surfaces with deeper shade text (e.g. `bg-success/15` with `text-emerald-800` or `text-emerald-400` in dark mode) ensuring >= 5.9:1 WCAG AA contrast.
 
 ## Typography
 
-Typography is set in **Public Sans** (`--font-sans`), a modernist grotesque typeface with clean geometric proportions, tall x-height, and neutral editorial rhythm. For tabular data, keyboard shortcuts, version tags, and code blocks, the system pairs Public Sans with a clean **Monospace** stack (`--font-mono`).
+Typography pairs **Plus Jakarta Sans** for modern geometric authority and **Geist Mono** for financial precision and code tokens.
+
+- **Headlines:** Set in Plus Jakarta Sans Bold (700) with tight negative tracking (-0.025em to -0.02em) and tight leading (1.15 to 1.25) to deliver dense, confident typographic impact.
+- **Body Text:** Plus Jakarta Sans Regular (weight 450) and Medium (500) provide optimal legibility across information-dense ledgers.
+- **Financial Figures & Code:** Geist Mono with universal tabular numerals (`tabular-nums`). Currency figures ($420.00 and ៛120,000), minor unit calculations, split percentages (10000 bps), and API keys are strictly set in tabular monospace.
+- **Eyebrows & Metadata:** Plus Jakarta Sans or Geist Mono at 12px with generous tracking (+0.06em), uppercase, evoking developer-tool precision.
 
 ### Type Scale
 
-| Level          | Size             | Weight | Line Height | Tracking | Semantic Role                               |
-| :------------- | :--------------- | :----- | :---------- | :------- | :------------------------------------------ |
-| `display-hero` | 56px (3.5rem)    | 700    | 1.1         | -0.03em  | SaaS landing page main hero headline        |
-| `h1`           | 44px (2.75rem)   | 700    | 1.15        | -0.025em | Major page headings and section anchors     |
-| `h2`           | 32px (2.0rem)    | 600    | 1.25        | -0.02em  | Feature titles, pricing section titles      |
-| `h3`           | 24px (1.5rem)    | 600    | 1.3         | -0.015em | Card headers, plan tier titles              |
-| `h4`           | 18px (1.125rem)  | 600    | 1.4         | -0.01em  | Modal headers, feature item titles          |
-| `body-lg`      | 18px (1.125rem)  | 400    | 1.6         | 0        | Hero lede paragraphs, featured quotes       |
-| `body-md`      | 16px (1.0rem)    | 400    | 1.5         | 0        | Standard body copy, articles, descriptions  |
-| `body-sm`      | 14px (0.875rem)  | 400    | 1.5         | 0        | Secondary descriptions, helper text, inputs |
-| `label-md`     | 14px (0.875rem)  | 500    | 1.4         | 0        | Button labels, navigation menu links        |
-| `label-sm`     | 12px (0.75rem)   | 500    | 1.4         | +0.01em  | Badges, pills, metadata tags                |
-| `eyebrow`      | 12px (0.75rem)   | 600    | 1.0         | +0.06em  | Category labels above titles                |
-| `code-inline`  | 13px (0.8125rem) | 400    | 1.4         | 0        | Inline code, shortcuts, technical keys      |
-
-Headings leverage negative letter spacing (`-0.02em` to `-0.03em`) and tight line heights to read as cohesive visual units. Paragraphs and descriptions use standard tracking and comfortable line heights (`1.5` to `1.6`) for optimal legibility.
+| Level          | Size             | Weight | Line Height | Tracking | Semantic Role                         |
+| :------------- | :--------------- | :----- | :---------- | :------- | :------------------------------------ |
+| `display-hero` | 56px (3.5rem)    | 700    | 1.15        | -0.025em | Main landing page headline            |
+| `h1`           | 40px (2.5rem)    | 700    | 1.2         | -0.02em  | Page title, dashboard month header    |
+| `h2`           | 30px (1.875rem)  | 700    | 1.25        | -0.02em  | Section titles, feature anchors       |
+| `h3`           | 20px (1.25rem)   | 600    | 1.3         | -0.015em | Card headers, settlement summaries    |
+| `h4`           | 16px (1.0rem)    | 600    | 1.35        | -0.01em  | Modal headers, group titles           |
+| `body-lg`      | 18px (1.125rem)  | 450    | 1.6         | 0        | Hero lede descriptions                |
+| `body-md`      | 14px (0.875rem)  | 450    | 1.5         | 0        | Standard ledger body, entries list    |
+| `body-sm`      | 13px (0.8125rem) | 450    | 1.4         | 0        | Helper text, form descriptions        |
+| `label-md`     | 14px (0.875rem)  | 500    | 1.35        | 0        | Button labels, navigation items       |
+| `label-sm`     | 12px (0.75rem)   | 500    | 1.35        | +0.01em  | Badges, status pills, tags            |
+| `label-2xs`    | 11px (0.6875rem) | 500    | 1.45        | +0.02em  | Table headers, dense micro-metadata   |
+| `eyebrow`      | 12px (0.75rem)   | 600    | 1.0         | +0.06em  | Category overlines, mono labels       |
+| `code-mono`    | 13px (0.8125rem) | 400    | 1.4         | 0        | Tabular minor amounts, currency, keys |
 
 ## Layout
 
-The layout system follows a responsive grid model centered around a standard max-width container and balanced vertical spacing intervals.
+The layout follows an engineered grid architecture centered on a standard 1280px max-width container with responsive horizontal padding.
 
-### Containment & Geometry
+- **Container (`UContainer`):** Bound to `--ui-container: 80rem` (1280px / `max-w-7xl`) with horizontal padding `px-6 md:px-8`.
+- **Header Shell (`UHeader`):** Controlled by `--ui-header-height: 3.5rem` (56px / `h-14`) with a 1px hairline bottom divider (`border-b border-default`) and glassmorphic backdrop blur (`backdrop-blur-md bg-default/75`). Houses the brand mark, navigation items, global `⌘K` command trigger, and auth controls.
+- **Vertical Rhythm:** Section blocks separated by `py-12 sm:py-20 lg:py-24` with modular internal gaps of 16px, 24px, and 32px.
+- **Bento Grid Architecture:** Multi-column feature grids (1 col mobile, 2 col tablet, 3-4 col desktop) combining high-density metric counters, split ledger cards, and interactive process steps.
 
-- **Container (`UContainer`):** Bound to `--ui-container: 80rem` (1280px) with responsive horizontal padding (`px-4 sm:px-6 lg:px-8`).
-- **Header Bar (`UHeader`):** Fixed height `h-16` (64px / `--ui-header-height`), sticky positioned with a glassmorphic blur (`backdrop-blur-md bg-default/75`).
-- **Section Spacing:** Major page blocks are separated by `py-16 sm:py-24 lg:py-32` (`gap-16 lg:gap-24`) to give content breathing room.
-- **Standard Spacing Scale:** Built on 4px and 8px modules (`xs: 4px`, `sm: 8px`, `md: 16px`, `lg: 24px`, `xl: 32px`, `2xl: 48px`, `3xl: 64px`, `4xl: 96px`).
+### Responsive Strategy
 
-### Compositional Archetypes
+Layouts are authored **mobile-first** with Tailwind CSS. Base classes target the 320px viewport and progressive enhancements are layered at `sm` (640px), `lg` (1024px), and larger breakpoints.
 
-1. **Centered Editorial Hero (`UPageHero`):**
-   - Centered single-column composition.
-   - Atmospheric top gradient line (`HeroBackground`).
-   - Pill badge lead (`eyebrow-badge`).
-   - Bold display headline with gradient or colored accent span (`[SaaS]{class="text-primary"}`).
-   - Action button pair: Primary solid button + Neutral outline button.
-   - Promotional media preview (`PromotionalVideo` / `ImagePlaceholder`) framed by a hairline ring.
-2. **Alternating Split Features (`UPageSection`):**
-   - 2-column grid (`lg:grid-cols-2`) with `orientation="horizontal"` and alternating `reverse: true`.
-   - Left column: Section title, description, and bulleted feature list with Lucide icons.
-   - Right column: UI mockup card or illustrative graphic.
-3. **Responsive Card Grid (`UPageGrid`):**
-   - 1-column on mobile, 2-column on tablet, 3-column on desktop (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8`).
-   - Houses `UPageCard` elements featuring mouse-following spotlight glow.
-4. **Three-Tier Pricing Grid (`UPricingPlans`):**
-   - 3-tier card layout with standard versus highlighted tier.
-   - Featured plan uses scale emphasis (`scale: true`) and accent badge.
-   - Pill-shaped frequency toggle (`UTabs rounded-full`) for Monthly vs Yearly billing.
-5. **Masonry Testimonials (`UPageColumns`):**
-   - Responsive multi-column layout (`xl:columns-4 gap-6`).
-   - Cards use `variant="subtle"` with user avatar, name, and handle (`UUser`).
-6. **Ambient CTA Block (`UPageCTA`):**
-   - Full-width call-to-action block layered with an animated cosmic starfield (`StarsBg`).
+- **Never overflow the viewport:** No element may exceed the viewport width at any breakpoint from 320px up. Verify with `document.documentElement.scrollWidth === clientWidth`.
+- **Stack before splitting:** Composite app chrome (room switcher, month state, tab nav, action button) stacks into stacked rows on small screens and only becomes a single row at `lg`, where there is enough horizontal room.
+- **Dense data tables** keep a `min-w-120` (480px) floor and scroll inside their own `overflow-x-auto` wrapper rather than widening the page.
+- **Wide side-by-side panels** (live ledger feed and settlement graph) collapse to a single column below `lg`.
+- **Micro-labels** drop one step (`text-2xs` → `text-xs`) and icons/avatars shrink on small viewports instead of wrapping.
 
 ## Elevation & Depth
 
-Visual hierarchy is conveyed through **tonal layering and hairline containment rings** rather than heavy drop shadows. This produces clean contrast in both light and dark modes without muddy shadows or ambient halos.
+Visual hierarchy is communicated through **surface tone progression and hairline borders**, strictly avoiding heavy, diffused drop shadows.
 
-### The Tonal Layering Model
-
-1. **Layer 0 (Canvas):** Base page background (`bg-default`: `#FFFFFF` light / `#020617` dark).
-2. **Layer 1 (Subtle Wells & Sections):** Large layout enclosures and alternate sections (`bg-muted`: `#F8FAFC` light / `#0F172A` dark).
-3. **Layer 2 (Cards & Surfaces):** Content cards, dialogs, and popovers (`bg-elevated` or card surface: `#FFFFFF` light / `#0F172A` dark).
-4. **Layer 3 (Accented Controls):** Input fields, hover highlights, and active pills (`bg-accented`: `#F1F5F9` light / `#1E293B` dark).
-
-### Hairline Perimeter Rings
-
-Cards and structural containers do not rely on blurred shadows. Instead, they use a hairline 1px ring (`ring-1 ring-default` or `border border-default`), which maps to `slate-200` in light mode and `slate-800` in dark mode.
-
-### Atmospheric Spatial Lighting
-
-- **Hero Horizon Glow (`HeroBackground`):** An SVG mask containing dual linear gradient stops along the top edge of the hero section, casting a soft tint from the primary brand hue downward.
-- **Cursor Spotlight (`UPageCard spotlight`):** A subtle dynamic radial gradient that tracks the user's cursor across cards, revealing hairline borders on hover.
-- **Interactive Focus Elevation:** Interactive elements avoid heavy elevation on focus, instead displaying an accessible 2px focus ring tinted with the component's accent hue (`focus-visible:outline-3 outline-primary/25`).
-- **Celestial Particle Canvas (`StarsBg`):** Multi-speed star particle layers placed in the CTA section to create subtle optical depth.
+- **Surface Tonal Ramping:** Depth moves cleanly from canvas (`bg-default`) to container (`bg-muted`) to elevated controls (`bg-elevated`).
+- **Hairline Containment:** Structural boundaries rely entirely on 1px hairline rings (`ring-1 ring-default` or `border border-default`), resolving to `zinc-200` in light mode and `zinc-800` in dark mode.
+- **Interactive States:** Hover effects employ subtle background transitions (`hover:bg-accented` or `hover:bg-muted`) and gentle micro-lifts rather than blurred drop shadows. Focus triggers a crisp 2px ring (`focus-visible:ring-2 focus-visible:ring-primary/50`).
 
 ## Shapes
 
-The shape system is defined by **calibrated modern geometry** governed by the `--ui-radius` variable (base `0.25rem` / 4px). This creates consistent curvature across interactive and structural elements.
+Geometry is governed by Nuxt UI's unified `--ui-radius: 0.25rem` (4px base) system, which scales across standard border-radius utility classes:
 
-### Radius Scale
-
-| Token  | Dimension | Role & Component Application                                          |
-| :----- | :-------- | :-------------------------------------------------------------------- |
-| `none` | 0px       | Flat edges, full-bleed images                                         |
-| `xs`   | 2px       | Micro-indicators, notification badges                                 |
-| `sm`   | 4px       | Small tags, tooltips, inline code blocks                              |
-| `md`   | 6px       | Standard form inputs (`UInput`), textareas, search bars               |
-| `lg`   | 8px       | Action buttons (`UButton`), tab triggers, toast banners               |
-| `xl`   | 12px      | Standard cards (`UPageCard`), pricing plan boxes, modals              |
-| `2xl`  | 16px      | Hero media wrappers, promotional video containers                     |
-| `full` | 9999px    | Badges (`UBadge`), avatar rings, billing switch pills, toggle buttons |
-
-### Shape Principles
-
-- **Inputs vs Buttons:** Form inputs utilize `rounded-md` (6px) while action buttons utilize `rounded-lg` (8px). This slight differentiation helps buttons feel distinct and tactile.
-- **Card Containers:** Cards consistently use `rounded-xl` (12px). Outer wrapper boxes never exceed `rounded-2xl` (16px) to avoid bubbly, imprecise styling.
-- **Pill Badges:** Badges, category indicators, and status chips strictly use `rounded-full` (9999px), creating clear contrast against rectangular card surfaces.
+| Class          | Multiplier Formula             | Resolved Dimension | Role & Application                                   |
+| :------------- | :----------------------------- | :----------------- | :--------------------------------------------------- |
+| `rounded-xs`   | `calc(var(--ui-radius) * 0.5)` | 2px                | Micro-indicators, notification dots                  |
+| `rounded-sm`   | `var(--ui-radius)`             | 4px                | Inline code tags, tooltips                           |
+| `rounded-md`   | `calc(var(--ui-radius) * 1.5)` | 6px                | Action buttons (`UButton`), form inputs (`UInput`)   |
+| `rounded-lg`   | `calc(var(--ui-radius) * 2)`   | 8px                | Standard cards (`UCard`), dropdown popovers          |
+| `rounded-xl`   | `calc(var(--ui-radius) * 3)`   | 12px               | Modal dialogs, major bento panels                    |
+| `rounded-2xl`  | `calc(var(--ui-radius) * 4)`   | 16px               | Outer hero media wrappers                            |
+| `rounded-full` | `9999px`                       | 9999px             | Status badges (`UBadge`), avatar rings, pill toggles |
 
 ## Components
 
-The design system standardizes reusable component atoms aligned with Nuxt UI v4 specifications.
+The system establishes standardized component primitives built on Nuxt UI v4:
 
-### Buttons (`UButton`)
-
-- **Primary Button (`button-primary`):** Solid electric blue (`bg-primary`), white text (`text-surface`), `rounded-lg`, medium weight (`label-md`), padded `10px 20px`. Hover deepens to `primary-hover`. Focus emits `outline-primary/25`.
-- **Secondary / Outline Button:** `bg-surface`, hairline ring `ring-1 ring-default`, `text-neutral`. Hover shifts background to `surface-muted`.
-- **Subtle Button (`button-subtle`):** Tinted primary subtle background (`primary-subtle`) with `primary-hover` text.
-- **Ghost Button:** Zero-background button, `text-neutral-muted` with hover background on `surface-elevated`.
-
-### Navigation & Header (`UHeader`, `UNavigationMenu`)
-
-- **Header Shell:** Sticky top container with `h-16`, flex row with left logo slot, centered horizontal navigation links, and right utility controls.
-- **Nav Links:** Public Sans `label-md`, `text-neutral-muted` transitioning to `text-neutral` on hover. Active links show bold weight and a subtle indicator underline.
-- **Utility Suite:** Color mode switch (`UColorModeButton`), documentation search launcher (`UContentSearchButton`), and login/signup action pair.
-
-### Cards (`UPageCard`, `UPricingPlan`)
-
-- **Standard Card (`card-surface`):** White or dark-slate elevated surface with `rounded-xl` and 1px hairline ring. Padded `p-6` or `p-8`.
-- **Spotlight Card:** Standard card equipped with mouse-following radial gradient overlay.
-- **Pricing Plan Card:** Features price headline (`h2`), billing cycle label (`text-neutral-muted`), tier description, primary or subtle CTA button, and feature checkmark list. Featured plan adds scale transform and pill badge.
-
-### Badges & Eyebrows (`UBadge`)
-
-- **Eyebrow Badge:** Pill-shaped (`rounded-full`) chip above section headings. Composed of `accent-subtle` background and `accent` text, or neutral subtle background with leading icon.
-- **Status Pills:** Compact indicators for "New", "Beta", or status counts.
-
-### Form Controls (`UInput`, `UAuthForm`)
-
-- **Input Fields (`input-field`):** `rounded-md`, `bg-surface-elevated`, hairline ring `ring-accented`, inset padding `px-3 py-2`. Focus activates `ring-primary` and `outline-primary/25`.
-- **Auth Card:** Centered card (`max-w-sm w-full`) with lock icon header, social OAuth buttons (Google, GitHub), horizontal separator, email/password form fields, and Terms of Service footnote.
-
-### Segmented Controls & Tabs (`UTabs`)
-
-- **Billing Switch:** Pill-shaped container (`rounded-full ring ring-accented`) with sliding active pill indicator, switching between Monthly and Yearly pricing.
-
-### Accordion & FAQ (`UAccordion`)
-
-- **Accordion Row:** Borderless expandable trigger with `text-highlighted` label and chevron trailing icon. Expanded body text renders in `text-neutral-muted` with comfortable spacing.
-
-### Separators (`USeparator`)
-
-- **Hairline Divider (`card-divider`):** 1px horizontal rule (`bg-neutral-subtle`) with optional centered icon or label badge.
+- **Primary Button (`button-primary`):** Solid Tailwind Lime fill (`bg-primary text-neutral-900`), `rounded-md`, medium weight (`label-md`), and active scale micro-interaction (`active:scale-95`). In dark mode, automatically renders Lime 400 (`#a3e635`).
+- **Secondary / Outline Button:** Card surface background (`bg-default`) with 1px hairline perimeter (`border border-default`), crisp text (`text-highlighted`), and hover tone shift (`hover:bg-muted`).
+- **Command Trigger Pill:** Input-like button with `⌘K` keyboard shortcut badge in monospace (`font-mono text-xs`).
+- **Ledger Cards:** Divided cards with header summary (currency icon, total spent), balance rows with avatar, participant name, and tabular balance (+/-), followed by minimal settlement transfer lists.
+- **Status Badges:** Subtle tinted backgrounds (`bg-success/10`, `bg-warning/10`, `bg-error/10`) paired with high-contrast text.
+- **Form Controls:** Compact inputs with `rounded-md`, hairline rings (`ring-1 ring-default`), and glowing primary focus outlines (`focus:ring-2 focus:ring-primary/50`).
 
 ## Do's and Don'ts
 
 ### Do
 
-- **Do** rely on Nuxt UI semantic color variables (`bg-default`, `bg-muted`, `bg-elevated`, `text-highlighted`, `text-muted`, `ring-default`) to enable seamless light and dark mode transitions.
-- **Do** preserve the canonical 1280px container width (`UContainer`) for top-level page views.
-- **Do** maintain a strict 4.5:1 WCAG AA contrast ratio for body copy against its underlying surface.
-- **Do** reserve the electric blue primary color for the most important user actions on each screen.
-- **Do** use `rounded-full` for all status badges, tags, and segmented billing toggles, and `rounded-xl` for cards.
-- **Do** use hairline rings (`ring-1 ring-default`) and background tone shifts for visual depth rather than heavy drop shadows.
-- **Do** pair Lucide icons (`i-lucide-*`) with buttons and feature cards to improve visual scanning.
+- **Do** consume Nuxt UI semantic utility classes (`bg-default`, `bg-muted`, `text-highlighted`, `text-muted`, `border-default`) rather than writing hardcoded color values.
+- **Do** use dark neutral text (`text-neutral-900`) on `bg-primary` (Lime) to guarantee an accessible 8.9+:1 WCAG AAA contrast ratio.
+- **Do** keep USD and KHR in separate parallel ledger containers; never combine, convert, or cross-calculate currencies.
+- **Do** format all financial sums, minor unit calculations, percentages, and keys using `tabular-nums` and monospace font (`font-mono`).
+- **Do** rely on 1px hairline perimeter borders and subtle surface tone shifts for visual depth rather than heavy drop shadows.
+- **Do** maintain a compact, high-density rhythm with `rounded-md` (6px) controls and `rounded-lg` (8px) cards.
 
-### Don't
+### Don'ts
 
-- **Don't** apply heavy, dark box shadows (`shadow-2xl`); depth must come from hairline rings and surface tonal hierarchy.
-- **Don't** mix inconsistent corner radii in the same component group (e.g. sharp inputs inside a rounded card).
-- **Don't** use low-contrast text (such as light gray on white) that fails WCAG AA readability criteria.
-- **Don't** introduce random accent colors; interactive actions stay in electric blue, while emerald green is reserved for positive validation and branding.
-- **Don't** override typography fonts arbitrarily; maintain Public Sans as the primary voice and monospace for technical data.
-- **Don't** hardcode raw RGB or hex values inside component templates; bind to theme tokens and CSS variables.
+- **Don't** use white text on `bg-primary` (Lime); white on lime fails accessibility contrast criteria.
+- **Don't** introduce blurred, muddy drop shadows (`shadow-2xl`); depth must come from hairline rings and surface tonal hierarchy.
+- **Don't** allow shares in an entry to total anything other than 100% (10000 bps).
+- **Don't** use oversized corner radii (`rounded-3xl`) on cards; preserve tight, engineered geometry.
+- **Don't** bypass `--ui-radius` or `--ui-container` with custom width or radius overrides when composing layouts.
