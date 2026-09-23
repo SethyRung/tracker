@@ -9,6 +9,11 @@ export default defineConfig({
   singleQuote: false,
   trailingComma: "all",
   printWidth: 100,
+  sortTailwindcss: {
+    stylesheet: "./app/assets/css/main.css",
+    functions: ["clsx", "cn"],
+    preserveWhitespace: true,
+  },
   ignorePatterns: [
     "node_modules",
     ".agents",
