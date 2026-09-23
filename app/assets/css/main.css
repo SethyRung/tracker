@@ -2,9 +2,11 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", sans-serif;
-  --font-pixel: "Geist Pixel", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 @utility no-scrollbar {
