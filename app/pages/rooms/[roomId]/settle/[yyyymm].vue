@@ -91,10 +91,10 @@ async function runMonthAction(action: "close" | "reopen") {
 </script>
 
 <template>
-  <UContainer class="max-w-4xl py-6 space-y-6">
+  <UContainer class="max-w-4xl space-y-6 py-6">
     <div class="flex items-end justify-between gap-4">
       <div class="space-y-1">
-        <p class="font-mono text-xs uppercase tracking-wider text-toned">Settlement</p>
+        <p class="font-mono text-xs tracking-wider text-toned uppercase">Settlement</p>
         <h1 class="font-pixel-circle text-2xl text-primary">{{ monthLabel }}</h1>
       </div>
 
@@ -118,21 +118,21 @@ async function runMonthAction(action: "close" | "reopen") {
       </div>
     </div>
 
-    <div v-if="settleStatus === 'pending'" class="grid md:grid-cols-2 gap-4">
+    <div v-if="settleStatus === 'pending'" class="grid gap-4 md:grid-cols-2">
       <USkeleton v-for="i in 2" :key="i" class="h-72 rounded-xl" />
     </div>
 
-    <p v-else-if="settleStatus === 'error'" class="text-sm text-toned text-center py-12">
+    <p v-else-if="settleStatus === 'error'" class="py-12 text-center text-sm text-toned">
       Could not load settlement.
     </p>
 
-    <div v-else class="grid md:grid-cols-2 gap-4">
+    <div v-else class="grid gap-4 md:grid-cols-2">
       <UCard v-for="plan in plans" :key="plan.currency" variant="outline">
         <template #header>
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
               <UIcon :name="currencyIcon(plan.currency as Currency)" class="size-4 text-toned" />
-              <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
+              <h2 class="font-mono text-xs font-semibold tracking-wider text-toned uppercase">
                 {{ plan.currency }}
               </h2>
             </div>
@@ -140,34 +140,34 @@ async function runMonthAction(action: "close" | "reopen") {
           </div>
         </template>
 
-        <div v-if="!plan.hasActivity" class="text-center py-6 space-y-1">
-          <UIcon name="i-lucide-receipt" class="size-6 text-dimmed mx-auto" />
+        <div v-if="!plan.hasActivity" class="space-y-1 py-6 text-center">
+          <UIcon name="i-lucide-receipt" class="mx-auto size-6 text-dimmed" />
           <p class="text-sm text-muted">No {{ plan.currency }} activity this month</p>
         </div>
 
         <template v-else>
-          <p v-if="plan.suggestTransfer.length > 0" class="text-xs text-toned mb-3">
+          <p v-if="plan.suggestTransfer.length > 0" class="mb-3 text-xs text-toned">
             {{ plan.suggestTransfer.length }} transfer{{
               plan.suggestTransfer.length === 1 ? "" : "s"
             }}
             · {{ plan.totalImbalanceFormatted }} to move
           </p>
 
-          <p class="text-xs font-semibold text-toned mb-2">Balances</p>
-          <ul class="space-y-1.5 mb-4">
+          <p class="mb-2 text-xs font-semibold text-toned">Balances</p>
+          <ul class="mb-4 space-y-1.5">
             <li
               v-for="m in plan.members"
               :key="m.membershipId"
               class="flex items-center justify-between gap-2"
             >
-              <div class="flex items-center gap-2 min-w-0">
+              <div class="flex min-w-0 items-center gap-2">
                 <span
-                  class="size-2 rounded-full shrink-0"
+                  class="size-2 shrink-0 rounded-full"
                   :style="{ backgroundColor: m.color ?? '#a1a1aa' }"
                 />
-                <span class="text-sm truncate">{{ m.name }}</span>
+                <span class="truncate text-sm">{{ m.name }}</span>
               </div>
-              <div class="flex items-center gap-1.5 shrink-0">
+              <div class="flex shrink-0 items-center gap-1.5">
                 <span v-if="m.balance > 0" class="text-xs text-toned">gets</span>
                 <span v-else-if="m.balance < 0" class="text-xs text-toned">owes</span>
                 <span v-else class="text-xs text-dimmed">even</span>
@@ -185,27 +185,27 @@ async function runMonthAction(action: "close" | "reopen") {
 
           <div v-if="plan.suggestTransfer.length > 0" class="border-t border-default pt-3">
             <p class="text-xs font-semibold text-toned">Suggested transfers</p>
-            <p class="text-[10px] text-toned mb-2">(minimum to settle)</p>
+            <p class="mb-2 text-[10px] text-toned">(minimum to settle)</p>
             <ul class="space-y-1.5">
               <li
                 v-for="t in plan.suggestTransfer"
                 :key="`${t.fromMembershipId}-${t.toMembershipId}`"
                 class="flex items-center justify-between gap-2 text-sm"
               >
-                <div class="flex items-center gap-1.5 min-w-0">
+                <div class="flex min-w-0 items-center gap-1.5">
                   <span class="truncate">{{ t.fromName }}</span>
-                  <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0" />
+                  <UIcon name="i-lucide-arrow-right" class="size-3.5 shrink-0 text-dimmed" />
                   <span class="truncate">{{ t.toName }}</span>
                 </div>
-                <span class="font-medium tabular-nums text-primary shrink-0">{{
+                <span class="shrink-0 font-medium text-primary tabular-nums">{{
                   t.amountFormatted
                 }}</span>
               </li>
             </ul>
           </div>
 
-          <div v-else class="text-center py-4 space-y-1">
-            <UIcon name="i-lucide-circle-check" class="size-6 text-success mx-auto" />
+          <div v-else class="space-y-1 py-4 text-center">
+            <UIcon name="i-lucide-circle-check" class="mx-auto size-6 text-success" />
             <p class="text-sm text-default">Everyone is settled up</p>
             <p v-if="plan.isSettled" class="text-xs text-dimmed">
               Everyone paid exactly their own share — no transfers needed.
@@ -221,8 +221,8 @@ async function runMonthAction(action: "close" | "reopen") {
       :ui="{ footer: 'justify-end' }"
     >
       <template #body>
-        <p class="text-sm text-toned mb-2">After closing:</p>
-        <ul class="text-sm text-toned space-y-1 list-disc pl-5">
+        <p class="mb-2 text-sm text-toned">After closing:</p>
+        <ul class="list-disc space-y-1 pl-5 text-sm text-toned">
           <li>No edits or deletions</li>
           <li>Settlement is locked</li>
           <li>You can re-open later if needed</li>

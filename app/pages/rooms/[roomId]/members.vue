@@ -118,10 +118,10 @@ const columns: TableColumn<Member>[] = [
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-6 space-y-6">
+  <UContainer class="max-w-2xl space-y-6 py-6">
     <div class="flex items-end justify-between gap-4">
       <div class="space-y-1">
-        <p class="font-mono text-xs uppercase tracking-wider text-toned">Room</p>
+        <p class="font-mono text-xs tracking-wider text-toned uppercase">Room</p>
         <h1 class="font-pixel-circle text-2xl text-primary">Members</h1>
         <p class="text-xs text-toned">
           {{ members.length }} member{{ members.length === 1 ? "" : "s" }}

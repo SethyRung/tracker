@@ -175,7 +175,7 @@ const OverlayComponent = computed(() => {
             nested
           >
             <UFormField name="email" label="Email" orientation="horizontal" class="w-full">
-              <div class="flex gap-1 items-center w-full">
+              <div class="flex w-full items-center gap-1">
                 <UInput
                   v-model="item.email"
                   type="email"

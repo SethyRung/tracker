@@ -215,7 +215,7 @@ async function goNext() {
                   <UIcon name="i-lucide-house" class="size-4" />
                   <span class="text-sm">Name</span>
                 </div>
-                <span class="text-sm font-medium text-default text-right">
+                <span class="text-right text-sm font-medium text-default">
                   {{ state.name || "—" }}
                 </span>
               </li>
@@ -240,10 +240,10 @@ async function goNext() {
 
               <li class="flex items-start justify-between gap-3 py-3">
                 <div class="flex items-center gap-2 text-toned">
-                  <UIcon name="i-lucide-tags" class="size-4 mt-0.5" />
+                  <UIcon name="i-lucide-tags" class="mt-0.5 size-4" />
                   <span class="text-sm">Categories</span>
                 </div>
-                <span class="text-sm text-toned text-right">
+                <span class="text-right text-sm text-toned">
                   Rent · Utilities · Food · Supplies
                   <span class="text-dimmed">(auto-seeded)</span>
                 </span>

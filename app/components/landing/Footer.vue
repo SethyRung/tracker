@@ -61,14 +61,14 @@ const columns: FooterColumn[] = [
       <UContainer>
         <UFooterColumns :columns="columns">
           <template #left>
-            <div class="space-y-4 max-w-sm pr-4">
+            <div class="max-w-sm space-y-4 pr-4">
               <NuxtLink to="/" class="select-none">
-                <span class="font-bold text-xl tracking-tight text-highlighted">
+                <span class="text-xl font-bold tracking-tight text-highlighted">
                   Tricker<span class="text-primary">.</span>
                 </span>
               </NuxtLink>
 
-              <p class="text-sm text-muted leading-relaxed">
+              <p class="text-sm leading-relaxed text-muted">
                 Shared bills, settled simply. Multi-tenant household ledger for USD and KHR with
                 zero messy conversion.
               </p>
@@ -90,7 +90,7 @@ const columns: FooterColumn[] = [
     </template>
 
     <template #left>
-      <p class="text-xs sm:text-sm text-muted">
+      <p class="text-xs text-muted sm:text-sm">
         © {{ year }} Tricker. Shared bills, settled simply.
       </p>
     </template>

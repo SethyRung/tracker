@@ -478,7 +478,7 @@ async function resetToTemplate() {
 
           <ul class="space-y-3">
             <li v-for="w in weights" :key="w.membershipId" class="flex items-center gap-3">
-              <span class="flex-1 text-base truncate">{{ w.name }}</span>
+              <span class="flex-1 truncate text-base">{{ w.name }}</span>
               <UInputNumber
                 :model-value="w.weightBps / 100"
                 :min="0"

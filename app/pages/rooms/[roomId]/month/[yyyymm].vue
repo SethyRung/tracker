@@ -163,8 +163,8 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
 </script>
 
 <template>
-  <UContainer class="py-4 max-w-2xl">
-    <div class="flex items-center justify-between mb-4 gap-3">
+  <UContainer class="max-w-2xl py-4">
+    <div class="mb-4 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <UButton
           icon="i-lucide-chevron-left"
@@ -176,7 +176,7 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
         />
         <div>
           <h1 class="font-pixel-circle text-2xl text-primary">{{ yyyymm }}</h1>
-          <p class="text-xs text-toned mt-1">
+          <p class="mt-1 text-xs text-toned">
             <UBadge :color="monthClosed ? 'neutral' : 'primary'" variant="subtle" size="xs">
               {{ monthClosed ? "Closed" : "Open" }}
             </UBadge>
@@ -221,19 +221,19 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
     <template v-else>
       <UCard class="mb-4">
         <template #header>
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
+          <h2 class="text-xs font-semibold tracking-wide text-toned uppercase">
             Totals this month
           </h2>
         </template>
         <div class="grid grid-cols-2 gap-3">
           <div class="rounded-lg bg-elevated p-3">
-            <p class="text-xs font-semibold text-toned mb-2">USD</p>
+            <p class="mb-2 text-xs font-semibold text-toned">USD</p>
             <p class="text-lg font-bold text-default tabular-nums">
               {{ formatAmount("USD", totalsByCurrency.USD ?? 0) }}
             </p>
           </div>
           <div class="rounded-lg bg-elevated p-3">
-            <p class="text-xs font-semibold text-toned mb-2">KHR</p>
+            <p class="mb-2 text-xs font-semibold text-toned">KHR</p>
             <p class="text-lg font-bold text-default tabular-nums">
               {{ formatAmount("KHR", totalsByCurrency.KHR ?? 0) }}
             </p>
@@ -253,14 +253,14 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
       <UCard>
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-toned">
+            <h2 class="text-xs font-semibold tracking-wide text-toned uppercase">
               Entries ({{ sortedEntries.length }})
             </h2>
           </div>
         </template>
 
         <ul v-if="sortedEntries.length > 0" class="divide-y divide-default">
-          <li v-for="e in sortedEntries" :key="e.id" class="py-3 space-y-1">
+          <li v-for="e in sortedEntries" :key="e.id" class="space-y-1 py-3">
             <div class="flex items-center gap-2">
               <span class="text-xs text-toned">{{ formatDate(e.date) }}</span>
               <span class="text-sm font-medium text-default">· {{ catName(e.categoryId) }}</span>
@@ -284,7 +284,7 @@ function splitSummary(e: { weights: Array<{ weightBps: number }> }) {
           </li>
         </ul>
 
-        <p v-else class="text-sm text-toned text-center py-6">No entries this month.</p>
+        <p v-else class="py-6 text-center text-sm text-toned">No entries this month.</p>
       </UCard>
     </template>
   </UContainer>

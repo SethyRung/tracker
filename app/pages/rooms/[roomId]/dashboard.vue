@@ -149,12 +149,12 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-6 space-y-6">
+  <UContainer class="max-w-2xl space-y-6 py-6">
     <AuthEmailVerificationBanner />
 
     <header class="flex items-end justify-between gap-4">
       <div class="space-y-1">
-        <p class="font-mono text-xs uppercase tracking-wider text-toned">Overview</p>
+        <p class="font-mono text-xs tracking-wider text-toned uppercase">Overview</p>
         <h1 class="font-pixel-circle text-2xl text-primary">{{ monthLabel }}</h1>
       </div>
       <UBadge
@@ -228,20 +228,20 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
       <UCard v-if="paidByMember.length > 0" variant="outline">
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
+            <h2 class="font-mono text-xs font-semibold tracking-wider text-toned uppercase">
               Paid this month
             </h2>
             <UIcon name="i-lucide-users" class="size-4 text-toned" />
           </div>
         </template>
 
-        <ul class="divide-y divide-default -my-2">
+        <ul class="-my-2 divide-y divide-default">
           <li v-for="m in paidByMember" :key="m.id" class="flex items-center gap-3 py-2.5">
             <span
-              class="size-2.5 rounded-full shrink-0"
+              class="size-2.5 shrink-0 rounded-full"
               :style="{ background: member(m.id)?.color ?? '#9CA3AF' }"
             />
-            <span class="flex-1 text-sm text-default truncate">{{ memberLabel(m.id) }}</span>
+            <span class="flex-1 truncate text-sm text-default">{{ memberLabel(m.id) }}</span>
             <span v-if="m.USD" class="text-sm font-medium text-primary tabular-nums">{{
               money(m.USD, "USD")
             }}</span>
@@ -255,7 +255,7 @@ function onRowSelect(_e: Event, row: { original: { id: string } }) {
       <UCard variant="outline" :ui="{ body: 'p-0' }">
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="font-mono text-xs font-semibold uppercase tracking-wider text-toned">
+            <h2 class="font-mono text-xs font-semibold tracking-wider text-toned uppercase">
               Recent
             </h2>
             <UButton

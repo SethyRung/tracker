@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-dvh font-sans flex flex-col bg-default text-default">
+  <div class="flex min-h-dvh flex-col bg-default font-sans text-default">
     <LandingHeader />
 
     <UMain class="flex-1">

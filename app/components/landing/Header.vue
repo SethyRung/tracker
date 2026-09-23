@@ -14,7 +14,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   <UHeader title="Tricker" mode="slideover" :ui="{ root: 'backdrop-blur-md' }">
     <template #title>
       <NuxtLink to="/" class="select-none">
-        <span class="font-bold text-xl tracking-tight text-highlighted">
+        <span class="text-xl font-bold tracking-tight text-highlighted">
           Tricker<span class="text-primary">.</span>
         </span>
       </NuxtLink>
@@ -26,7 +26,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       <div class="flex items-center gap-1.5">
         <UColorModeButton />
 
-        <div class="hidden lg:flex items-center gap-2">
+        <div class="hidden items-center gap-2 lg:flex">
           <template v-if="loggedIn">
             <UButton to="/rooms" label="Go to app" size="sm" trailing-icon="i-lucide-arrow-right" />
           </template>
@@ -45,12 +45,12 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     </template>
 
     <template #content="{ close }">
-      <div class="flex flex-col h-full bg-default">
+      <div class="flex h-full flex-col bg-default">
         <div
-          class="flex items-center justify-between gap-3 shrink-0 h-(--ui-header-height) px-4 sm:px-6 border-b border-default"
+          class="flex h-(--ui-header-height) shrink-0 items-center justify-between gap-3 border-b border-default px-4 sm:px-6"
         >
           <NuxtLink to="/" class="select-none" @click="close">
-            <span class="font-bold text-xl tracking-tight text-highlighted">
+            <span class="text-xl font-bold tracking-tight text-highlighted">
               Tricker<span class="text-primary">.</span>
             </span>
           </NuxtLink>
@@ -75,7 +75,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
           />
         </div>
 
-        <div class="shrink-0 p-4 sm:p-6 border-t border-default flex flex-col gap-2">
+        <div class="flex shrink-0 flex-col gap-2 border-t border-default p-4 sm:p-6">
           <template v-if="loggedIn">
             <UButton to="/rooms" label="Go to app" block />
           </template>

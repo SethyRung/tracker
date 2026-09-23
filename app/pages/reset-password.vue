@@ -72,24 +72,24 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 <template>
   <div>
     <template v-if="!hasToken">
-      <div class="text-center py-4">
+      <div class="py-4 text-center">
         <div
-          class="mx-auto size-16 rounded-full bg-error-50 dark:bg-error-950/40 flex items-center justify-center mb-6"
+          class="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-error-50 dark:bg-error-950/40"
         >
           <UIcon name="i-lucide-alert-circle" class="size-8 text-error" />
         </div>
         <h2 class="text-2xl font-semibold tracking-tight text-highlighted">Link is missing</h2>
-        <p class="mt-3 text-base text-muted leading-relaxed">
+        <p class="mt-3 text-base leading-relaxed text-muted">
           This reset link is invalid or has expired. Request a fresh one and we'll send it straight
           to your inbox.
         </p>
         <UButton label="Request a new link" size="lg" to="/forgot-password" class="mt-8" />
       </div>
 
-      <p class="mt-10 text-sm text-muted text-center">
+      <p class="mt-10 text-center text-sm text-muted">
         <NuxtLink
           to="/sign-in"
-          class="inline-flex items-center gap-1.5 text-default hover:text-primary transition-colors"
+          class="inline-flex items-center gap-1.5 text-default transition-colors hover:text-primary"
         >
           <UIcon name="i-lucide-arrow-left" class="size-4" />
           Back to sign in
@@ -166,10 +166,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UForm>
     </template>
 
-    <p class="mt-10 text-sm text-muted text-center">
+    <p class="mt-10 text-center text-sm text-muted">
       <NuxtLink
         to="/sign-in"
-        class="inline-flex items-center gap-1.5 text-default hover:text-primary transition-colors"
+        class="inline-flex items-center gap-1.5 text-default transition-colors hover:text-primary"
       >
         <UIcon name="i-lucide-arrow-left" class="size-4" />
         Back to sign in

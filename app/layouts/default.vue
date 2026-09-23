@@ -28,7 +28,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col font-sans">
+  <div class="flex min-h-screen flex-col font-sans">
     <UHeader
       title="Tricker"
       to="/rooms"

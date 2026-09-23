@@ -32,9 +32,9 @@ async function onAccept() {
 </script>
 
 <template>
-  <UContainer class="max-w-lg py-6 space-y-6">
+  <UContainer class="max-w-lg space-y-6 py-6">
     <div class="space-y-1">
-      <p class="font-mono text-xs uppercase tracking-wider text-toned">Invite</p>
+      <p class="font-mono text-xs tracking-wider text-toned uppercase">Invite</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Join a room</h1>
       <p class="text-xs text-toned">
         You'll appear as your account name. Set a per-room nickname later from your account.

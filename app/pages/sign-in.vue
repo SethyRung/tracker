@@ -84,7 +84,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <template #hint>
           <NuxtLink
             to="/forgot-password"
-            class="text-sm text-primary hover:underline underline-offset-2"
+            class="text-sm text-primary underline-offset-2 hover:underline"
           >
             Forgot password?
           </NuxtLink>
@@ -115,9 +115,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UButton type="submit" label="Sign in" size="lg" block :loading="isSubmitting" />
     </UForm>
 
-    <p class="mt-8 text-sm text-muted text-center">
+    <p class="mt-8 text-center text-sm text-muted">
       No account?
-      <NuxtLink to="/sign-up" class="text-primary font-medium hover:underline underline-offset-2">
+      <NuxtLink to="/sign-up" class="font-medium text-primary underline-offset-2 hover:underline">
         Sign up
       </NuxtLink>
     </p>

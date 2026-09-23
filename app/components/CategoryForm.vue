@@ -475,7 +475,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
             <ul class="space-y-3">
               <li v-for="w in weights" :key="w.membershipId" class="flex items-center gap-3">
-                <span class="flex-1 text-base truncate">{{ w.name }}</span>
+                <span class="flex-1 truncate text-base">{{ w.name }}</span>
                 <UInputNumber
                   :model-value="w.weightBps / 100"
                   :min="0"
@@ -489,7 +489,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                 />
               </li>
             </ul>
-            <p class="text-xs text-toned mt-2">Total: {{ shareState.current.toFixed(2) }}%</p>
+            <p class="mt-2 text-xs text-toned">Total: {{ shareState.current.toFixed(2) }}%</p>
           </UFormField>
         </template>
       </UForm>

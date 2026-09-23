@@ -44,9 +44,9 @@ function roomMeta(r: (typeof rooms.value)[number]) {
 </script>
 
 <template>
-  <UContainer class="max-w-lg py-6 space-y-6" :class="rooms.length > 0 ? 'pb-28' : ''">
+  <UContainer class="max-w-lg space-y-6 py-6" :class="rooms.length > 0 ? 'pb-28' : ''">
     <header class="space-y-1">
-      <p class="font-mono text-xs uppercase tracking-wider text-toned">Rooms</p>
+      <p class="font-mono text-xs tracking-wider text-toned uppercase">Rooms</p>
       <h1 class="font-pixel-circle text-2xl text-primary">Choose a room</h1>
       <p v-if="!loading && rooms.length > 0" class="text-xs text-toned">{{ roomCountLabel }}</p>
     </header>
@@ -106,7 +106,7 @@ function roomMeta(r: (typeof rooms.value)[number]) {
           <li v-for="r in sortedRooms" :key="r.id">
             <NuxtLink
               :to="`/rooms/${r.id}/dashboard`"
-              class="flex items-center gap-3 px-4 py-3.5 min-h-16 hover:bg-elevated/60 active:bg-elevated"
+              class="flex min-h-16 items-center gap-3 px-4 py-3.5 hover:bg-elevated/60 active:bg-elevated"
               @click="openRoom(r.id)"
             >
               <UAvatar
@@ -117,7 +117,7 @@ function roomMeta(r: (typeof rooms.value)[number]) {
 
               <div class="min-w-0 flex-1 space-y-0.5">
                 <div class="flex items-center gap-2">
-                  <p class="text-sm font-medium text-default truncate">{{ r.name }}</p>
+                  <p class="truncate text-sm font-medium text-default">{{ r.name }}</p>
                   <UBadge
                     v-if="r.id === lastRoomId"
                     color="primary"
@@ -126,10 +126,10 @@ function roomMeta(r: (typeof rooms.value)[number]) {
                     size="xs"
                   />
                 </div>
-                <p class="text-xs text-toned truncate">{{ roomMeta(r) }}</p>
+                <p class="truncate text-xs text-toned">{{ roomMeta(r) }}</p>
               </div>
 
-              <UIcon name="i-lucide-chevron-right" class="size-4 text-dimmed shrink-0" />
+              <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0 text-dimmed" />
             </NuxtLink>
           </li>
         </ul>
@@ -141,7 +141,7 @@ function roomMeta(r: (typeof rooms.value)[number]) {
     v-if="!loading && rooms.length > 0"
     class="fixed inset-x-0 bottom-0 z-20 border-t border-default bg-default pb-[max(0.75rem,env(safe-area-inset-bottom))]"
   >
-    <UContainer class="max-w-lg pt-3 grid grid-cols-2 gap-2">
+    <UContainer class="grid max-w-lg grid-cols-2 gap-2 pt-3">
       <UButton block icon="i-lucide-plus" label="Create" @click="createOpen = true" />
       <UButton
         block

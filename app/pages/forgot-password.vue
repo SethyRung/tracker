@@ -132,16 +132,16 @@ onUnmounted(() => {
       </UForm>
     </template>
 
-    <div v-else class="text-center py-4">
+    <div v-else class="py-4 text-center">
       <div
-        class="mx-auto size-16 rounded-full bg-primary-50 dark:bg-primary-950/40 flex items-center justify-center mb-6"
+        class="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-primary-50 dark:bg-primary-950/40"
       >
         <UIcon name="i-lucide-mail-check" class="size-8 text-primary" />
       </div>
       <h2 class="text-2xl font-semibold tracking-tight text-highlighted">Check your inbox</h2>
-      <p class="mt-3 text-base text-muted leading-relaxed">
+      <p class="mt-3 text-base leading-relaxed text-muted">
         We sent a reset link to
-        <span class="font-medium text-default break-all">{{ state.email }}</span
+        <span class="font-medium break-all text-default">{{ state.email }}</span
         >. The link expires in 1 hour.
       </p>
       <UButton
@@ -155,10 +155,10 @@ onUnmounted(() => {
       />
     </div>
 
-    <p class="mt-10 text-sm text-muted text-center">
+    <p class="mt-10 text-center text-sm text-muted">
       <NuxtLink
         to="/sign-in"
-        class="inline-flex items-center gap-1.5 text-default hover:text-primary transition-colors"
+        class="inline-flex items-center gap-1.5 text-default transition-colors hover:text-primary"
       >
         <UIcon name="i-lucide-arrow-left" class="size-4" />
         Back to sign in
