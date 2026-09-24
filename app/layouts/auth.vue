@@ -1,48 +1,41 @@
 <script setup lang="ts"></script>
 
 <template>
-  <div class="min-h-dvh bg-default font-sans text-default">
-    <div class="grid min-h-dvh grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
-      <aside
-        class="relative hidden flex-col gap-20 overflow-hidden bg-linear-to-br from-primary-50 via-default to-primary-100/40 px-12 py-14 lg:flex dark:from-primary-950/30 dark:via-default dark:to-default"
-      >
-        <div class="relative z-10 flex items-center gap-3 text-primary">
-          <span class="font-pixel-grid text-4xl font-semibold">TRICKER</span>
-        </div>
+  <div class="flex min-h-dvh flex-col justify-between bg-default font-sans text-default">
+    <header class="flex h-16 shrink-0 items-center justify-between px-6 sm:px-10">
+      <NuxtLink to="/" class="group flex items-center gap-1.5 select-none">
+        <span class="text-xl font-bold tracking-tight text-highlighted">
+          Tricker<span class="text-primary">.</span>
+        </span>
+      </NuxtLink>
 
-        <div class="relative z-10 max-w-md">
-          <h1
-            class="text-4xl leading-tight font-semibold tracking-tight text-highlighted xl:text-5xl"
-          >
-            Shared bills,
-            <br />
-            settled simply.
-          </h1>
-          <p class="mt-5 text-lg leading-relaxed text-muted">
-            One household ledger. Two currencies. Zero awkward "who owes who" conversations.
-          </p>
-        </div>
-
-        <div
-          class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,var(--ui-color-primary-200)_0%,transparent_60%)] opacity-40 dark:bg-[radial-gradient(ellipse_at_top_left,var(--ui-color-primary-800)_0%,transparent_60%)]"
+      <div class="flex items-center gap-2">
+        <UButton
+          to="/"
+          label="Home"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          icon="i-lucide-arrow-left"
+          class="hidden sm:inline-flex"
         />
-      </aside>
+        <UColorModeButton />
+      </div>
+    </header>
 
-      <main class="px-8 py-14 md:px-12">
-        <div class="mx-auto w-full max-w-md">
-          <UTheme
-            :props="{
-              input: {
-                ui: {
-                  root: 'w-full',
-                },
-              },
-            }"
-          >
-            <slot />
-          </UTheme>
-        </div>
-      </main>
-    </div>
+    <main class="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+      <div
+        class="w-full max-w-107.5 rounded-lg border border-default bg-default p-7 shadow-2xl sm:p-9"
+      >
+        <slot />
+      </div>
+    </main>
+
+    <footer
+      class="flex h-14 shrink-0 items-center justify-between px-6 text-xs text-muted sm:px-10"
+    >
+      <p>© {{ new Date().getFullYear() }} Tricker</p>
+      <p class="hidden sm:inline">Shared bills, settled simply.</p>
+    </footer>
   </div>
 </template>

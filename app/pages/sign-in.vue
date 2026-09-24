@@ -8,11 +8,11 @@ definePageMeta({
 });
 
 useHead({
-  title: "Sign in · Tricker",
+  title: "Sign In · Tricker",
   meta: [
     {
       name: "description",
-      content: "Sign in to your Tricker account to track shared bills with your household.",
+      content: "Sign in to your Tricker account to manage your household ledgers.",
     },
   ],
 });
@@ -26,8 +26,8 @@ const authError = computed(() => humaniseAuthError(signIn.error.value));
 const isSubmitting = computed(() => signIn.status.value === "pending");
 
 const schema = z.object({
-  email: z.email("Invalid email address"),
-  password: z.string().min(8, "Password must be provided"),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type Schema = z.output<typeof schema>;
@@ -43,62 +43,59 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     email: data.email,
     password: data.password,
   });
+
   if (signIn.error.value) return;
-  toast.add({ title: "Welcome back", color: "success" });
+
+  toast.add({
+    title: "Welcome back",
+    color: "success",
+  });
 }
 </script>
 
 <template>
-  <div>
-    <header class="mb-8">
-      <h1 class="text-3xl font-semibold tracking-tight text-highlighted">Welcome back</h1>
-      <p class="mt-2 text-base text-muted">Sign in to your household ledger.</p>
-    </header>
+  <div class="space-y-6">
+    <h1 class="text-center text-2xl font-semibold tracking-tight text-highlighted">Sign In</h1>
 
     <UAlert
       v-if="authError"
+      icon="i-lucide-alert-circle"
+      :title="authError.title"
       color="error"
       variant="subtle"
-      :title="authError.title"
-      :description="authError.description"
-      icon="i-lucide-alert-circle"
-      class="mb-6"
     />
 
-    <UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
-      <UFormField name="email" label="Email">
+    <UForm :schema="schema" :state="state" class="space-y-6" @submit="onSubmit">
+      <UFormField name="email" label="Email address">
         <UInput
           v-model="state.email"
           type="email"
-          placeholder="you@example.com"
+          placeholder="Enter your email address"
           size="lg"
           autocomplete="email"
-        >
-          <template #leading>
-            <UIcon name="i-lucide-mail" class="size-4 text-muted" />
-          </template>
-        </UInput>
+          class="w-full"
+        />
       </UFormField>
 
       <UFormField name="password" label="Password">
         <template #hint>
           <NuxtLink
             to="/forgot-password"
-            class="text-sm text-primary underline-offset-2 hover:underline"
+            class="text-xs text-muted transition-colors hover:text-primary"
           >
             Forgot password?
           </NuxtLink>
         </template>
+
         <UInput
           v-model="state.password"
           :type="showPassword ? 'text' : 'password'"
-          placeholder="Your password"
+          placeholder="Enter your password"
           size="lg"
           autocomplete="current-password"
+          class="w-full"
+          :ui="{ trailing: 'pr-1.5' }"
         >
-          <template #leading>
-            <UIcon name="i-lucide-lock" class="size-4 text-muted" />
-          </template>
           <template #trailing>
             <UButton
               :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
@@ -112,12 +109,25 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </UInput>
       </UFormField>
 
-      <UButton type="submit" label="Sign in" size="lg" block :loading="isSubmitting" />
+      <div class="pt-2">
+        <UButton
+          type="submit"
+          label="Continue"
+          size="lg"
+          block
+          :loading="isSubmitting"
+          class="font-bold"
+        />
+      </div>
     </UForm>
 
-    <p class="mt-8 text-center text-sm text-muted">
-      No account?
-      <NuxtLink to="/sign-up" class="font-medium text-primary underline-offset-2 hover:underline">
+    <p class="text-center text-sm text-muted">
+      Don't have an account?
+
+      <NuxtLink
+        to="/sign-up"
+        class="font-medium text-highlighted underline underline-offset-2 transition-colors hover:text-primary"
+      >
         Sign up
       </NuxtLink>
     </p>
