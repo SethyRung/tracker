@@ -3,115 +3,87 @@ const { loggedIn } = useUserSession();
 
 const primaryCta = computed(() =>
   loggedIn.value
-    ? { to: "/rooms", label: "Open Household" }
-    : { to: "/sign-up", label: "Get Started Free" },
+    ? { to: "/rooms", label: "Go to your rooms" }
+    : { to: "/sign-up", label: "Start your household" },
 );
+
+const benefits = [
+  { icon: "i-lucide-coins", label: "USD & KHR, kept separate" },
+  { icon: "i-lucide-users", label: "Fair splits for everyone" },
+  { icon: "i-lucide-arrow-right-left", label: "Clear steps to settle up" },
+];
 </script>
 
 <template>
-  <section class="pt-16 sm:pt-24 lg:pt-32">
-    <UContainer>
-      <div class="max-w-3xl">
-        <div class="mb-5 flex flex-wrap items-center gap-2 sm:mb-6">
-          <UBadge
-            label="Multi-Tenant Household Clearinghouse"
-            variant="subtle"
-            class="max-w-full text-center font-mono text-2xs whitespace-normal sm:text-xs"
-          />
+  <section class="relative border-b border-default">
+    <UContainer class="relative pt-12 pb-10 sm:pt-20 sm:pb-12 lg:pt-24 lg:pb-16">
+      <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-10 xl:gap-16">
+        <div>
+          <div class="mb-6 flex items-center gap-2 text-xs font-medium text-toned">
+            <span class="size-2 rounded-full bg-primary" aria-hidden="true" />
+            Made for shared living. Built for USD + KHR.
+          </div>
 
-          <span class="hidden font-mono text-xs tracking-wider text-toned uppercase sm:inline">
-            USD · KHR · Phnom Penh
-          </span>
+          <h1
+            class="max-w-xl text-4xl leading-[1.1] font-bold tracking-tight text-highlighted sm:text-6xl xl:text-7xl"
+          >
+            Share a home.<br />
+            Not the
+            <span
+              class="underline decoration-primary decoration-4 underline-offset-4 dark:text-primary dark:no-underline"
+              >money stress.</span
+            >
+          </h1>
+
+          <p class="mt-6 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+            Rent, groceries, and who paid last time. Keep it all in one place, split it fairly, and
+            know exactly who owes what. Dollars and riel included.
+          </p>
+
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <UButton
+              :label="primaryCta.label"
+              :to="primaryCta.to"
+              size="xl"
+              trailing-icon="i-lucide-arrow-right"
+              class="justify-center text-neutral-900"
+            />
+            <UButton
+              label="Try the demo"
+              to="#app-window"
+              icon="i-lucide-mouse-pointer-2"
+              color="neutral"
+              variant="ghost"
+              size="xl"
+              class="justify-center"
+            />
+          </div>
+
+          <p class="mt-4 text-xs text-muted">Less spreadsheet. More living together.</p>
         </div>
 
-        <h1
-          class="font-sans text-3xl leading-[1.15] font-bold tracking-tight text-highlighted sm:text-6xl lg:text-[4.25rem]"
-        >
-          The dual-currency ledger for
-
-          <span class="text-primary">shared households.</span>
-        </h1>
-
-        <p class="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:mt-6 sm:text-xl">
-          USD cents and KHR riel run on parallel ledgers with zero conversion guesswork. Track
-          roommate expenses, enforce 10,000 bps split integrity, and settle month-end in the fewest
-          transfers.
-        </p>
-
-        <div
-          class="mt-7 flex flex-col items-stretch gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
-        >
-          <UButton
-            :label="primaryCta.label"
-            :to="primaryCta.to"
-            size="lg"
-            trailing-icon="i-lucide-arrow-right"
-            class="justify-center font-medium"
+        <div class="relative min-w-0">
+          <div
+            class="absolute -inset-3 -z-0 rounded-2xl border border-default bg-muted/40 sm:-inset-5"
+            aria-hidden="true"
           />
-
-          <UButton
-            label="Explore Live Window"
-            to="#app-window"
-            color="neutral"
-            variant="outline"
-            size="lg"
-            trailing-icon="i-lucide-arrow-down"
-            class="justify-center"
-          />
+          <LandingAppWindow class="relative" />
+          <p class="relative mt-6 text-center font-mono text-xs text-muted">
+            A little preview of a calmer month-end.
+          </p>
         </div>
       </div>
+
+      <ul class="mt-12 grid gap-4 border-t border-default pt-6 sm:grid-cols-3 lg:mt-16">
+        <li
+          v-for="benefit in benefits"
+          :key="benefit.label"
+          class="flex items-center gap-2.5 text-sm text-toned"
+        >
+          <UIcon :name="benefit.icon" class="size-4 shrink-0 text-toned" />
+          {{ benefit.label }}
+        </li>
+      </ul>
     </UContainer>
-
-    <div class="mt-10 border-y border-default sm:mt-16">
-      <UContainer>
-        <dl class="grid grid-cols-2 gap-x-3 gap-y-5 py-5 sm:grid-cols-4 sm:gap-8 sm:py-6">
-          <div>
-            <dt class="font-mono text-2xs tracking-wider text-toned uppercase sm:text-xs">
-              Parallel Ledgers
-            </dt>
-
-            <dd class="mt-1 font-mono text-lg font-bold text-highlighted tabular-nums sm:text-2xl">
-              USD + KHR
-            </dd>
-
-            <p class="mt-0.5 text-2xs text-muted sm:text-xs">Never converted or mixed</p>
-          </div>
-
-          <div>
-            <dt class="font-mono text-2xs tracking-wider text-toned uppercase sm:text-xs">
-              Split Engine
-            </dt>
-
-            <dd class="mt-1 font-mono text-lg font-bold text-highlighted tabular-nums sm:text-2xl">
-              10,000 bps
-            </dd>
-
-            <p class="mt-0.5 text-2xs text-muted sm:text-xs">100.00% exact validation</p>
-          </div>
-
-          <div>
-            <dt class="font-mono text-2xs tracking-wider text-toned uppercase sm:text-xs">
-              Settlement
-            </dt>
-
-            <dd class="mt-1 font-mono text-lg font-bold text-highlighted tabular-nums sm:text-2xl">
-              Min-Transfer
-            </dd>
-
-            <p class="mt-0.5 text-2xs text-muted sm:text-xs">Directed graph reduction</p>
-          </div>
-
-          <div>
-            <dt class="font-mono text-2xs tracking-wider text-toned uppercase sm:text-xs">
-              Recurring Cron
-            </dt>
-            <dd class="mt-1 font-mono text-lg font-bold text-highlighted tabular-nums sm:text-2xl">
-              00:00 ICT
-            </dd>
-            <p class="mt-0.5 text-2xs text-muted sm:text-xs">1st-of-month auto-post</p>
-          </div>
-        </dl>
-      </UContainer>
-    </div>
   </section>
 </template>

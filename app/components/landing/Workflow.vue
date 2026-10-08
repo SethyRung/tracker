@@ -1,64 +1,70 @@
 <script setup lang="ts">
-const onboardingSteps = [
+const steps = [
   {
-    step: "01",
-    title: "Open or join a room",
+    number: "01",
+    title: "Bring your people",
     description:
-      "Create your household space, activate USD, KHR, or both, and invite roommates via instant link or email.",
+      "Create a room and invite your housemates. Or join the one they've already started.",
     icon: "i-lucide-user-plus",
   },
   {
-    step: "02",
-    title: "Log bills as they happen",
-    description:
-      "Anyone in the room logs expenses. Pick who paid, select who benefits, and watch the split validate to 100%.",
+    number: "02",
+    title: "Add the everyday bills",
+    description: "Choose the currency, who paid, and who shares the cost. We'll handle the totals.",
     icon: "i-lucide-receipt",
   },
   {
-    step: "03",
-    title: "Settle in minutes",
+    number: "03",
+    title: "Square up, move on",
     description:
-      "At month-end, review the directed settlement graph. Make the suggested transfers to clear both ledgers cleanly.",
+      "See who pays whom in each currency. Make the transfers and get on with your month.",
     icon: "i-lucide-handshake",
   },
 ];
 </script>
 
 <template>
-  <section id="how-it-works" class="scroll-mt-20 border-t border-default">
-    <UContainer class="py-16 sm:py-24 lg:py-32">
-      <div class="mb-12 max-w-2xl">
-        <p class="font-mono text-xs tracking-wider text-toned uppercase">Workflow</p>
-
-        <h2 class="mt-2 font-sans text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">
-          From first bill to settled month.
-        </h2>
-
-        <p class="mt-3 text-base leading-relaxed text-muted">
-          No messy shared docs, no spreadsheet formulas to debug, and no group-chat payment
-          squabbles.
-        </p>
-      </div>
-
-      <div class="grid gap-6 md:grid-cols-3">
-        <div
-          v-for="step in onboardingSteps"
-          :key="step.step"
-          class="flex flex-col justify-between rounded-md border border-default bg-default p-6"
-        >
-          <div>
-            <div class="mb-4 flex items-center justify-between">
-              <span class="font-mono text-2xl font-bold text-primary">{{ step.step }}</span>
-              <div
-                class="flex size-8 items-center justify-center rounded-sm bg-muted text-highlighted"
-              >
-                <UIcon :name="step.icon" class="size-4" />
-              </div>
-            </div>
-            <h3 class="text-lg font-bold text-highlighted">{{ step.title }}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-muted">{{ step.description }}</p>
-          </div>
+  <section id="how-it-works" class="scroll-mt-20">
+    <UContainer class="py-14 sm:py-20 lg:py-24">
+      <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
+        <div class="lg:col-span-4">
+          <p class="font-mono text-xs tracking-wider text-toned uppercase">How it works</p>
+          <h2
+            class="mt-3 text-3xl leading-tight font-bold tracking-tight text-highlighted sm:text-4xl"
+          >
+            From “I paid”<br />to “we're good.”
+          </h2>
+          <p class="mt-4 text-sm leading-relaxed text-muted">
+            A shared routine, not another chore. Three steps to make household money a little
+            easier.
+          </p>
+          <UButton
+            label="See it in action"
+            to="#app-window"
+            variant="link"
+            color="neutral"
+            trailing-icon="i-lucide-arrow-up-right"
+            class="mt-5 p-0"
+          />
         </div>
+        <ol class="lg:col-span-8">
+          <li
+            v-for="step in steps"
+            :key="step.number"
+            class="grid grid-cols-[auto_1fr] gap-4 border-b border-default py-6 first:pt-0 last:border-b-0 last:pb-0 sm:grid-cols-[auto_1fr_auto] sm:gap-6"
+          >
+            <span class="pt-1 font-mono text-sm text-muted">{{ step.number }}</span>
+            <div>
+              <h3 class="text-lg font-semibold text-highlighted">{{ step.title }}</h3>
+              <p class="mt-2 max-w-lg text-sm leading-relaxed text-muted">{{ step.description }}</p>
+            </div>
+            <div
+              class="hidden size-10 items-center justify-center rounded-lg border border-default bg-muted/40 sm:flex"
+            >
+              <UIcon :name="step.icon" class="size-5 text-toned" />
+            </div>
+          </li>
+        </ol>
       </div>
     </UContainer>
   </section>

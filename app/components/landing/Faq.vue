@@ -1,52 +1,52 @@
 <script setup lang="ts">
 const faqs = [
   {
-    label: "Why does Tricker maintain two parallel ledgers instead of converting?",
+    label: "Can we use both dollars and riel?",
     content:
-      "In dual-currency economies like Cambodia, household expenses naturally split between USD (rent, broadband, major services) and KHR (markets, dining, local utilities). Applying fluctuating exchange rates creates unfair currency conversion loss and roommate disputes. Parallel ledgers keep math objective.",
+      "Yes. Track USD and KHR in the same room. Each currency has its own totals and settlement plan, so you pay back in the currency that was spent. Tricker never converts between them.",
   },
   {
-    label: "How does the minimum-transfer settlement graph work?",
+    label: "What if we don't split everything equally?",
     content:
-      "At month-end, Tricker aggregates all payments and shares per person to compute net creditors (those who get back money) and net debtors (those who owe). It runs a greedy min-flow algorithm to match balances, minimizing the total number of peer-to-peer payments required.",
+      "Set a different percentage for each person, or include only the housemates sharing that bill. For example, rent can be split 40/30/30 while groceries are shared equally. The shares must add up to 100%.",
   },
   {
-    label: "Can we split a bill unevenly?",
+    label: "Does Tricker move money for us?",
     content:
-      "Yes. Every entry supports custom weighting. Whether one housemate pays 40% and two others pay 30%, or specific housemates are excluded from a particular bill, the live validator ensures the total equals exactly 10,000 basis points (100.00%).",
+      "No. Tricker tracks shared bills and shows who should pay whom. You make those transfers yourself using your preferred bank or payment method.",
   },
   {
-    label: "What happens when an admin closes a month?",
+    label: "Can I belong to more than one household?",
     content:
-      "Closing creates an immutable record. All entries are locked against edits or deletions, and the suggested settlement transfers are frozen as the final resolution plan for that billing cycle.",
+      "Yes. One account can join multiple rooms. Each room has separate members, bills, and history, and you can switch between them without mixing their records.",
   },
   {
-    label: "How do recurring bill templates work?",
+    label: "Can we change a bill after the month is closed?",
     content:
-      "Templates store predefined repeating amounts and split rules. At 00:00 ICT on the 1st of each month, Tricker's background cron task materializes published entries for the new month with active household members pre-filled.",
+      "Not while it's closed. Closing a month locks its bills against additions, edits, and deletions. If something needs correcting, a room admin can reopen the month.",
   },
 ];
 </script>
 
 <template>
-  <section id="faq" class="scroll-mt-20 border-t border-default py-12 sm:py-20 lg:py-24">
-    <UContainer>
-      <div class="grid gap-10 lg:grid-cols-12">
+  <section id="faq" class="scroll-mt-20 border-t border-default bg-muted/30">
+    <UContainer class="py-14 sm:py-20 lg:py-24">
+      <div class="grid gap-8 lg:grid-cols-12 lg:gap-16">
         <div class="lg:col-span-4">
-          <p class="font-mono text-xs tracking-wider text-toned uppercase">Questions</p>
-          <h2 class="mt-2 font-sans text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">
-            Frequently asked questions.
+          <p class="font-mono text-xs tracking-wider text-toned uppercase">Good questions</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">
+            Before you move in.
           </h2>
-          <p class="mt-3 text-sm leading-relaxed text-muted">
-            Clear answers regarding room borders, bps arithmetic, and month freeze mechanics.
+          <p class="mt-4 text-sm leading-relaxed text-muted">
+            A few things worth knowing before your household gets started.
           </p>
         </div>
         <div class="lg:col-span-8">
           <UAccordion
             :items="faqs"
             :ui="{
-              trigger: 'hover:text-primary py-4',
-              body: 'text-sm text-muted',
+              trigger: 'py-5 text-highlighted',
+              body: 'text-sm leading-relaxed text-muted pb-5',
             }"
           />
         </div>

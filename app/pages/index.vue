@@ -2,12 +2,13 @@
 definePageMeta({ layout: "landing" });
 
 useHead({
+  htmlAttrs: { lang: "en" },
   title: "Tricker — Shared bills, settled simply",
   meta: [
     {
       name: "description",
       content:
-        "High-density multi-tenant household bill tracker. Parallel ledgers for USD and KHR with zero conversion drift, 10,000 bps split integrity, and automated settlement graphs.",
+        "Share a home, not the money stress. Track household bills, split costs fairly, and settle up with separate USD and KHR ledgers. No currency conversion.",
     },
   ],
 });
@@ -17,15 +18,11 @@ useHead({
   <div class="relative overflow-hidden bg-default text-default">
     <LandingHero />
 
-    <LandingAppWindow />
+    <LandingCurrencies />
 
     <LandingFeatures />
 
     <LandingWorkflow />
-
-    <LandingCurrencies />
-
-    <LandingRules />
 
     <LandingFaq />
   </div>
