@@ -17,6 +17,12 @@ export default defineNuxtConfig({
     "@nuxt/test-utils/module",
   ],
 
+  ui: {
+    theme: {
+      colors: ["primary", "secondary", "tertiary", "info", "success", "warning", "error"],
+    },
+  },
+
   icon: {
     clientBundle: { scan: true },
   },
