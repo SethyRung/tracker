@@ -5,38 +5,35 @@ const { signOut } = useUserSession();
 
 const route = useRoute();
 const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
+const hasRoom = computed(() => roomId.value.length > 0);
 
-const navItems = computed<NavigationMenuItem[]>(() => [
-  {
-    icon: "i-lucide-house",
-    label: "Home",
-    to: `/rooms/${roomId.value}/dashboard`,
-  },
-  {
-    icon: "i-lucide-users",
-    label: "People",
-    to: `/rooms/${roomId.value}/members`,
-  },
-  {
-    icon: "i-lucide-scale",
-    label: "Settle",
-    to: `/rooms/${roomId.value}/settle/${monthKey()}`,
-  },
-  { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${roomId.value}/categories` },
-  { icon: "i-lucide-receipt", label: "Entries", to: `/rooms/${roomId.value}/entries` },
-]);
+const navItems = computed<NavigationMenuItem[]>(() => {
+  if (!hasRoom.value) return [];
+  const id = roomId.value;
+
+  return [
+    { icon: "i-lucide-house", label: "Home", to: `/rooms/${id}/dashboard` },
+    { icon: "i-lucide-users", label: "People", to: `/rooms/${id}/members` },
+    { icon: "i-lucide-scale", label: "Settle", to: `/rooms/${id}/settle/${monthKey()}` },
+    { icon: "i-lucide-tag", label: "Categories", to: `/rooms/${id}/categories` },
+    { icon: "i-lucide-receipt", label: "Entries", to: `/rooms/${id}/entries` },
+  ];
+});
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col font-sans">
-    <UHeader
-      title="Tricker"
-      to="/rooms"
-      :toggle="false"
-      :ui="{
-        title: 'font-pixel-circle text-primary',
-      }"
-    >
+  <div class="bg-default font-sans text-default">
+    <UHeader title="Tricker" to="/rooms" :toggle="false">
+      <UNavigationMenu
+        v-if="hasRoom"
+        :items="navItems"
+        color="primary"
+        variant="link"
+        highlight
+        class="hidden lg:flex"
+        :ui="{ link: 'px-2.5 py-1.5', linkLeadingIcon: 'size-4' }"
+      />
+
       <template #right>
         <RoomSwitcher />
 
@@ -48,32 +45,35 @@ const navItems = computed<NavigationMenuItem[]>(() => [
           aria-label="Account"
         />
 
-        <UColorModeButton />
+        <UColorModeButton color="neutral" variant="ghost" />
 
         <UButton
           icon="i-lucide-log-out"
-          label="Sign Out"
           color="neutral"
           variant="ghost"
+          aria-label="Sign out"
           @click="signOut()"
-          :ui="{ label: 'hidden lg:block' }"
         />
       </template>
     </UHeader>
 
-    <main class="flex-1 pb-20">
+    <UMain class="py-8 sm:py-12">
       <slot />
-    </main>
+    </UMain>
 
     <UNavigationMenu
+      v-if="hasRoom"
       :items="navItems"
+      color="primary"
+      variant="link"
+      class="lg:hidden"
       :ui="{
-        root: 'fixed bottom-0 left-0 right-0 z-30 bg-default border-t border-default md:justify-around',
-        list: 'w-screen md:w-max py-2 px-4 sm:px-6 lg:px-8',
-        item: 'flex-1 py-0',
-        link: 'flex-col gap-1 px-3',
+        root: 'fixed inset-x-0 bottom-0 z-30 border-t border-default bg-default/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md',
+        list: 'w-full px-2 py-1.5',
+        item: 'min-w-0 flex-1 py-0',
+        link: 'flex-col gap-1 px-1',
         linkLeadingIcon: 'size-5',
-        linkLabel: 'text-[10px]/3 font-normal',
+        linkLabel: 'text-xs font-medium',
       }"
     />
   </div>
