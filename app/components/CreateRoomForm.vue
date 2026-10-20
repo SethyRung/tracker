@@ -68,34 +68,47 @@ const UDrawer = resolveComponent("UDrawer");
 const OverlayComponent = computed(() => ({
   is: isMD.value ? UModal : UDrawer,
   props: isMD.value
-    ? { scrollable: true, ui: { footer: "justify-end" } }
+    ? { scrollable: true, ui: { content: "max-w-2xl" } }
     : {
         handleOnly: true,
         fixed: true,
-        ui: { footer: "flex-col-reverse" },
       },
 }));
 
-const overlayTitle = computed(() =>
-  currentStep.value === "invite" ? "Invite housemates" : "Create a room",
-);
+const seededCategories = ["Rent", "Utilities", "Food", "Supplies"];
+
+const currencyItems = [
+  {
+    label: "USD",
+    description: "US Dollar. Rent and utilities.",
+    value: "USD",
+  },
+  {
+    label: "KHR",
+    description: "Cambodian Riel. Markets, food, and local bills.",
+    value: "KHR",
+  },
+];
+
+const overlayTitle = "Create a household";
 
 const overlayDescription = computed(() => {
   switch (currentStep.value) {
     case "name":
       return "What do you call your home?";
     case "currencies":
-      return "USD and KHR stay as parallel ledgers — no conversion.";
+      return "USD and KHR stay as parallel ledgers. No conversion.";
     case "review":
       return "Check these details, then create the room.";
     case "invite":
-      return "You can do this later.";
+      return "Invite housemates now, or skip and do it later.";
     default:
       return "";
   }
 });
 
 const continueLabel = computed(() => {
+  if (currentStep.value === "currencies") return "Continue to review";
   if (currentStep.value === "review") return "Create room";
   if (currentStep.value === "invite") return "Go to room";
   return "Continue";
@@ -188,44 +201,69 @@ async function goNext() {
         <UStepper ref="stepper" v-model="currentStep" :items="steps" disabled size="sm">
           <template #name>
             <div class="space-y-4">
-              <p class="text-sm text-toned">Welcome, {{ user?.name ?? "there" }}.</p>
-              <UFormField label="Room name" name="name" required>
-                <UInput v-model="state.name" size="lg" :ui="{ root: 'w-full' }" autofocus />
+              <p class="text-sm text-muted">Welcome, {{ user?.name ?? "there" }}.</p>
+              <UFormField label="What do you call your home?" name="name" required>
+                <UInput
+                  v-model="state.name"
+                  size="lg"
+                  placeholder="Apartment 4B"
+                  autofocus
+                  :ui="{ root: 'w-full' }"
+                />
               </UFormField>
             </div>
           </template>
 
           <template #currencies>
-            <UFormField name="currencies">
-              <UCheckboxGroup
-                v-model="state.currencies"
-                :items="[
-                  { label: 'USD', description: 'American Dollar', value: 'USD' },
-                  { label: 'KHR', description: 'Cambodian Riel', value: 'KHR' },
-                ]"
-                variant="card"
-              />
-            </UFormField>
+            <div class="space-y-5">
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-medium text-default">What do you call your home?</p>
+                  <UBadge
+                    v-if="state.name.trim()"
+                    icon="i-lucide-check"
+                    label="Saved"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </div>
+                <UInput :model-value="state.name" size="lg" disabled :ui="{ root: 'w-full' }" />
+              </div>
+
+              <UFormField label="Active currencies" name="currencies" required>
+                <UCheckboxGroup v-model="state.currencies" :items="currencyItems" variant="card" />
+              </UFormField>
+
+              <UCard variant="subtle">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-semibold text-highlighted">Auto-seeded categories</p>
+                  <UBadge label="Default" color="neutral" variant="subtle" size="sm" />
+                </div>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                  <UBadge
+                    v-for="name in seededCategories"
+                    :key="name"
+                    :label="name"
+                    color="neutral"
+                    variant="outline"
+                  />
+                </div>
+              </UCard>
+            </div>
           </template>
 
           <template #review>
-            <ul class="divide-y divide-default">
-              <li class="flex items-center justify-between gap-3 py-3">
-                <div class="flex items-center gap-2 text-toned">
-                  <UIcon name="i-lucide-house" class="size-4" />
-                  <span class="text-sm">Name</span>
-                </div>
-                <span class="text-right text-sm font-medium text-default">
+            <UCard variant="subtle" :ui="{ body: 'divide-y divide-default p-0 sm:p-0' }">
+              <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <span class="text-sm text-muted">Name</span>
+                <span class="text-right text-sm font-medium text-highlighted">
                   {{ state.name || "—" }}
                 </span>
-              </li>
-
-              <li class="flex items-center justify-between gap-3 py-3">
-                <div class="flex items-center gap-2 text-toned">
-                  <UIcon name="i-lucide-coins" class="size-4" />
-                  <span class="text-sm">Currencies</span>
-                </div>
-                <div v-if="state.currencies.length" class="flex items-center gap-1.5">
+              </div>
+              <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <span class="text-sm text-muted">Currencies</span>
+                <div v-if="state.currencies.length" class="flex flex-wrap justify-end gap-1.5">
                   <UBadge
                     v-for="c in state.currencies"
                     :key="c"
@@ -236,27 +274,26 @@ async function goNext() {
                   />
                 </div>
                 <span v-else class="text-sm text-dimmed">—</span>
-              </li>
-
-              <li class="flex items-start justify-between gap-3 py-3">
-                <div class="flex items-center gap-2 text-toned">
-                  <UIcon name="i-lucide-tags" class="mt-0.5 size-4" />
-                  <span class="text-sm">Categories</span>
-                </div>
+              </div>
+              <div class="flex items-start justify-between gap-3 px-4 py-3">
+                <span class="text-sm text-muted">Categories</span>
                 <span class="text-right text-sm text-toned">
-                  Rent · Utilities · Food · Supplies
-                  <span class="text-dimmed">(auto-seeded)</span>
+                  {{ seededCategories.join(" · ") }}
                 </span>
-              </li>
-            </ul>
+              </div>
+            </UCard>
           </template>
 
           <template #invite>
             <div class="space-y-4">
-              <p class="text-sm text-toned">Invite now or skip and do it from the room later.</p>
+              <p class="text-sm text-muted">
+                Share an invite link now, or skip and send it from the room later.
+              </p>
               <UButton
                 icon="i-lucide-user-plus"
                 label="Invite members"
+                color="neutral"
+                variant="outline"
                 :disabled="!roomId"
                 @click="inviteOpen = true"
               />
@@ -266,36 +303,28 @@ async function goNext() {
       </UForm>
     </template>
 
-    <template #footer="{ close }">
-      <UButton
-        v-if="isMD && !roomCreated"
-        label="Cancel"
-        color="neutral"
-        variant="ghost"
-        :block="!isMD"
-        :disabled="submitting"
-        @click="close"
-      />
+    <template #footer>
+      <div
+        class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <UButton
+          v-if="stepper?.hasPrev"
+          icon="i-lucide-arrow-left"
+          label="Back"
+          color="neutral"
+          variant="ghost"
+          :disabled="roomCreated || submitting"
+          @click="stepper?.prev()"
+        />
 
-      <UButton
-        v-if="stepper?.hasPrev"
-        :icon="isMD ? 'i-lucide-arrow-left' : ''"
-        label="Back"
-        color="neutral"
-        variant="outline"
-        :block="!isMD"
-        :disabled="roomCreated || submitting"
-        @click="stepper?.prev()"
-      />
-
-      <UButton
-        :label="continueLabel"
-        size="lg"
-        :block="!isMD"
-        :loading="submitting"
-        :trailing-icon="isMD ? 'i-lucide-arrow-right' : ''"
-        @click="goNext"
-      />
+        <UButton
+          :label="continueLabel"
+          trailing-icon="i-lucide-arrow-right"
+          :loading="submitting"
+          class="justify-center sm:ml-auto sm:w-auto"
+          @click="goNext"
+        />
+      </div>
     </template>
   </component>
 

@@ -3,8 +3,6 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 import * as z from "zod";
 
 const { user } = useUserSession();
-const { refresh } = useRoomMemberships();
-const lastRoomId = useLastRoomId();
 
 const firstName = computed(() => user.value?.name?.trim().split(/\s+/)[0] || "there");
 
@@ -16,7 +14,6 @@ const schema = z.object({
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({ inviteInput: "" });
-const joining = ref(false);
 const joinError = ref("");
 
 const features = [
@@ -41,30 +38,14 @@ const features = [
 ];
 
 async function onJoin(event: FormSubmitEvent<Schema>) {
-  if (joining.value) return;
   const token = extractInviteToken(event.data.inviteInput);
   if (!token) {
     joinError.value = "Paste your invite code or link.";
     return;
   }
 
-  joining.value = true;
   joinError.value = "";
-  try {
-    const res = await $fetch("/api/rooms/join", {
-      method: "POST",
-      body: { token },
-    });
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
-
-    lastRoomId.value = res.data.roomId;
-    await refresh();
-    await navigateTo(`/rooms/${res.data.roomId}/dashboard`);
-  } catch (e) {
-    joinError.value = e instanceof Error ? e.message : "Could not join this room.";
-  } finally {
-    joining.value = false;
-  }
+  await navigateTo(`/join/${encodeURIComponent(token)}`);
 }
 </script>
 
@@ -174,13 +155,12 @@ async function onJoin(event: FormSubmitEvent<Schema>) {
               />
               <UButton
                 type="submit"
-                label="Join"
+                label="Continue"
                 trailing-icon="i-lucide-arrow-right"
                 color="neutral"
                 variant="solid"
                 size="lg"
                 class="shrink-0 font-semibold"
-                :loading="joining"
               />
             </div>
           </UFormField>

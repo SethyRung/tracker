@@ -4,16 +4,12 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 
 const open = defineModel<boolean>("open", { default: false });
 
-const { refresh } = useRoomMemberships();
-
 const schema = z.object({
   inviteInput: z.string().min(1, "Paste your invite code or link"),
 });
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({ inviteInput: "" });
-
-const submitting = ref(false);
 const submitError = ref("");
 
 const { isMD } = useBreakpoints();
@@ -21,7 +17,7 @@ const UModal = resolveComponent("UModal");
 const UDrawer = resolveComponent("UDrawer");
 const OverlayComponent = computed(() => ({
   is: isMD.value ? UModal : UDrawer,
-  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
+  props: isMD.value ? {} : { handleOnly: true, fixed: true },
 }));
 
 watch(open, (isOpen) => {
@@ -32,32 +28,13 @@ watch(open, (isOpen) => {
 });
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (submitting.value) return;
-  const token = extractInviteToken(state.inviteInput ?? "");
+  const token = extractInviteToken(event.data.inviteInput);
   if (!token) {
     submitError.value = "Paste your invite code or link.";
     return;
   }
-  submitting.value = true;
-  submitError.value = "";
-  try {
-    const res = await $fetch("/api/rooms/join", {
-      method: "POST",
-      body: { token },
-    });
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
-
-    const roomId = res.data.roomId;
-    const lastRoomId = useLastRoomId();
-    lastRoomId.value = roomId;
-    await refresh();
-    open.value = false;
-    await navigateTo(`/rooms/${roomId}/dashboard`);
-  } catch (e) {
-    submitError.value = e instanceof Error ? e.message : "Could not join this room.";
-  } finally {
-    submitting.value = false;
-  }
+  open.value = false;
+  await navigateTo(`/join/${encodeURIComponent(token)}`);
 }
 </script>
 
@@ -65,8 +42,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   <component
     :is="OverlayComponent.is"
     v-model:open="open"
-    title="Join a room"
-    description="Paste the invite code or link your admin sent you."
+    title="Join a household"
+    description="Paste the invite code or link. You'll confirm the room before joining."
     v-bind="OverlayComponent.props"
   >
     <slot />
@@ -76,16 +53,20 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         id="join-room-form"
         :schema="schema"
         :state="state"
-        class="space-y-5"
+        class="space-y-4"
         @submit="onSubmit"
       >
         <UFormField label="Invite code or link" name="inviteInput" required>
           <UInput
             v-model="state.inviteInput"
-            placeholder="e.g. abcd1234 or https://tricker.app/join/abcd1234"
+            icon="i-lucide-ticket"
+            placeholder="Code or link"
             size="lg"
-            :ui="{ root: 'w-full' }"
+            color="neutral"
+            variant="outline"
+            autocomplete="off"
             autofocus
+            :ui="{ root: 'w-full', base: 'font-mono' }"
           />
         </UFormField>
 
@@ -100,24 +81,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     </template>
 
     <template #footer="{ close }">
-      <UButton
-        v-if="isMD"
-        label="Cancel"
-        color="neutral"
-        variant="ghost"
-        :disabled="submitting"
-        @click="close"
-      />
-
-      <UButton
-        type="submit"
-        form="join-room-form"
-        label="Join room"
-        size="lg"
-        :block="!isMD"
-        :loading="submitting"
-        :disabled="submitting"
-      />
+      <div class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <UButton label="Cancel" color="neutral" variant="ghost" :block="!isMD" @click="close" />
+        <UButton
+          type="submit"
+          form="join-room-form"
+          label="Continue"
+          trailing-icon="i-lucide-arrow-right"
+          size="lg"
+          :block="!isMD"
+        />
+      </div>
     </template>
   </component>
 </template>

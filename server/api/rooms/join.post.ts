@@ -14,40 +14,11 @@ export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event);
   const body = await readValidatedBody(event, bodySchema.parse);
 
-  const tokenHash = await hashToken(body.token);
-  const link = await db.query.inviteLinks.findFirst({
-    where: (l, { eq }) => eq(l.tokenHash, tokenHash),
-  });
-
-  if (!link) {
-    return createResponse({
-      code: ApiResponseCode.NotFound,
-      message: "This invite link is no longer valid.",
-    });
+  const found = await findValidInvite(body.token);
+  if (!found.ok) {
+    return createResponse({ code: found.code, message: found.message });
   }
-  if (link.usedAt !== null) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "This invite link has already been used.",
-    });
-  }
-
-  if (now().isAfter(link.expiresAt)) {
-    return createResponse({
-      code: ApiResponseCode.InvalidRequest,
-      message: "This invite link has expired.",
-    });
-  }
-
-  const room = await db.query.rooms.findFirst({
-    where: (r, { and, eq }) => and(eq(r.id, link.roomId), isRoomActiveCondition()),
-  });
-  if (!room) {
-    return createResponse({
-      code: ApiResponseCode.NotFound,
-      message: "This invite link is no longer valid.",
-    });
-  }
+  const { link } = found;
 
   const existing = await db.query.roomMemberships.findFirst({
     where: (m, { eq, and }) =>
@@ -81,7 +52,7 @@ export default defineEventHandler(async (event) => {
   await db
     .update(schema.inviteLinks)
     .set({ usedAt: new Date(), usedByMembershipId: membershipId })
-    .where(eq(schema.inviteLinks.tokenHash, tokenHash));
+    .where(eq(schema.inviteLinks.tokenHash, link.tokenHash));
 
   return createResponse({ code: ApiResponseCode.Success }, { roomId: link.roomId, membershipId });
 });
