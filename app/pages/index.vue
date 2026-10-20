@@ -15,15 +15,10 @@ useHead({
 </script>
 
 <template>
-  <div class="relative overflow-hidden bg-default text-default">
-    <LandingHero />
-
-    <LandingCurrencies />
-
-    <LandingFeatures />
-
-    <LandingWorkflow />
-
-    <LandingFaq />
-  </div>
+  <LandingHero />
+  <LandingCurrencies />
+  <LandingFeatures />
+  <LandingWorkflow />
+  <LandingFaq />
+  <LandingCta />
 </template>

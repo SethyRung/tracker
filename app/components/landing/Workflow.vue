@@ -1,71 +1,74 @@
 <script setup lang="ts">
+import type { StepperItem } from "@nuxt/ui";
+
 const steps = [
   {
-    number: "01",
     title: "Bring your people",
-    description:
-      "Create a room and invite your housemates. Or join the one they've already started.",
+    description: "Create a room and share an invite link or code. Housemates join that room.",
     icon: "i-lucide-user-plus",
   },
   {
-    number: "02",
-    title: "Add the everyday bills",
-    description: "Choose the currency, who paid, and who shares the cost. We'll handle the totals.",
+    title: "Add everyday bills",
+    description:
+      "Pick USD or KHR, who paid, and who shares the cost. Shares on a bill add up to 100%.",
     icon: "i-lucide-receipt",
   },
   {
-    number: "03",
     title: "Square up, move on",
     description:
-      "See who pays whom in each currency. Make the transfers and get on with your month.",
+      "See the fewest transfers that settle the month. You pay each other directly. Tricker doesn't move the money.",
     icon: "i-lucide-handshake",
   },
 ];
+
+const stepperItems: StepperItem[] = steps.map(({ title, description }) => ({ title, description }));
 </script>
 
 <template>
-  <section id="how-it-works" class="scroll-mt-20">
-    <UContainer class="py-14 sm:py-20 lg:py-24">
-      <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
-        <div class="lg:col-span-4">
-          <p class="font-mono text-xs tracking-wider text-toned uppercase">How it works</p>
+  <UContainer id="how-it-works" class="scroll-mt-20">
+    <UCard :ui="{ body: 'p-4 sm:p-6' }">
+      <div class="mx-auto flex w-full max-w-(--ui-container) flex-col gap-8">
+        <div>
+          <div class="mb-3">
+            <p class="font-mono text-xs font-medium tracking-wider text-dimmed uppercase">
+              Simple Workflow
+            </p>
+          </div>
+
           <h2
-            class="mt-3 text-3xl leading-tight font-bold tracking-tight text-highlighted sm:text-4xl"
+            class="text-left text-xl font-bold tracking-tight text-pretty text-highlighted sm:text-3xl"
           >
-            From “I paid”<br />to “we're good.”
+            How Tricker keeps it smooth
           </h2>
-          <p class="mt-4 text-sm leading-relaxed text-muted">
-            A shared routine, not another chore. Three steps to make household money a little
-            easier.
-          </p>
-          <UButton
-            label="See it in action"
-            to="#app-window"
-            variant="link"
-            color="neutral"
-            trailing-icon="i-lucide-arrow-up-right"
-            class="mt-5 p-0"
-          />
         </div>
-        <ol class="lg:col-span-8">
-          <li
-            v-for="step in steps"
-            :key="step.number"
-            class="grid grid-cols-[auto_1fr] gap-4 border-b border-default py-6 first:pt-0 last:border-b-0 last:pb-0 sm:grid-cols-[auto_1fr_auto] sm:gap-6"
-          >
-            <span class="pt-1 font-mono text-sm text-muted">{{ step.number }}</span>
-            <div>
-              <h3 class="text-lg font-semibold text-highlighted">{{ step.title }}</h3>
-              <p class="mt-2 max-w-lg text-sm leading-relaxed text-muted">{{ step.description }}</p>
-            </div>
-            <div
-              class="hidden size-10 items-center justify-center rounded-lg border border-default bg-muted/40 sm:flex"
+
+        <UStepper
+          :items="stepperItems"
+          orientation="vertical"
+          size="sm"
+          disabled
+          :ui="{
+            root: 'md:hidden',
+            title: 'font-bold text-highlighted',
+            description: 'text-muted',
+          }"
+        />
+
+        <div class="hidden gap-4 md:grid md:grid-cols-3">
+          <UCard v-for="(step, index) in steps" :key="step.title" :ui="{ body: 'p-5' }">
+            <span
+              class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
             >
-              <UIcon :name="step.icon" class="size-5 text-toned" />
-            </div>
-          </li>
-        </ol>
+              <UIcon :name="step.icon" class="size-5" />
+            </span>
+            <p class="mt-4 font-mono text-xs tracking-wider text-dimmed uppercase">
+              {{ String(index + 1).padStart(2, "0") }} · Step
+            </p>
+            <h3 class="mt-2 text-base font-bold text-highlighted">{{ step.title }}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{{ step.description }}</p>
+          </UCard>
+        </div>
       </div>
-    </UContainer>
-  </section>
+    </UCard>
+  </UContainer>
 </template>

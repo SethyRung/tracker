@@ -1,129 +1,69 @@
 <script setup lang="ts">
-const { loggedIn } = useUserSession();
+import type { NavigationMenuItem } from "@nuxt/ui";
+
 const year = new Date().getFullYear();
 
-const productLinks = [
+const links: NavigationMenuItem[] = [
   { label: "How it works", to: "#how-it-works" },
   { label: "Features", to: "#features" },
   { label: "USD + KHR", to: "#currencies" },
-  { label: "Common questions", to: "#faq" },
+  { label: "FAQ", to: "#faq" },
 ];
-
-const householdLinks = computed(() =>
-  loggedIn.value
-    ? [
-        { label: "Your rooms", to: "/rooms" },
-        { label: "Your account", to: "/account" },
-        { label: "Try the demo", to: "#app-window" },
-      ]
-    : [
-        { label: "Create an account", to: "/sign-up" },
-        { label: "Sign in", to: "/sign-in" },
-        { label: "Try the demo", to: "#app-window" },
-      ],
-);
 </script>
 
 <template>
   <UFooter
     :ui="{
-      root: 'border-t border-default bg-muted/30',
-      top: 'py-12 sm:py-16',
-      container: 'flex flex-col gap-4 border-t border-default py-5 sm:flex-row sm:justify-between',
-      left: 'mt-0 justify-start lg:flex-none',
-      right: 'justify-start lg:flex-none',
+      root: 'border-t border-default bg-default',
+      top: 'py-8 lg:py-12',
+      container: 'py-5',
     }"
   >
     <template #top>
       <UContainer>
-        <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
-          <div class="lg:col-span-6">
+        <div
+          class="flex flex-col items-center gap-4 text-center lg:flex-row lg:items-start lg:justify-between lg:text-left"
+        >
+          <div class="max-w-sm">
             <NuxtLink
               to="/"
-              aria-label="Tricker home"
-              class="inline-flex items-center gap-3 rounded-md outline-primary/50 focus-visible:outline-2 focus-visible:outline-offset-4"
+              class="inline-flex items-center gap-2 rounded-md outline-primary/50 focus-visible:outline-2 focus-visible:outline-offset-4"
             >
-              <span
-                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-neutral-900"
-                aria-hidden="true"
-              >
-                <UIcon name="i-lucide-house" class="size-5" />
-              </span>
-              <span class="text-2xl font-bold tracking-tight text-highlighted"
-                >Tricker<span class="text-muted">.</span></span
-              >
+              <span class="text-base font-bold tracking-tight text-highlighted">Tricker</span>
             </NuxtLink>
-            <p class="mt-5 max-w-sm text-lg font-medium tracking-tight text-highlighted">
-              Shared bills. A little less friction.
+            <p class="mt-3 text-sm leading-relaxed text-muted">
+              Shared bills, settled simply. Parallel USD and KHR ledgers.
             </p>
-            <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-              Built for the everyday money of living together. Keep your dollars and riel separate,
-              and your household on the same page.
-            </p>
-            <div
-              class="mt-5 inline-flex items-center gap-3 rounded-md border border-default bg-default px-3 py-2 text-xs text-toned"
-            >
-              <span class="font-mono">USD</span>
-              <span class="h-3 w-px bg-accented" aria-hidden="true" />
-              <span class="font-mono">KHR</span>
-              <span class="text-muted">Never mixed.</span>
-            </div>
           </div>
 
-          <nav
-            aria-label="Footer navigation"
-            class="grid grid-cols-2 gap-6 lg:col-span-6 lg:gap-10"
-          >
-            <div>
-              <h2 class="font-mono text-xs tracking-wider text-toned uppercase">Explore</h2>
-              <ul class="mt-4 space-y-1">
-                <li v-for="link in productLinks" :key="link.to">
-                  <UButton
-                    :to="link.to"
-                    :label="link.label"
-                    color="neutral"
-                    variant="link"
-                    class="px-0 py-2 text-sm text-muted hover:text-highlighted"
-                  />
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h2 class="font-mono text-xs tracking-wider text-toned uppercase">Your household</h2>
-              <ul class="mt-4 space-y-1">
-                <li v-for="link in householdLinks" :key="link.to">
-                  <UButton
-                    :to="link.to"
-                    :label="link.label"
-                    color="neutral"
-                    variant="link"
-                    class="px-0 py-2 text-sm text-muted hover:text-highlighted"
-                    :ui="{ label: 'whitespace-normal text-left' }"
-                  />
-                </li>
-              </ul>
-            </div>
-          </nav>
+          <UNavigationMenu
+            :items="links"
+            orientation="vertical"
+            color="neutral"
+            variant="link"
+            class="lg:hidden"
+          />
+          <UNavigationMenu :items="links" color="neutral" variant="link" class="hidden lg:flex" />
         </div>
       </UContainer>
     </template>
 
     <template #left>
-      <p class="text-xs text-muted">© {{ year }} Tricker. Shared bills, settled simply.</p>
+      <p class="text-xs text-muted">© {{ year }} Tricker. Built for shared living.</p>
     </template>
 
+    <p class="font-mono text-xs text-dimmed">Separate rooms · USD + KHR</p>
+
     <template #right>
+      <UColorModeButton color="neutral" variant="ghost" size="sm" class="sm:hidden" />
       <UButton
         to="https://github.com/SethyRung/tracker"
         target="_blank"
-        rel="noopener noreferrer"
         icon="i-simple-icons-github"
-        label="Open source on GitHub"
-        trailing-icon="i-lucide-arrow-up-right"
+        label="Open source"
         color="neutral"
-        variant="link"
+        variant="ghost"
         size="sm"
-        class="p-0 text-muted hover:text-highlighted"
       />
     </template>
   </UFooter>

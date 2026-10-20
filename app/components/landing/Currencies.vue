@@ -1,97 +1,75 @@
 <script setup lang="ts">
-const everydayBills = [
+const ledgers = [
   {
-    name: "Rent + internet",
-    payer: "Seth & Dara paid",
-    amount: "$660.00",
-    currency: "USD",
+    name: "Rent",
+    currency: "USD ledger",
+    total: "$60.00",
+    share: "$20.00",
     icon: "i-lucide-house",
-    share: "$220.00",
   },
   {
-    name: "A market run",
-    payer: "Ly paid",
-    amount: "៛120,000",
-    currency: "KHR",
-    icon: "i-lucide-shopping-basket",
+    name: "Market run",
+    currency: "KHR ledger",
+    total: "៛120,000",
     share: "៛40,000",
+    icon: "i-lucide-shopping-basket",
   },
 ];
 </script>
 
 <template>
-  <section id="currencies" class="scroll-mt-20">
-    <UContainer class="py-14 sm:py-20 lg:py-24">
-      <div class="grid items-center gap-10 lg:grid-cols-12 lg:gap-16">
-        <div class="lg:col-span-5">
-          <p class="font-mono text-xs tracking-wider text-toned uppercase">
-            One home. Two currencies.
-          </p>
+  <UContainer>
+    <UCard id="currencies" class="scroll-mt-20" :ui="{ body: 'p-4 sm:p-6' }">
+      <div class="mx-auto flex flex-col gap-8">
+        <div>
+          <div class="mb-3">
+            <p class="font-mono text-xs font-medium tracking-wider text-dimmed uppercase">
+              One home. Two currencies.
+            </p>
+          </div>
+
           <h2
-            class="mt-3 text-3xl leading-tight font-bold tracking-tight text-highlighted sm:text-4xl"
+            class="text-left text-xl font-bold tracking-tight text-pretty text-highlighted sm:text-3xl"
           >
-            Life happens in dollars <span class="text-muted">and riel.</span>
+            Life happens in dollars and riel
           </h2>
-          <p class="mt-4 text-base leading-relaxed text-muted">
-            Your landlord takes dollars. The market takes riel. Your household shouldn't need an
-            exchange-rate debate every time someone buys groceries.
-          </p>
-          <p class="mt-4 text-base leading-relaxed text-muted">
-            Tricker keeps two separate totals and two clear settlement plans. Pay back in the
-            currency that was spent. Nothing gets mixed.
-          </p>
-          <div
-            class="mt-6 inline-flex items-center gap-2 rounded-md border border-default px-3 py-2 text-xs text-toned"
-          >
-            <UIcon name="i-lucide-equal-not" class="size-4 shrink-0" />
-            No exchange rates. No conversion surprises.
+
+          <div class="mt-3 max-w-lg text-left text-sm text-pretty text-muted sm:text-lg">
+            Your landlord takes dollars. The local market takes riel. Tricker maintains two
+            independent ledgers so housemates settle each currency accurately without conversion
+            losses.
           </div>
         </div>
 
-        <div class="min-w-0 lg:col-span-7">
-          <div class="mb-4 flex items-center gap-2 text-xs text-muted">
-            <UIcon name="i-lucide-receipt" class="size-4" />
-            A month at Riverside · 3 housemates · Equal shares
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <article
-              v-for="bill in everydayBills"
-              :key="bill.currency"
-              class="overflow-hidden rounded-xl border border-default bg-muted/40"
-            >
-              <div class="p-5 sm:p-6">
-                <div class="flex items-center justify-between">
-                  <div
-                    class="flex size-10 items-center justify-center rounded-lg border border-default bg-default"
-                  >
-                    <UIcon :name="bill.icon" class="size-5 text-toned" />
-                  </div>
-                  <UBadge
-                    :label="bill.currency"
-                    color="neutral"
-                    variant="outline"
-                    class="font-mono"
-                  />
-                </div>
-                <h3 class="mt-5 text-base font-semibold text-highlighted">{{ bill.name }}</h3>
-                <p class="mt-1 text-xs text-muted">{{ bill.payer }}</p>
-                <p class="mt-4 font-mono text-2xl font-semibold text-highlighted tabular-nums">
-                  {{ bill.amount }}
+        <div class="grid grid-cols-2 gap-2 sm:gap-4">
+          <UCard v-for="ledger in ledgers" :key="ledger.currency" :ui="{ body: 'p-3 sm:p-6' }">
+            <div class="flex h-full flex-col justify-between gap-3 sm:gap-6">
+              <div>
+                <p
+                  class="flex items-center gap-1.5 text-xs font-semibold text-highlighted sm:text-sm"
+                >
+                  <UIcon :name="ledger.icon" class="size-4 shrink-0 text-toned" />
+                  <span class="truncate">{{ ledger.name }}</span>
+                </p>
+                <p class="mt-1 font-mono text-xs text-dimmed">{{ ledger.currency }}</p>
+              </div>
+              <div>
+                <p
+                  class="font-mono text-sm font-semibold text-highlighted tabular-nums sm:text-2xl"
+                >
+                  {{ ledger.total }}
+                </p>
+                <p class="mt-1 text-xs text-muted sm:text-sm">
+                  <span class="font-mono font-semibold text-highlighted tabular-nums">
+                    {{ ledger.share }}
+                  </span>
+                  each
                 </p>
               </div>
-              <div class="border-t border-dashed border-default bg-default px-5 py-4 sm:px-6">
-                <p class="text-xs text-muted">Each housemate's share</p>
-                <p class="mt-1 font-mono text-lg font-semibold text-highlighted tabular-nums">
-                  {{ bill.share }}
-                </p>
-              </div>
-            </article>
-          </div>
-          <p class="mt-4 text-center font-mono text-xs text-muted">
-            Separate ledgers. The same peace of mind.
-          </p>
+            </div>
+          </UCard>
         </div>
       </div>
-    </UContainer>
-  </section>
+    </UCard>
+  </UContainer>
 </template>
