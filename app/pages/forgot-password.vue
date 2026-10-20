@@ -39,6 +39,10 @@ const state = reactive<Partial<Schema>>({
   email: "",
 });
 
+const fieldUi = {
+  label: "font-mono text-xs font-semibold tracking-wider text-toned uppercase",
+};
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   const { data } = event;
   if (inCooldown.value) return;
@@ -48,7 +52,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
   try {
     const client = useAuthClient();
-    await client?.requestPasswordReset({
+    if (!client) {
+      authError.value = {
+        title: "Could not send reset link",
+        description: "Try again in a moment.",
+      };
+      return;
+    }
+
+    await client.requestPasswordReset({
       email: data.email,
       redirectTo: "/reset-password",
     });
@@ -70,7 +82,15 @@ async function resendLink() {
 
   try {
     const client = useAuthClient();
-    await client?.requestPasswordReset({
+    if (!client) {
+      authError.value = {
+        title: "Could not send reset link",
+        description: "Try again in a moment.",
+      };
+      return;
+    }
+
+    await client.requestPasswordReset({
       email: submittedEmail.value,
       redirectTo: "/reset-password",
     });
@@ -108,106 +128,129 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <template v-if="submitted">
-      <h1 class="text-center text-2xl font-semibold tracking-tight text-highlighted">
-        Check Your Email
-      </h1>
+  <div class="space-y-4">
+    <div class="flex items-center justify-between px-0.5">
+      <UBadge color="primary" variant="subtle" size="sm" class="font-mono tracking-wider uppercase">
+        <span class="size-1.5 rounded-full bg-primary" />
+        Account recovery
+      </UBadge>
+    </div>
 
-      <p class="text-center text-sm text-muted">
-        We sent a reset link to
-        <span class="font-medium text-highlighted">{{ submittedEmail }}</span
-        >.
-      </p>
+    <section class="space-y-6 rounded-2xl border border-default bg-default p-5 shadow-xl sm:p-8">
+      <div class="flex items-start gap-3.5">
+        <span
+          class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary"
+        >
+          <UIcon name="i-lucide-key-round" class="size-5" />
+        </span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-highlighted sm:text-[26px]">
+            Reset your password
+          </h1>
+          <p class="mt-1 text-sm text-muted">
+            Enter your account email. We'll send a link to choose a new password.
+          </p>
+        </div>
+      </div>
 
       <UAlert
         v-if="authError"
         icon="i-lucide-alert-circle"
         :title="authError.title"
+        :description="authError.description"
         color="error"
         variant="subtle"
       />
 
-      <div class="space-y-3 pt-2">
+      <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+        <UFormField name="email" label="Account email" required :ui="fieldUi">
+          <template #hint>
+            <UBadge
+              label="Better Auth"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              class="font-mono"
+            />
+          </template>
+          <UInput
+            v-model="state.email"
+            type="email"
+            icon="i-lucide-mail"
+            placeholder="name@household.com"
+            size="lg"
+            color="neutral"
+            variant="outline"
+            autocomplete="email"
+            class="w-full"
+            :ui="{ base: 'bg-muted font-mono' }"
+          />
+        </UFormField>
+
         <UButton
-          :label="inCooldown ? `Resend in ${secondsLeft}s` : 'Resend email'"
-          color="neutral"
-          variant="outline"
+          type="submit"
           size="lg"
           block
+          class="font-bold"
+          :loading="isSubmitting"
+          :disabled="inCooldown"
+        >
+          Send reset link
+          <UIcon name="i-lucide-arrow-right" class="size-4" />
+        </UButton>
+
+        <p
+          class="flex items-center justify-center gap-1.5 text-center font-mono text-[11px] text-dimmed"
+        >
+          <UIcon name="i-lucide-timer" class="size-3.5" />
+          60-second cooldown between requests
+        </p>
+      </UForm>
+
+      <div class="flex justify-center border-t border-default pt-2">
+        <NuxtLink to="/sign-in" class="text-xs font-semibold text-primary hover:underline">
+          ← Back to sign in
+        </NuxtLink>
+      </div>
+    </section>
+
+    <section
+      v-if="submitted"
+      class="space-y-3 rounded-xl border border-default bg-default p-4 shadow-sm"
+    >
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="size-2 rounded-full bg-success" />
+          <span class="text-xs font-semibold text-highlighted">Reset link sent</span>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-muted">
+        Check the inbox for
+        <span class="rounded bg-muted px-1 py-0.5 font-mono font-medium text-highlighted">
+          {{ submittedEmail }}
+        </span>
+        . The link expires after you use it.
+      </p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <UButton
+          :label="inCooldown ? `Resend email (${secondsLeft}s)` : 'Resend email'"
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="outline"
+          size="sm"
           :disabled="inCooldown"
           :loading="isSubmitting"
           @click="resendLink"
         />
-
         <UButton
           label="Try another email"
-          variant="ghost"
           color="neutral"
+          variant="ghost"
           size="sm"
-          block
           :disabled="inCooldown"
           @click="tryAnother"
         />
       </div>
-
-      <p class="text-center text-sm text-muted">
-        <NuxtLink
-          to="/sign-in"
-          class="font-medium text-highlighted underline underline-offset-2 transition-colors hover:text-primary"
-        >
-          Back to sign in
-        </NuxtLink>
-      </p>
-    </template>
-
-    <template v-else>
-      <h1 class="text-center text-2xl font-semibold tracking-tight text-highlighted">
-        Reset Password
-      </h1>
-
-      <UAlert
-        v-if="authError"
-        icon="i-lucide-alert-circle"
-        :title="authError.title"
-        color="error"
-        variant="subtle"
-      />
-
-      <UForm :schema="schema" :state="state" class="space-y-6" @submit="onSubmit">
-        <UFormField name="email" label="Email address">
-          <UInput
-            v-model="state.email"
-            type="email"
-            placeholder="Enter your email address"
-            size="lg"
-            autocomplete="email"
-            class="w-full"
-          />
-        </UFormField>
-
-        <div class="pt-2">
-          <UButton
-            type="submit"
-            label="Continue"
-            size="lg"
-            block
-            :loading="isSubmitting"
-            class="font-bold"
-          />
-        </div>
-      </UForm>
-
-      <p class="text-center text-sm text-muted">
-        Remember your password?
-
-        <NuxtLink
-          to="/sign-in"
-          class="font-medium text-highlighted underline underline-offset-2 transition-colors hover:text-primary"
-        >
-          Sign in
-        </NuxtLink>
-      </p>
-    </template>
+    </section>
   </div>
 </template>

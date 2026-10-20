@@ -49,6 +49,15 @@ const state = reactive<Partial<Schema>>({
   confirmPassword: "",
 });
 
+const fieldUi = {
+  label: "font-mono text-xs font-semibold tracking-wider text-toned uppercase",
+};
+
+const inputUi = {
+  base: "bg-muted font-mono",
+  trailing: "pe-1.5",
+};
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   const { data } = event;
   if (!token.value) return;
@@ -58,7 +67,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
   try {
     const client = useAuthClient();
-    await client?.resetPassword({
+    if (!client) {
+      authError.value = {
+        title: "Could not update password",
+        description: "Try again in a moment.",
+      };
+      return;
+    }
+
+    await client.resetPassword({
       newPassword: data.password,
       token: token.value,
     });
@@ -78,53 +95,85 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <template v-if="!hasToken">
-      <h1 class="text-center text-2xl font-semibold tracking-tight text-highlighted">
-        Link Expired
-      </h1>
+  <div class="space-y-4">
+    <div class="flex items-center justify-between px-0.5">
+      <UBadge color="primary" variant="subtle" size="sm" class="font-mono tracking-wider uppercase">
+        <span class="size-1.5 rounded-full bg-primary" />
+        Account recovery
+      </UBadge>
+    </div>
 
-      <p class="text-center text-sm text-muted">
-        This reset link is invalid, already consumed, or has expired.
-      </p>
-
-      <div class="pt-2">
-        <UButton to="/forgot-password" label="Request new link" size="lg" block class="font-bold" />
+    <section
+      v-if="!hasToken"
+      class="space-y-6 rounded-2xl border border-default bg-default p-5 shadow-xl sm:p-8"
+    >
+      <div class="flex items-start gap-3.5">
+        <span
+          class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-error/30 bg-error/10 text-error"
+        >
+          <UIcon name="i-lucide-link-2-off" class="size-5" />
+        </span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-highlighted sm:text-[26px]">
+            Link expired
+          </h1>
+          <p class="mt-1 text-sm text-muted">
+            This reset link is invalid, already used, or has expired.
+          </p>
+        </div>
       </div>
 
-      <p class="text-center text-sm text-muted">
-        <NuxtLink
-          to="/sign-in"
-          class="font-medium text-highlighted underline underline-offset-2 transition-colors hover:text-primary"
-        >
-          Back to sign in
-        </NuxtLink>
-      </p>
-    </template>
+      <UButton to="/forgot-password" size="lg" block class="font-bold">
+        Request a new link
+        <UIcon name="i-lucide-arrow-right" class="size-4" />
+      </UButton>
 
-    <template v-else>
-      <h1 class="text-center text-2xl font-semibold tracking-tight text-highlighted">
-        Set New Password
-      </h1>
+      <div class="flex justify-center border-t border-default pt-2">
+        <NuxtLink to="/sign-in" class="text-xs font-semibold text-primary hover:underline">
+          ← Back to sign in
+        </NuxtLink>
+      </div>
+    </section>
+
+    <section
+      v-else
+      class="space-y-6 rounded-2xl border border-default bg-default p-5 shadow-xl sm:p-8"
+    >
+      <div class="flex items-start gap-3.5">
+        <span
+          class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary"
+        >
+          <UIcon name="i-lucide-key-round" class="size-5" />
+        </span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-highlighted sm:text-[26px]">
+            Set a new password
+          </h1>
+          <p class="mt-1 text-sm text-muted">Choose a password for this household account.</p>
+        </div>
+      </div>
 
       <UAlert
         v-if="authError"
         icon="i-lucide-alert-circle"
         :title="authError.title"
+        :description="authError.description"
         color="error"
         variant="subtle"
       />
 
-      <UForm :schema="schema" :state="state" class="space-y-6" @submit="onSubmit">
-        <UFormField name="password" label="New password">
+      <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+        <UFormField name="password" label="New password" required :ui="fieldUi">
           <UInput
             v-model="state.password"
             :type="showPassword ? 'text' : 'password'"
             placeholder="Create a new password"
             size="lg"
+            color="neutral"
+            variant="outline"
             autocomplete="new-password"
             class="w-full"
-            :ui="{ trailing: 'pr-1.5' }"
+            :ui="inputUi"
           >
             <template #trailing>
               <UButton
@@ -139,15 +188,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UInput>
         </UFormField>
 
-        <UFormField name="confirmPassword" label="Confirm password">
+        <UFormField name="confirmPassword" label="Confirm password" required :ui="fieldUi">
           <UInput
             v-model="state.confirmPassword"
             :type="showConfirmPassword ? 'text' : 'password'"
             placeholder="Confirm your password"
             size="lg"
+            color="neutral"
+            variant="outline"
             autocomplete="new-password"
             class="w-full"
-            :ui="{ trailing: 'pr-1.5' }"
+            :ui="inputUi"
           >
             <template #trailing>
               <UButton
@@ -164,26 +215,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </UInput>
         </UFormField>
 
-        <div class="pt-2">
-          <UButton
-            type="submit"
-            label="Continue"
-            size="lg"
-            block
-            :loading="isSubmitting"
-            class="font-bold"
-          />
-        </div>
+        <UButton type="submit" size="lg" block class="font-bold" :loading="isSubmitting">
+          Update password
+          <UIcon name="i-lucide-arrow-right" class="size-4" />
+        </UButton>
       </UForm>
 
-      <p class="text-center text-sm text-muted">
-        <NuxtLink
-          to="/sign-in"
-          class="font-medium text-highlighted underline underline-offset-2 transition-colors hover:text-primary"
-        >
-          Back to sign in
+      <div class="flex justify-center border-t border-default pt-2">
+        <NuxtLink to="/sign-in" class="text-xs font-semibold text-primary hover:underline">
+          ← Back to sign in
         </NuxtLink>
-      </p>
-    </template>
+      </div>
+    </section>
   </div>
 </template>
