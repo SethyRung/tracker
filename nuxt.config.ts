@@ -30,7 +30,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ["better-auth/client/plugins"],
+      include: ["@vue/devtools-core", "better-auth/client/plugins"],
     },
   },
 
