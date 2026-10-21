@@ -85,11 +85,6 @@ const navItems = computed(() => [
                 :class="isActive ? 'font-bold' : 'font-medium'"
                 >{{ item.label }}</span
               >
-              <span
-                class="size-1 rounded-full"
-                :class="isActive ? 'bg-primary' : 'bg-transparent'"
-                aria-hidden="true"
-              />
             </a>
           </NuxtLink>
 

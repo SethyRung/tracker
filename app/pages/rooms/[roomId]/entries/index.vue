@@ -133,9 +133,9 @@ const ledger = computed(() => {
       entry.categoryId && entry.status === "published" ? [entry.categoryId] : [],
     ),
     currencyItems: [
-      { label: "All entries", value: "all", badge: entries.length },
-      { label: "USD", value: "USD", badge: entries.filter((e) => e.currency === "USD").length },
-      { label: "KHR", value: "KHR", badge: entries.filter((e) => e.currency === "KHR").length },
+      { label: "All entries", value: "all" },
+      { label: "USD", value: "USD" },
+      { label: "KHR", value: "KHR" },
     ],
     categoryFilterItems,
     positions: [result.settlement.usd, result.settlement.khr].map((plan) => {
