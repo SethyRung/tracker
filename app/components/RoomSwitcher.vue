@@ -50,6 +50,8 @@ const items = computed<DropdownMenuItem[]>(() => {
   <UDropdownMenu v-if="currentRoomId" :items="items" :content="{ align: 'end', sideOffset: 8 }">
     <UButton
       :label="currentRoom?.name ?? 'Room'"
+      class="max-w-full min-w-0"
+      :ui="{ label: 'truncate' }"
       icon="i-lucide-house"
       trailing-icon="i-lucide-chevron-down"
       color="neutral"
