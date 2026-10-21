@@ -34,6 +34,7 @@ const props = withDefaults(
     members: Member[];
     categories: Category[];
     blockedCategoryIds?: string[];
+    initialDate?: string;
     entry?: Entry | null;
   }>(),
   { blockedCategoryIds: () => [] },
@@ -188,7 +189,7 @@ function reset() {
   state.description = undefined;
   state.amountMajor = 0;
   state.currency = "USD";
-  state.date = toDateIso(today("Asia/Phnom_Penh"));
+  state.date = props.initialDate ?? toDateIso(today("Asia/Phnom_Penh"));
   state.categoryId = undefined;
   state.paidByMembershipId = defaultPayerId();
   weights.value = members.value.map((m) => ({
