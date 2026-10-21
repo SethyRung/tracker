@@ -1,3 +1,4 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 
 type InviteLookup =
@@ -73,4 +74,11 @@ export async function createInviteLink(membershipId: string, roomId: string) {
     joinUrl: `${config.public.siteUrl}/join/${token}`,
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+export async function rotateInviteLink(membershipId: string, roomId: string) {
+  await db
+    .delete(schema.inviteLinks)
+    .where(and(eq(schema.inviteLinks.roomId, roomId), isNull(schema.inviteLinks.usedAt)));
+  return createInviteLink(membershipId, roomId);
 }

@@ -54,6 +54,7 @@ Lint is oxlint (`typescript` + `vue`; `@typescript-eslint/no-explicit-any` is **
 ## Auth & email
 
 - Better-Auth via `@nuxtjs/better-auth`. Email+password; verification is sent on sign-up but `requireEmailVerification: false`. Config: `server/auth.config.ts` + `app/auth.config.ts`.
+- Unverified users can use the app. Invites and room deletion require `emailVerified`; the UI and those APIs both enforce it.
 - Protect with `routeRules` (`auth: "guest"` vs `"user"`). `app/middleware/01.auth.global.ts` is a no-op ordering shim — don't add new auth middleware files.
 - Redirects: login/logout → `/sign-in`; authenticated/guest → `/`.
 - Resend: if `NUXT_RESEND_API_KEY` is unset, `server/utils/email.ts` **warns and skips**. Do not assume send throws.

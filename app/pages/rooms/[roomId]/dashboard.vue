@@ -113,8 +113,6 @@ function exportCsv() {
 
 <template>
   <UContainer class="max-w-6xl space-y-6 pb-20 lg:pb-0">
-    <AuthEmailVerificationBanner />
-
     <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
       <div class="min-w-0 space-y-2">
         <div class="flex flex-wrap items-center gap-2.5">
@@ -442,12 +440,20 @@ function exportCsv() {
             <ul class="space-y-3">
               <li v-for="m in overview.members" :key="m.id" class="flex items-center gap-2.5">
                 <UAvatar :alt="memberLabel(m.id)" color="neutral" size="xs" />
-                <p class="min-w-0 flex-1 truncate text-sm font-medium text-highlighted">
-                  {{ memberLabel(m.id) }}
-                  <span v-if="m.userId === user?.id" class="text-xs font-normal text-muted"
-                    >(you)</span
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    {{ memberLabel(m.id) }}
+                    <span v-if="m.userId === user?.id" class="text-xs font-normal text-muted"
+                      >(you)</span
+                    >
+                  </p>
+                  <p
+                    v-if="m.userId === user?.id && user?.emailVerified === false"
+                    class="text-xs text-warning"
                   >
-                </p>
+                    Email unverified
+                  </p>
+                </div>
                 <UBadge
                   color="neutral"
                   variant="subtle"
@@ -457,16 +463,22 @@ function exportCsv() {
                 />
               </li>
             </ul>
-            <UButton
+            <UTooltip
               v-if="isAdmin"
-              label="Invite roommate"
-              icon="i-lucide-user-plus"
-              color="neutral"
-              variant="link"
-              size="sm"
-              class="p-0"
-              @click="inviteOpen = true"
-            />
+              :text="user?.emailVerified === false ? 'Verify your email to invite roommates' : undefined"
+            >
+              <span class="block">
+                <UButton
+                  block
+                  :disabled="user?.emailVerified === false"
+                  :icon="user?.emailVerified === false ? 'i-lucide-lock' : 'i-lucide-user-plus'"
+                  label="Invite roommate"
+                  color="neutral"
+                  variant="outline"
+                  @click="inviteOpen = true"
+                />
+              </span>
+            </UTooltip>
             <UButton
               v-else
               label="View roommates"

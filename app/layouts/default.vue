@@ -59,6 +59,8 @@ const navItems = computed(() => [
     </UHeader>
 
     <UMain class="pt-8 sm:pt-12" :class="hasRoom ? 'pb-24 sm:pb-28 lg:pb-12' : 'pb-8 sm:pb-12'">
+      <AuthEmailVerificationBanner class="mb-6" />
+
       <slot />
     </UMain>
 

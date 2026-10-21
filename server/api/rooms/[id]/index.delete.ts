@@ -4,6 +4,8 @@ import { db, schema } from "@nuxthub/db";
 export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
   const ctx = await requireRoomAdmin(event, roomId);
+  const blocked = await unverifiedEmailResponse(event, "Verify your email before deleting a room.");
+  if (blocked) return blocked;
 
   const activeMembers = await db
     .select({ id: schema.roomMemberships.id })

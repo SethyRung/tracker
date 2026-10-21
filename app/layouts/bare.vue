@@ -34,6 +34,7 @@ const { signOut } = useUserSession();
     </UHeader>
 
     <main class="flex-1">
+      <AuthEmailVerificationBanner class="pt-6" />
       <slot />
     </main>
   </div>

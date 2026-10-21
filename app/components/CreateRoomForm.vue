@@ -289,12 +289,20 @@ async function goNext() {
               <p class="text-sm text-muted">
                 Share an invite link now, or skip and send it from the room later.
               </p>
+              <UAlert
+                v-if="user?.emailVerified === false"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-mail"
+                title="Verify your email to invite roommates"
+                description="You can finish creating the room. Invites stay locked until your email is confirmed."
+              />
               <UButton
                 icon="i-lucide-user-plus"
-                label="Invite members"
+                label="Invite roommates"
                 color="neutral"
                 variant="outline"
-                :disabled="!roomId"
+                :disabled="!roomId || user?.emailVerified === false"
                 @click="inviteOpen = true"
               />
             </div>

@@ -66,6 +66,13 @@ export async function requireRoomAdmin(event: H3Event, roomId: string) {
   return ctx;
 }
 
+export async function unverifiedEmailResponse(event: H3Event, message: string) {
+  const session = await requireUserSession(event);
+  if (session.user.emailVerified === false) {
+    return createResponse({ code: ApiResponseCode.Forbidden, message });
+  }
+}
+
 export async function promoteAdminOnDeparture(roomId: string) {
   const remaining = await db
     .select({

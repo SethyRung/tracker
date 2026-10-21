@@ -6,6 +6,7 @@ import type { ApiResponse } from "#shared/types/response";
 useHead({ title: "Settings · Tricker" });
 
 const { roomId } = useScopedRoom();
+const { user } = useUserSession();
 const { currentRoom, currentRole, status, refresh } = useRoomMemberships();
 const lastRoomId = useLastRoomId();
 const toast = useToast();
@@ -24,7 +25,9 @@ const state = reactive<Schema>({
 
 const loading = computed(() => status.value === "pending" && !currentRoom.value);
 const isAdmin = computed(() => currentRole.value === "admin");
-const canDelete = computed(() => isAdmin.value && (currentRoom.value?.memberCount ?? 0) === 1);
+const emailUnverified = computed(() => user.value?.emailVerified === false);
+const lastMember = computed(() => isAdmin.value && (currentRoom.value?.memberCount ?? 0) === 1);
+const canDelete = computed(() => lastMember.value && !emailUnverified.value);
 
 const submitting = ref(false);
 
@@ -133,7 +136,16 @@ async function onDeleted() {
         </div>
 
         <UAlert
-          v-if="!canDelete"
+          v-if="emailUnverified"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-mail"
+          title="Verify your email to delete this room"
+          description="Room deletion stays locked until your email is confirmed."
+        />
+
+        <UAlert
+          v-if="!lastMember"
           color="warning"
           variant="subtle"
           icon="i-lucide-users"

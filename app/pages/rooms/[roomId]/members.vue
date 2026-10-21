@@ -127,16 +127,19 @@ const columns: TableColumn<Member>[] = [
           {{ members.length }} member{{ members.length === 1 ? "" : "s" }}
         </p>
       </div>
-      <UButton
+      <UTooltip
         v-if="isAdmin"
-        icon="i-lucide-user-plus"
-        label="Invite"
-        @click="
-          () => {
-            inviteOpen = true;
-          }
-        "
-      />
+        :text="user?.emailVerified === false ? 'Verify your email to invite roommates' : undefined"
+      >
+        <span class="inline-flex">
+          <UButton
+            :disabled="user?.emailVerified === false"
+            :icon="user?.emailVerified === false ? 'i-lucide-lock' : 'i-lucide-user-plus'"
+            label="Invite roommate"
+            @click="inviteOpen = true"
+          />
+        </span>
+      </UTooltip>
     </div>
 
     <UTable :data="members" :columns="columns" :loading="membersStatus === 'pending'" />

@@ -11,6 +11,12 @@ export default defineEventHandler(async (event) => {
   const roomId = getRoomId(event);
 
   const ctx = await requireRoomAdmin(event, roomId);
+  const blocked = await unverifiedEmailResponse(
+    event,
+    "Verify your email before inviting roommates.",
+  );
+  if (blocked) return blocked;
+
   const { emails } = await readValidatedBody(event, createInviteSchema.parse);
 
   const { joinUrl } = await createInviteLink(ctx.membership.id, roomId);

@@ -1,54 +1,162 @@
 <script setup lang="ts">
 import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
 
 const props = defineProps<{ roomId: string }>();
 const open = defineModel<boolean>("open", { default: false });
 
 const toast = useToast();
+const { rooms } = useRoomMemberships();
+const { isMD } = useBreakpoints();
 
+const room = computed(() => rooms.value.find((item) => item.id === props.roomId) ?? null);
+const roomName = computed(() => room.value?.name ?? "this room");
+const ledgerLabel = computed(() => {
+  if (!room.value) return "—";
+  if (room.value.usdEnabled && room.value.khrEnabled) return "USD + KHR";
+  if (room.value.usdEnabled) return "USD";
+  if (room.value.khrEnabled) return "KHR";
+  return "—";
+});
+
+const tab = ref<"link" | "email">("link");
 const loading = ref(false);
+const rotating = ref(false);
 const submitting = ref(false);
+const copied = ref(false);
 
 const joinUrl = ref("");
 const expiresAt = ref("");
 
-const itemSchema = z.object({
-  email: z.email("Invalid email").max(254).or(z.literal("")),
+type EmailRow = { id: number; email: string };
+let nextRowId = 1;
+function blankRow(): EmailRow {
+  return { id: nextRowId++, email: "" };
+}
+
+const emails = ref<EmailRow[]>([blankRow()]);
+
+const emailSchema = z.email();
+
+function isValidEmail(value: string | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 && emailSchema.safeParse(trimmed).success;
+}
+
+const readyEmails = computed(() => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const row of emails.value) {
+    const value = row.email.trim();
+    if (!isValidEmail(value)) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
 });
 
-type ItemSchema = z.output<typeof itemSchema>;
+const readyCount = computed(() => readyEmails.value.length);
+const hasInvalid = computed(() =>
+  emails.value.some((row) => {
+    const value = row.email.trim();
+    return value.length > 0 && !isValidEmail(value);
+  }),
+);
 
-const state = reactive<{ emails: Partial<ItemSchema>[] }>({
-  emails: [{}],
+const sendLabel = computed(() => {
+  if (readyCount.value === 1) return "Send 1 invite";
+  if (readyCount.value > 1) return `Send ${readyCount.value} invites`;
+  return "Send invites";
 });
 
-const hasEmails = computed(() => state.emails.some((e) => !!e.email?.trim()));
+const validityLabel = computed(() => {
+  if (!expiresAt.value) return "Valid for 7 days";
+  const hours = toDayJS(expiresAt.value).diff(toDayJS(new Date().toISOString()), "hour");
+  const days = Math.max(1, Math.ceil(hours / 24));
+  return days === 1 ? "Valid for 1 day" : `Valid for ${days} days`;
+});
+
+const tabItems = computed(() => [
+  { label: "Share link", icon: "i-lucide-link", value: "link", slot: "link" },
+  {
+    label: "Email invites",
+    icon: "i-lucide-mail",
+    value: "email",
+    slot: "email",
+    badge: readyCount.value > 0 ? readyCount.value : undefined,
+  },
+]);
+
+const UModal = resolveComponent("UModal");
+const UDrawer = resolveComponent("UDrawer");
+const OverlayComponent = computed(() => ({
+  is: isMD.value ? UModal : UDrawer,
+  props: isMD.value
+    ? { ui: { content: "max-w-lg", footer: "block" } }
+    : { handleOnly: true, fixed: true, ui: { footer: "block" } },
+}));
+
+const storageKey = computed(() => `tricker.invite-link.${props.roomId}`);
+
+function readStoredLink() {
+  if (!import.meta.client) return null;
+  const raw = sessionStorage.getItem(storageKey.value);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { joinUrl?: string; expiresAt?: string };
+    if (!parsed.joinUrl || !parsed.expiresAt) return null;
+    if (!toDayJS(parsed.expiresAt).isAfter(toDayJS(new Date().toISOString()))) return null;
+    return { joinUrl: parsed.joinUrl, expiresAt: parsed.expiresAt };
+  } catch {
+    return null;
+  }
+}
+
+function applyLink(link: { joinUrl: string; expiresAt: string }) {
+  joinUrl.value = link.joinUrl;
+  expiresAt.value = link.expiresAt;
+  if (import.meta.client) sessionStorage.setItem(storageKey.value, JSON.stringify(link));
+}
+
+function resetEmails() {
+  emails.value = [blankRow()];
+  submitting.value = false;
+  copied.value = false;
+  tab.value = "link";
+}
 
 function addEmail() {
-  state.emails.push({});
+  if (emails.value.length >= 20) return;
+  emails.value.push(blankRow());
 }
 
-function removeEmail(index: number) {
-  if (state.emails.length > 1) state.emails.splice(index, 1);
-  else state.emails[index] = {};
+function removeEmail(id: number) {
+  if (emails.value.length === 1) {
+    emails.value[0]!.email = "";
+    return;
+  }
+  emails.value = emails.value.filter((row) => row.id !== id);
 }
 
-function reset() {
-  state.emails = [{}];
-  submitting.value = false;
+function rowError(email: string) {
+  const value = email.trim();
+  if (!value || isValidEmail(value)) return;
+  return "Invalid email";
 }
 
 async function createInviteLink() {
-  try {
-    loading.value = true;
-    const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/create`, {
-      method: "POST",
-    });
-    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+  const stored = readStoredLink();
+  if (stored) {
+    applyLink(stored);
+    return;
+  }
 
-    joinUrl.value = res.data.joinUrl;
-    expiresAt.value = toDayJS(res.data.expiresAt).format("YYYY-MM-DD HH:mm");
+  loading.value = true;
+  try {
+    const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/create`, { method: "POST" });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    applyLink(res.data);
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",
@@ -60,76 +168,108 @@ async function createInviteLink() {
   }
 }
 
-async function copyLink() {
-  const url = joinUrl.value;
-  if (!url) return;
+async function rotateLink() {
+  if (rotating.value || loading.value) return;
+  rotating.value = true;
   try {
-    await navigator.clipboard.writeText(url);
+    const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/rotate`, { method: "POST" });
+    if (!isSuccessResponse(res)) throw new Error(res.status.message);
+    applyLink(res.data);
+    copied.value = false;
+    toast.add({
+      icon: "i-lucide-circle-check",
+      title: "Invite link rotated",
+      description: "Previous unused links no longer work.",
+    });
+  } catch (e) {
+    toast.add({
+      icon: "i-lucide-circle-x",
+      title: "Error",
+      description: e instanceof Error ? e.message : "Could not rotate the invite link.",
+    });
+  } finally {
+    rotating.value = false;
+  }
+}
+
+async function copyLink() {
+  if (!joinUrl.value) return;
+  try {
+    await navigator.clipboard.writeText(joinUrl.value);
+    copied.value = true;
     toast.add({ icon: "i-lucide-circle-check", title: "Copied" });
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
   } catch {
     toast.add({
       icon: "i-lucide-circle-x",
       title: "Could not copy",
-      description: "Long-press the URL to copy it manually.",
+      description: "Select the link and copy it manually.",
     });
   }
 }
 
-watch(open, (isOpen) => {
-  if (isOpen) {
-    createInviteLink();
-  } else {
-    reset();
+async function shareLink() {
+  if (!joinUrl.value) return;
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: `Join ${roomName.value}`, url: joinUrl.value });
+      return;
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+    }
   }
-});
-
-function formatEmails(emails: string[], max = 4): string {
-  if (emails.length <= max) return emails.join(", ");
-  const shown = emails.slice(0, max).join(", ");
-  return `${shown} and ${emails.length - max} more`;
+  await copyLink();
 }
 
-async function onSubmit(_event: FormSubmitEvent<Record<string, unknown>>) {
+function formatEmails(values: string[], max = 4) {
+  if (values.length <= max) return values.join(", ");
+  return `${values.slice(0, max).join(", ")} and ${values.length - max} more`;
+}
+
+async function onSubmit() {
   if (submitting.value) return;
-  const emails = state.emails.map((e) => e.email?.trim()).filter((e): e is string => !!e);
-  if (emails.length === 0) return;
+  if (hasInvalid.value || readyCount.value === 0) return;
 
   submitting.value = true;
   try {
     const res = await $fetch(`/api/rooms/${props.roomId}/invite-links/send`, {
       method: "POST",
-      body: { emails },
+      body: { emails: readyEmails.value },
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
 
-    const results = res.data;
-    const successfulEmails = results.filter((r) => r.emailSent).map((r) => r.email);
-    const failedEmails = results.filter((r) => !r.emailSent).map((r) => r.email);
+    const successful = res.data.filter((row) => row.emailSent).map((row) => row.email);
+    const failed = res.data.filter((row) => !row.emailSent).map((row) => row.email);
 
-    if (successfulEmails.length === 0) {
+    if (successful.length === 0) {
       toast.add({
         color: "error",
         icon: "i-lucide-circle-x",
         title: "No invites sent",
-        description:
-          failedEmails.length > 0 ? `Failed: ${formatEmails(failedEmails)}` : "Please try again.",
+        description: failed.length > 0 ? `Failed: ${formatEmails(failed)}` : "Please try again.",
       });
-    } else if (failedEmails.length > 0) {
+      return;
+    }
+
+    if (failed.length > 0) {
       toast.add({
         color: "warning",
         icon: "i-lucide-triangle-alert",
         title: "Some invites failed",
-        description: `Sent to ${formatEmails(successfulEmails)}. Failed: ${formatEmails(failedEmails)}`,
+        description: `Sent to ${formatEmails(successful)}. Failed: ${formatEmails(failed)}`,
       });
-    } else {
-      toast.add({
-        color: "success",
-        icon: "i-lucide-circle-check",
-        title: "Invites sent",
-        description: formatEmails(successfulEmails),
-      });
-      open.value = false;
+      return;
     }
+
+    toast.add({
+      color: "success",
+      icon: "i-lucide-circle-check",
+      title: "Invites sent",
+      description: formatEmails(successful),
+    });
+    open.value = false;
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",
@@ -141,16 +281,9 @@ async function onSubmit(_event: FormSubmitEvent<Record<string, unknown>>) {
   }
 }
 
-const { isMD } = useBreakpoints();
-
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-
-const OverlayComponent = computed(() => {
-  return {
-    is: isMD.value ? UModal : UDrawer,
-    props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
-  };
+watch(open, (isOpen) => {
+  if (isOpen) createInviteLink();
+  else resetEmails();
 });
 </script>
 
@@ -158,98 +291,196 @@ const OverlayComponent = computed(() => {
   <component
     :is="OverlayComponent.is"
     v-model:open="open"
-    title="Invite members"
-    description="Email housemates or share an invite link."
+    title="Invite roommates"
+    :description="`Bring housemates into ${roomName} to track shared bills.`"
     v-bind="OverlayComponent.props"
   >
     <slot />
 
     <template #body>
-      <UForm id="invite-form" :state="state" class="space-y-4" @submit="onSubmit">
-        <div class="space-y-2">
-          <UForm
-            v-for="(item, index) in state.emails"
-            :key="index"
-            :name="`emails.${index}`"
-            :schema="itemSchema"
-            nested
-          >
-            <UFormField name="email" label="Email" orientation="horizontal" class="w-full">
-              <div class="flex w-full items-center gap-1">
-                <UInput
-                  v-model="item.email"
-                  type="email"
-                  placeholder="someone@example.com"
-                  size="lg"
-                  class="flex-1"
-                />
-                <UButton
-                  v-if="state.emails.length > 1"
-                  icon="i-lucide-trash"
-                  color="error"
-                  variant="soft"
-                  aria-label="Remove email"
-                  @click="removeEmail(index)"
+      <UTabs
+        v-model="tab"
+        :items="tabItems"
+        variant="pill"
+        color="neutral"
+        size="sm"
+        :unmount-on-hide="false"
+        class="w-full"
+        :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
+      >
+        <template #link>
+          <div class="space-y-4 pt-4">
+            <div class="space-y-3 rounded-xl border border-default bg-elevated/40 p-4">
+              <div class="flex items-center justify-between gap-2">
+                <p class="font-mono text-[11px] tracking-wider text-muted uppercase">
+                  Universal join link
+                </p>
+                <UBadge
+                  color="success"
+                  variant="subtle"
+                  icon="i-lucide-clock"
+                  :label="validityLabel"
+                  class="rounded-full"
                 />
               </div>
-            </UFormField>
-          </UForm>
-        </div>
 
-        <UButton
-          color="neutral"
-          variant="subtle"
-          icon="i-lucide-plus"
-          label="Add email"
-          @click="addEmail"
-        />
-      </UForm>
+              <UFieldGroup class="flex" size="md">
+                <UInput
+                  :model-value="joinUrl"
+                  :placeholder="loading ? 'Generating…' : ''"
+                  readonly
+                  :ui="{ root: 'flex-1', base: 'h-full font-mono text-xs' }"
+                />
+                <UButton
+                  :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+                  :loading="loading"
+                  :disabled="loading || !joinUrl"
+                  color="neutral"
+                  variant="outline"
+                  @click="copyLink"
+                />
+              </UFieldGroup>
 
-      <USeparator label="OR" />
+              <div class="flex items-center justify-between gap-2 border-t border-default pt-2">
+                <UButton
+                  icon="i-lucide-refresh-cw"
+                  label="Rotate link"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :loading="rotating"
+                  :disabled="loading || rotating || !joinUrl"
+                  @click="rotateLink"
+                />
+                <UButton
+                  icon="i-lucide-share"
+                  label="Share"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :disabled="!joinUrl"
+                  @click="shareLink"
+                />
+              </div>
+            </div>
 
-      <UFormField label="Invite link" :help="expiresAt ? `Expires at ${expiresAt}` : undefined">
-        <UFieldGroup class="w-full">
-          <UInput
-            :model-value="joinUrl"
-            :placeholder="loading ? 'Generating…' : ''"
-            readonly
-            size="lg"
-            class="flex-1"
-          />
-          <UTooltip text="Copy to clipboard">
-            <UButton
-              icon="i-lucide-clipboard"
-              color="neutral"
+            <UAlert
+              color="warning"
               variant="subtle"
-              :loading="loading"
-              :disabled="loading || !joinUrl"
-              aria-label="Copy link"
-              @click="copyLink"
+              icon="i-lucide-shield"
+              title="Zero-approval link"
+              :description="`Anyone with this link can join ${roomName} directly, without admin approval.`"
             />
-          </UTooltip>
-        </UFieldGroup>
-      </UFormField>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div class="rounded-lg border border-default bg-default p-2.5">
+                <p class="font-mono text-[11px] tracking-wider text-dimmed uppercase">
+                  Target room
+                </p>
+                <p class="mt-1 flex items-center gap-1.5 text-sm font-semibold text-highlighted">
+                  <span class="size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span class="truncate">{{ roomName }}</span>
+                </p>
+              </div>
+              <div class="rounded-lg border border-default bg-default p-2.5">
+                <p class="font-mono text-[11px] tracking-wider text-dimmed uppercase">
+                  Active ledgers
+                </p>
+                <p class="mt-1 font-mono text-sm font-semibold text-highlighted">
+                  {{ ledgerLabel }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template #email>
+          <form id="invite-form" class="space-y-4 pt-4" @submit.prevent="onSubmit">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-sm font-medium text-highlighted">Invite by email</p>
+              <UBadge
+                v-if="readyCount"
+                color="primary"
+                variant="subtle"
+                :label="`${readyCount} ready to send`"
+                class="rounded-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <div v-for="row in emails" :key="row.id" class="flex items-start gap-2">
+                <UFormField :error="rowError(row.email)" class="min-w-0 flex-1">
+                  <UInput
+                    v-model="row.email"
+                    type="email"
+                    icon="i-lucide-mail"
+                    placeholder="name@example.com"
+                    size="lg"
+                    autocomplete="off"
+                    :ui="{ root: 'w-full', base: 'font-mono text-xs' }"
+                  >
+                    <template v-if="isValidEmail(row.email)" #trailing>
+                      <UIcon name="i-lucide-circle-check" class="text-success" />
+                    </template>
+                  </UInput>
+                </UFormField>
+                <UButton
+                  icon="i-lucide-trash"
+                  color="error"
+                  variant="ghost"
+                  aria-label="Remove email"
+                  :disabled="emails.length === 1 && !row.email"
+                  @click="removeEmail(row.id)"
+                />
+              </div>
+            </div>
+
+            <UButton
+              color="primary"
+              variant="soft"
+              icon="i-lucide-plus"
+              label="Add another email"
+              :disabled="emails.length >= 20"
+              @click="addEmail"
+            />
+
+            <div class="space-y-1.5 rounded-xl border border-default bg-elevated/40 p-3 text-sm">
+              <div class="flex items-center justify-between gap-3 text-muted">
+                <span>Role on join</span>
+                <span class="font-medium text-highlighted">Member</span>
+              </div>
+              <div class="flex items-center justify-between gap-3 text-muted">
+                <span>Invite expires</span>
+                <span class="font-mono text-highlighted">7 days</span>
+              </div>
+            </div>
+          </form>
+        </template>
+      </UTabs>
     </template>
 
     <template #footer="{ close }">
-      <UButton
-        v-if="isMD"
-        label="Cancel"
-        color="neutral"
-        variant="ghost"
-        :disabled="submitting"
-        @click="close"
-      />
-      <UButton
-        type="submit"
-        form="invite-form"
-        icon="i-lucide-send"
-        label="Send invites"
-        size="lg"
-        :block="!isMD"
-        :loading="submitting"
-        :disabled="!hasEmails"
-      />
+      <div class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <UButton
+          label="Cancel"
+          color="neutral"
+          variant="ghost"
+          :disabled="submitting"
+          :block="!isMD"
+          @click="close"
+        />
+        <UButton
+          v-if="tab === 'email'"
+          type="submit"
+          form="invite-form"
+          icon="i-lucide-send"
+          :label="sendLabel"
+          :block="!isMD"
+          :loading="submitting"
+          :disabled="readyCount === 0 || hasInvalid"
+        />
+        <UButton v-else label="Done" :block="!isMD" @click="close" />
+      </div>
     </template>
   </component>
 </template>
