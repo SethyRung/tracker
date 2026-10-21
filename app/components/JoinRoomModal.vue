@@ -13,12 +13,6 @@ const state = reactive<Partial<Schema>>({ inviteInput: "" });
 const submitError = ref("");
 
 const { isMD } = useBreakpoints();
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-const OverlayComponent = computed(() => ({
-  is: isMD.value ? UModal : UDrawer,
-  props: isMD.value ? {} : { handleOnly: true, fixed: true },
-}));
 
 watch(open, (isOpen) => {
   if (isOpen) {
@@ -39,12 +33,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     title="Join a household"
     description="Paste the invite code or link. You'll confirm the room before joining."
-    v-bind="OverlayComponent.props"
   >
     <slot />
 
@@ -93,5 +85,5 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         />
       </div>
     </template>
-  </component>
+  </Panel>
 </template>

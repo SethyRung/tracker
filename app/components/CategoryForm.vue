@@ -151,16 +151,6 @@ const submitting = ref(false);
 
 const { isMD } = useBreakpoints();
 
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-
-const OverlayComponent = computed(() => {
-  return {
-    is: isMD.value ? UModal : UDrawer,
-    props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
-  };
-});
-
 const shareState = computed(() => {
   const current = weights.value.reduce((s, w) => s + w.weightBps, 0) / 100;
   const valid = Math.abs(current - 100) <= 0.01;
@@ -351,8 +341,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     :title="isEdit ? 'Edit category' : 'New category'"
     :description="
@@ -360,7 +349,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         ? 'Update this category and its recurring settings.'
         : 'Add a label to organise entries in this room.'
     "
-    v-bind="OverlayComponent.props"
+    :modal="{ ui: { footer: 'justify-end' } }"
   >
     <slot />
 
@@ -507,5 +496,5 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         :loading="submitting"
       />
     </template>
-  </component>
+  </Panel>
 </template>

@@ -88,15 +88,6 @@ const tabItems = computed(() => [
   },
 ]);
 
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-const OverlayComponent = computed(() => ({
-  is: isMD.value ? UModal : UDrawer,
-  props: isMD.value
-    ? { ui: { content: "max-w-lg", footer: "block" } }
-    : { handleOnly: true, fixed: true, ui: { footer: "block" } },
-}));
-
 const storageKey = computed(() => `tricker.invite-link.${props.roomId}`);
 
 function readStoredLink() {
@@ -288,12 +279,12 @@ watch(open, (isOpen) => {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     title="Invite roommates"
     :description="`Bring housemates into ${roomName} to track shared bills.`"
-    v-bind="OverlayComponent.props"
+    :modal="{ ui: { content: 'max-w-lg', footer: 'block' } }"
+    :drawer="{ ui: { footer: 'block' } }"
   >
     <slot />
 
@@ -482,5 +473,5 @@ watch(open, (isOpen) => {
         <UButton v-else label="Done" :block="!isMD" @click="close" />
       </div>
     </template>
-  </component>
+  </Panel>
 </template>

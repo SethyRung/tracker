@@ -14,12 +14,6 @@ const props = withDefaults(defineProps<RemoveModalProps>(), {
 const open = defineModel<boolean>("open", { default: false });
 
 const { isMD } = useBreakpoints();
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-const OverlayComponent = computed(() => ({
-  is: isMD.value ? UModal : UDrawer,
-  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
-}));
 
 const busy = ref(false);
 async function onConfirm(close: () => void) {
@@ -35,11 +29,10 @@ async function onConfirm(close: () => void) {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     :title="props.title"
-    v-bind="OverlayComponent.props"
+    :modal="{ ui: { footer: 'justify-end' } }"
   >
     <slot />
 
@@ -65,5 +58,5 @@ async function onConfirm(close: () => void) {
         @click="onConfirm(close)"
       />
     </template>
-  </component>
+  </Panel>
 </template>

@@ -62,19 +62,6 @@ const inviteOpen = ref(false);
 
 const roomCreated = computed(() => roomId.value !== null);
 
-const { isMD } = useBreakpoints();
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-const OverlayComponent = computed(() => ({
-  is: isMD.value ? UModal : UDrawer,
-  props: isMD.value
-    ? { scrollable: true, ui: { content: "max-w-2xl" } }
-    : {
-        handleOnly: true,
-        fixed: true,
-      },
-}));
-
 const seededCategories = ["Rent", "Utilities", "Food", "Supplies"];
 
 const currencyItems = [
@@ -187,12 +174,11 @@ async function goNext() {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     :title="overlayTitle"
     :description="overlayDescription"
-    v-bind="OverlayComponent.props"
+    :modal="{ scrollable: true, ui: { content: 'max-w-2xl' } }"
   >
     <slot />
 
@@ -334,7 +320,7 @@ async function goNext() {
         />
       </div>
     </template>
-  </component>
+  </Panel>
 
   <MembersInviteModal v-if="roomId" v-model:open="inviteOpen" :room-id="roomId" />
 </template>

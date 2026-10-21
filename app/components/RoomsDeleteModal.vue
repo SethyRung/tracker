@@ -16,12 +16,6 @@ const toast = useToast();
 const busy = ref(false);
 
 const { isMD } = useBreakpoints();
-const UModal = resolveComponent("UModal");
-const UDrawer = resolveComponent("UDrawer");
-const OverlayComponent = computed(() => ({
-  is: isMD.value ? UModal : UDrawer,
-  props: isMD.value ? { ui: { footer: "justify-end" } } : { handleOnly: true, fixed: true },
-}));
 
 async function onConfirm() {
   if (busy.value) return;
@@ -47,11 +41,10 @@ async function onConfirm() {
 </script>
 
 <template>
-  <component
-    :is="OverlayComponent.is"
+  <Panel
     v-model:open="open"
     :title="`Delete ${roomName}?`"
-    v-bind="OverlayComponent.props"
+    :modal="{ ui: { footer: 'justify-end' } }"
   >
     <slot></slot>
 
@@ -79,5 +72,5 @@ async function onConfirm() {
         @click="onConfirm"
       />
     </template>
-  </component>
+  </Panel>
 </template>
