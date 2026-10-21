@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
       membership: schema.roomMemberships,
       accountImage: user.image,
       userName: user.name,
+      email: user.email,
     })
     .from(schema.roomMemberships)
     .leftJoin(user, eq(user.id, schema.roomMemberships.userId))
@@ -20,14 +21,15 @@ export default defineEventHandler(async (event) => {
     )
     .orderBy(asc(schema.roomMemberships.joinedAt));
 
-  const members = rows.map(({ membership, accountImage, userName }) => ({
+  const members = rows.map(({ membership, accountImage, userName, email }) => ({
     id: membership.id,
     roomId: membership.roomId,
     userId: membership.userId,
     role: membership.role,
     nickname: membership.nickname,
-    userName: (userName ?? "") as string,
-    avatarUrl: (membership.avatarUrl ?? accountImage ?? null) as string | null,
+    userName: userName ?? "",
+    email: email ?? "",
+    avatarUrl: membership.avatarUrl ?? accountImage ?? null,
     color: membership.color,
     sharePercentBps: membership.sharePercentBps,
     joinedAt: membership.joinedAt,
