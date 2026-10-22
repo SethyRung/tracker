@@ -1,6 +1,27 @@
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { defineServerAuth } from "@nuxtjs/better-auth/config";
 
 export default defineServerAuth({
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+
+      const body = ctx.body;
+      const name =
+        body && typeof body === "object" && "name" in body && typeof body.name === "string"
+          ? body.name.trim()
+          : "";
+      if (!name) {
+        throw new APIError("BAD_REQUEST", { message: "Name is required" });
+      }
+
+      return {
+        context: {
+          body: { ...body, name },
+        },
+      };
+    }),
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

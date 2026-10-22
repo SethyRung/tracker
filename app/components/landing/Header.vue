@@ -5,7 +5,7 @@ const { loggedIn } = useUserSession();
 const menuOpen = ref(false);
 
 const primaryCta = computed(() =>
-  loggedIn.value ? { to: "/rooms", label: "Your rooms" } : { to: "/sign-up", label: "Get started" },
+  loggedIn.value ? { to: "/rooms", label: "Your rooms" } : { to: "/sign-in", label: "Get started" },
 );
 
 const navItems: NavigationMenuItem[] = [
@@ -35,21 +35,11 @@ const navItems: NavigationMenuItem[] = [
       <span class="mx-1 hidden h-5 w-px bg-accented lg:block" />
 
       <UButton
-        v-if="!loggedIn"
-        to="/sign-in"
-        label="Sign in"
-        color="neutral"
-        variant="ghost"
-        size="md"
-        class="hidden h-9 justify-center px-3 lg:inline-flex"
-      />
-
-      <UButton
         :to="primaryCta.to"
         :label="primaryCta.label"
         trailing-icon="i-lucide-arrow-right"
         size="md"
-        class="hidden h-9 justify-center px-3 text-neutral-900 sm:inline-flex"
+        class="hidden h-9 justify-center px-3 sm:inline-flex"
       />
     </template>
 
@@ -66,6 +56,14 @@ const navItems: NavigationMenuItem[] = [
           link: 'px-3 py-3 text-base',
           linkLeadingIcon: 'size-5 text-muted',
         }"
+      />
+
+      <UButton
+        :to="primaryCta.to"
+        :label="primaryCta.label"
+        trailing-icon="i-lucide-arrow-right"
+        size="lg"
+        class="mt-6 w-full justify-center"
       />
     </template>
   </UHeader>

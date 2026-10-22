@@ -61,7 +61,7 @@ export default defineNuxtConfig({
       login: "/sign-in",
       guest: "/",
       authenticated: "/",
-      logout: "/sign-in",
+      logout: "/",
     },
   },
 

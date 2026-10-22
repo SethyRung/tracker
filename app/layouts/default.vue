@@ -3,6 +3,14 @@ useHead({ htmlAttrs: { lang: "en" } });
 
 const { signOut } = useUserSession();
 
+function onSignOut() {
+  return signOut({
+    onSuccess: async () => {
+      await navigateTo("/");
+    },
+  });
+}
+
 const route = useRoute();
 const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
 const hasRoom = computed(() => roomId.value.length > 0);
@@ -54,7 +62,7 @@ const navItems = computed(() => [
           color="neutral"
           variant="ghost"
           aria-label="Sign out"
-          @click="signOut()"
+          @click="onSignOut()"
         />
       </template>
     </UHeader>

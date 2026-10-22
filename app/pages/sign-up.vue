@@ -27,8 +27,8 @@ const authError = computed(() => humaniseAuthError(signUp.error.value));
 const isSubmitting = computed(() => signUp.status.value === "pending");
 
 const schema = z.object({
-  firstName: z.string().trim().optional(),
-  lastName: z.string().trim().optional(),
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
   email: z.email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   terms: z.boolean().refine((val) => val === true, {
@@ -56,8 +56,7 @@ const inputUi = {
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   const { data } = event;
-  const fullName =
-    `${data.firstName ?? ""} ${data.lastName ?? ""}`.trim() || data.email.split("@")[0] || "User";
+  const fullName = `${data.firstName} ${data.lastName}`;
 
   await signUp.execute({
     email: data.email,
@@ -105,7 +104,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
       <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
         <div class="grid grid-cols-2 gap-3">
-          <UFormField name="firstName" label="First name" hint="Optional" :ui="fieldUi">
+          <UFormField name="firstName" label="First name" required :ui="fieldUi">
             <UInput
               v-model="state.firstName"
               placeholder="First name"
@@ -118,7 +117,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             />
           </UFormField>
 
-          <UFormField name="lastName" label="Last name" hint="Optional" :ui="fieldUi">
+          <UFormField name="lastName" label="Last name" required :ui="fieldUi">
             <UInput
               v-model="state.lastName"
               placeholder="Last name"

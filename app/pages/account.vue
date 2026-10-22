@@ -196,8 +196,11 @@ async function onChangePassword(event: FormSubmitEvent<PasswordSchema>) {
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     toast.add({ icon: "i-lucide-circle-check", title: "Password changed", color: "success" });
-    await signOut();
-    await navigateTo("/sign-in");
+    await signOut({
+      onSuccess: async () => {
+        await navigateTo("/");
+      },
+    });
   } catch (e) {
     toast.add({
       icon: "i-lucide-circle-x",
@@ -236,8 +239,11 @@ async function signOutAllDevices() {
     if (revokeSessions.status.value !== "success") {
       throw new Error(revokeSessions.error.value?.message ?? "Could not sign out all devices.");
     }
-    await signOut();
-    await navigateTo("/sign-in");
+    await signOut({
+      onSuccess: async () => {
+        await navigateTo("/");
+      },
+    });
   } catch (e) {
     toast.add({
       title: "Could not sign out all devices",
