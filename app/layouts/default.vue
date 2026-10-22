@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from "@nuxt/ui";
+useHead({ htmlAttrs: { lang: "en" } });
 
 const { signOut } = useUserSession();
-const { currentRoomId } = useRoomMemberships();
 
 const route = useRoute();
 const roomId = computed(() => (route.params.roomId as string | undefined) ?? "");
 const hasRoom = computed(() => roomId.value.length > 0);
+const isAccount = computed(() => route.path === "/account");
 
 const navItems = computed(() => [
   { icon: "i-lucide-layout-dashboard", label: "Overview", to: `/rooms/${roomId.value}/dashboard` },
@@ -17,14 +17,15 @@ const navItems = computed(() => [
 </script>
 
 <template>
-  <div class="bg-default font-sans text-default">
+  <div class="min-h-screen bg-default font-sans text-default">
     <UHeader to="/rooms" :toggle="false" :ui="{ left: 'min-w-0 flex-1', right: 'shrink-0' }">
       <template #left>
         <NuxtLink to="/rooms" class="pr-2.5 text-xl font-bold text-highlighted"> Tricker </NuxtLink>
 
-        <USeparator orientation="vertical" class="h-8" />
+        <USeparator v-if="hasRoom || isAccount" orientation="vertical" class="h-8" />
 
         <RoomSwitcher />
+        <span v-if="isAccount" class="hidden text-sm text-muted sm:block"> Account Settings </span>
       </template>
 
       <UNavigationMenu
