@@ -4,12 +4,12 @@ import { user } from "#auth/schema";
 import { z } from "zod";
 
 const querySchema = z.object({
-  status: z.enum(["draft", "published"]).optional(),
+  status: z.enum(["draft", "published"], "Choose draft or published").optional(),
   month: z
-    .string()
-    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .string("Choose a valid month")
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Choose a month in YYYY-MM format")
     .optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.string("Pick a valid category").optional(),
 });
 
 export default defineEventHandler(async (event) => {

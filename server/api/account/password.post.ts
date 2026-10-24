@@ -1,8 +1,11 @@
 import { z } from "zod";
 
 const bodySchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(8).max(128),
+  currentPassword: z.string("Current password is required").min(1, "Current password is required"),
+  newPassword: z
+    .string("New password is required")
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be at most 128 characters"),
 });
 
 export default defineEventHandler(async (event) => {

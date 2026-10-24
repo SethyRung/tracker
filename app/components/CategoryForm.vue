@@ -65,20 +65,26 @@ const schema = z
   .object({
     name: z
       .string("Name is required")
+      .trim()
       .min(1, "Name is required")
       .max(40, "Keep it under 40 characters"),
     recurringType: z.enum(["unlimited", "once", "recurring"], "Posting rule is required"),
-    currency: z.enum(["USD", "KHR"]).optional(),
-    amountMajor: z.number().optional(),
-    dayOfMonth: z.number().int().min(1).max(31).optional(),
-    isActive: z.boolean().optional(),
-    paidByMembershipId: z.string().min(1, "Pick who pays").optional(),
-    syncCurrentEntry: z.boolean().optional(),
+    currency: z.enum(["USD", "KHR"], "Choose USD or KHR").optional(),
+    amountMajor: z.number("Enter a valid amount").optional(),
+    dayOfMonth: z
+      .number("Pick a day of the month")
+      .int("Choose a whole-number day")
+      .min(1, "Choose a day from 1 to 31")
+      .max(31, "Choose a day from 1 to 31")
+      .optional(),
+    isActive: z.boolean("Choose whether this recurring bill is active").optional(),
+    paidByMembershipId: z.string("Pick who pays").min(1, "Pick who pays").optional(),
+    syncCurrentEntry: z.boolean("Choose whether to update this month’s bill").optional(),
   })
   .superRefine((data, ctx) => {
     if (data.recurringType !== "recurring") return;
     if (data.currency == null) {
-      ctx.addIssue({ code: "custom", path: ["currency"], message: "Required" });
+      ctx.addIssue({ code: "custom", path: ["currency"], message: "Choose USD or KHR" });
     }
     if (data.amountMajor == null || data.amountMajor <= 0) {
       ctx.addIssue({
@@ -88,10 +94,14 @@ const schema = z
       });
     }
     if (data.dayOfMonth == null) {
-      ctx.addIssue({ code: "custom", path: ["dayOfMonth"], message: "Required" });
+      ctx.addIssue({ code: "custom", path: ["dayOfMonth"], message: "Pick a day of the month" });
     }
     if (typeof data.isActive !== "boolean") {
-      ctx.addIssue({ code: "custom", path: ["isActive"], message: "Required" });
+      ctx.addIssue({
+        code: "custom",
+        path: ["isActive"],
+        message: "Choose whether this recurring bill is active",
+      });
     }
     if (!data.paidByMembershipId) {
       ctx.addIssue({ code: "custom", path: ["paidByMembershipId"], message: "Pick who pays" });
@@ -439,7 +449,7 @@ function showError(error: unknown, fallback: string) {
   toast.add({
     icon: "i-lucide-circle-x",
     title: "Error",
-    description: error instanceof Error ? error.message : fallback,
+    description: getErrorMessage(error, fallback),
   });
 }
 

@@ -15,7 +15,7 @@ const toast = useToast();
 const saving = ref(false);
 
 const schema = z.object({
-  nickname: z.string().max(80, "Keep it under 80 characters"),
+  nickname: z.string("Enter a nickname or leave it blank").max(80, "Keep it under 80 characters"),
 });
 
 const state = reactive({ nickname: "" });

@@ -3,9 +3,13 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const bodySchema = z.object({
-  name: z.string().min(1).max(80),
-  usdEnabled: z.boolean().default(true),
-  khrEnabled: z.boolean().default(true),
+  name: z
+    .string("Give your room a name")
+    .trim()
+    .min(1, "Give your room a name")
+    .max(80, "Room name must be at most 80 characters"),
+  usdEnabled: z.boolean("Choose whether to enable USD").default(true),
+  khrEnabled: z.boolean("Choose whether to enable KHR").default(true),
 });
 
 export default defineEventHandler(async (event) => {

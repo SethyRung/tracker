@@ -4,18 +4,26 @@ import { z } from "zod";
 
 const memberSnapshotSchema = z
   .array(
-    z.object({
-      membershipId: z.string().min(1),
-      weightBps: z.number().int().min(0).max(BPS_TOTAL),
-    }),
+    z.object(
+      {
+        membershipId: z.string("Pick a roommate").min(1, "Pick a roommate"),
+        weightBps: z
+          .number("Enter a valid share percentage")
+          .int("Use at most two decimal places for shares")
+          .min(0, "Shares cannot be negative")
+          .max(BPS_TOTAL, "A share cannot exceed 100%"),
+      },
+      "Pick a valid roommate",
+    ),
+    "Pick at least one roommate",
   )
-  .min(1, "At least one attendee is required")
+  .min(1, "Pick at least one roommate")
   .superRefine((entries, ctx) => {
     const total = entries.reduce((s, e) => s + e.weightBps, 0);
     if (Math.abs(total - BPS_TOTAL) > 0.0001) {
       ctx.addIssue({
         code: "custom",
-        message: `Snapshot weights sum to ${total.toFixed(4)}, expected ${BPS_TOTAL.toFixed(4)}.`,
+        message: "Shares must total 100%",
         params: { code: "sum_mismatch", total, expected: BPS_TOTAL },
       });
     }
@@ -24,7 +32,7 @@ const memberSnapshotSchema = z
       if (ids.has(e.membershipId)) {
         ctx.addIssue({
           code: "custom",
-          message: `Duplicate attendee ${e.membershipId}`,
+          message: "Each roommate can only be included once",
           path: [i, "membershipId"],
         });
       }
@@ -33,27 +41,46 @@ const memberSnapshotSchema = z
   });
 
 const templateFields = z.object({
-  currency: z.enum(["USD", "KHR"]),
-  amountMinor: z.number().int().nonnegative(),
-  dayOfMonth: z.number().int().min(1).max(31).default(1),
-  isActive: z.boolean().default(true),
-  paidByMembershipId: z.string().min(1).nullish(),
+  currency: z.enum(["USD", "KHR"], "Choose USD or KHR"),
+  amountMinor: z
+    .number("Enter a valid amount")
+    .int("Enter a valid amount")
+    .nonnegative("Amount cannot be negative"),
+  dayOfMonth: z
+    .number("Pick a day of the month")
+    .int("Choose a whole-number day")
+    .min(1, "Choose a day from 1 to 31")
+    .max(31, "Choose a day from 1 to 31")
+    .default(1),
+  isActive: z.boolean("Choose whether this recurring bill is active").default(true),
+  paidByMembershipId: z.string("Pick who pays").min(1, "Pick who pays").nullish(),
   memberSnapshot: memberSnapshotSchema,
 });
 
 const createCategorySchema = z
   .object({
     name: z
-      .string()
-      .max(40)
+      .string("Name is required")
+      .max(40, "Category name must be at most 40 characters")
       .transform((s) => s.trim())
       .refine((s) => s.length > 0, { message: "Name is required" }),
-    recurringType: z.enum(["unlimited", "once", "recurring"]).default("unlimited"),
-    currency: z.enum(["USD", "KHR"]).optional(),
-    amountMinor: z.number().int().nonnegative().optional(),
-    dayOfMonth: z.number().int().min(1).max(31).optional(),
-    isActive: z.boolean().optional(),
-    paidByMembershipId: z.string().min(1).nullish(),
+    recurringType: z
+      .enum(["unlimited", "once", "recurring"], "Choose a posting rule")
+      .default("unlimited"),
+    currency: z.enum(["USD", "KHR"], "Choose USD or KHR").optional(),
+    amountMinor: z
+      .number("Enter a valid amount")
+      .int("Enter a valid amount")
+      .nonnegative("Amount cannot be negative")
+      .optional(),
+    dayOfMonth: z
+      .number("Pick a day of the month")
+      .int("Choose a whole-number day")
+      .min(1, "Choose a day from 1 to 31")
+      .max(31, "Choose a day from 1 to 31")
+      .optional(),
+    isActive: z.boolean("Choose whether this recurring bill is active").optional(),
+    paidByMembershipId: z.string("Pick who pays").min(1, "Pick who pays").nullish(),
     memberSnapshot: memberSnapshotSchema.optional(),
   })
   .superRefine((data, ctx) => {

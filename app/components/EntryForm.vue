@@ -3,6 +3,7 @@ import { CalendarDate, parseAbsolute, today } from "@internationalized/date";
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { bpsToPercent, equalSplitBps, percentToBps, splitRemainderBps } from "#shared/types/weight";
+import type { text } from "drizzle-orm/sqlite-core";
 
 interface Member {
   id: string;
@@ -57,19 +58,22 @@ const roomName = computed(() => currentRoom.value?.name ?? "this room");
 const memberById = computed(() => new Map(props.members.map((member) => [member.id, member])));
 
 const schema = z.object({
-  description: z.string().max(500, "Description must be at most 500 characters").optional(),
-  amountMajor: z
-    .number({ message: "Amount is required" })
-    .positive("Amount must be greater than 0"),
-  currency: z.enum(["USD", "KHR"]),
+  description: z
+    .string("Enter a description")
+    .max(500, "Description must be at most 500 characters")
+    .optional(),
+  amountMajor: z.number("Enter a valid amount").positive("Amount must be greater than 0"),
+  currency: z.enum(["USD", "KHR"], "Choose USD or KHR"),
   date: z
-    .string()
-    .min(1, "Date is required")
-    .refine((d) => !Number.isNaN(new Date(d).getTime()), "Invalid date")
+    .string("Pick a date")
+    .min(1, "Pick a date")
+    .refine((d) => !Number.isNaN(new Date(d).getTime()), "Enter a valid date")
     .refine((d) => new Date(d).getTime() <= Date.now(), "Date cannot be in the future"),
-  categoryId: z.string().min(1, "Category is required"),
-  paidByMembershipId: z.string().min(1, "Pick who pays"),
-  attendees: z.array(z.string()).min(1, "At least one attendee is required"),
+  categoryId: z.string("Pick a category").min(1, "Pick a category"),
+  paidByMembershipId: z.string("Pick who pays").min(1, "Pick who pays"),
+  attendees: z
+    .array(z.string("Pick a roommate"), "Pick at least one roommate")
+    .min(1, "Pick at least one roommate"),
 });
 
 type Schema = z.output<typeof schema>;
@@ -391,7 +395,7 @@ function showError(error: unknown, fallback: string) {
   toast.add({
     icon: "i-lucide-circle-x",
     title: "Error",
-    description: error instanceof Error ? error.message : fallback,
+    description: getErrorMessage(error, fallback),
   });
 }
 
@@ -512,6 +516,12 @@ async function resetToTemplate() {
           tabs: {
             size: 'lg',
           },
+          textarea: {
+            size: 'lg',
+            ui: {
+              root: 'w-full',
+            },
+          },
         }"
       >
         <UForm id="entry-form" :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
@@ -561,7 +571,7 @@ async function resetToTemplate() {
           </UFormField>
 
           <UFormField label="Description" name="description" hint="Optional">
-            <UInput v-model="state.description" placeholder="What was this expense for?" />
+            <UTextarea v-model="state.description" placeholder="What was this expense for?" />
           </UFormField>
 
           <div class="grid grid-cols-2 gap-3">

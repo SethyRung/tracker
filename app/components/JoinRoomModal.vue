@@ -5,7 +5,10 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 const open = defineModel<boolean>("open", { default: false });
 
 const schema = z.object({
-  inviteInput: z.string().min(1, "Paste your invite code or link"),
+  inviteInput: z
+    .string("Paste your invite code or link")
+    .trim()
+    .min(1, "Paste your invite code or link"),
 });
 type Schema = z.output<typeof schema>;
 

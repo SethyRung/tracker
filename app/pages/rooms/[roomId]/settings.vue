@@ -18,8 +18,14 @@ const {
 } = useLazyFetch(() => `/api/rooms/${roomId.value}/members`);
 
 const schema = z.object({
-  name: z.string().trim().min(1, "Give your room a name").max(80, "Keep it under 80 characters"),
-  currencies: z.array(z.enum(["USD", "KHR"])).min(1, "Pick at least one currency"),
+  name: z
+    .string("Give your room a name")
+    .trim()
+    .min(1, "Give your room a name")
+    .max(80, "Keep it under 80 characters"),
+  currencies: z
+    .array(z.enum(["USD", "KHR"], "Choose USD or KHR"), "Pick at least one currency")
+    .min(1, "Pick at least one currency"),
 });
 type Schema = z.output<typeof schema>;
 
@@ -122,7 +128,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       icon: "i-lucide-circle-x",
       title: "Could not update room",
       color: "error",
-      description: e instanceof Error ? e.message : "Please try again.",
+      description: getErrorMessage(e, "Please try again."),
     });
   } finally {
     submitting.value = false;

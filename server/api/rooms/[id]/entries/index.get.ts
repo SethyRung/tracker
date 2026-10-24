@@ -1,15 +1,15 @@
 import { db } from "@nuxthub/db";
 import { z } from "zod";
 
-const entryStatusSchema = z.enum(["draft", "published"]);
+const entryStatusSchema = z.enum(["draft", "published"], "Choose draft or published");
 
 const entryListQuerySchema = z.object({
   status: entryStatusSchema.optional(),
   month: z
-    .string()
-    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .string("Choose a valid month")
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Choose a month in YYYY-MM format")
     .optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.string("Pick a valid category").optional(),
 });
 
 export default defineEventHandler(async (event) => {

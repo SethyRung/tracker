@@ -2,20 +2,27 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
-const weightEntrySchema = z.object({
-  membershipId: z.string().min(1),
-  weightBps: z.number().int().min(0).max(BPS_TOTAL),
-});
+const weightEntrySchema = z.object(
+  {
+    membershipId: z.string("Pick a roommate").min(1, "Pick a roommate"),
+    weightBps: z
+      .number("Enter a valid share percentage")
+      .int("Use at most two decimal places for shares")
+      .min(0, "Shares cannot be negative")
+      .max(BPS_TOTAL, "A share cannot exceed 100%"),
+  },
+  "Pick a valid roommate",
+);
 
 const weightsSchema = z
-  .array(weightEntrySchema)
-  .min(1, "At least one attendee is required")
+  .array(weightEntrySchema, "Pick at least one roommate")
+  .min(1, "Pick at least one roommate")
   .superRefine((entries, ctx) => {
     const total = entries.reduce((sum, e) => sum + e.weightBps, 0);
     if (Math.abs(total - BPS_TOTAL) > 0.0001) {
       ctx.addIssue({
         code: "custom",
-        message: `Weights sum to ${total.toFixed(4)}, expected ${BPS_TOTAL.toFixed(4)}`,
+        message: "Shares must total 100%",
         params: { code: "sum_mismatch", total, expected: BPS_TOTAL },
       });
     }
@@ -24,7 +31,7 @@ const weightsSchema = z
       if (ids.has(e.membershipId)) {
         ctx.addIssue({
           code: "custom",
-          message: `Duplicate attendee ${e.membershipId}`,
+          message: "Each roommate can only be included once",
           path: [i, "membershipId"],
         });
       }
@@ -33,11 +40,19 @@ const weightsSchema = z
   });
 
 const updateEntrySchema = z.object({
-  categoryId: z.string().nullable().optional(),
-  amountMinor: z.number().int().nonnegative().optional(),
-  date: z.coerce.date().optional(),
-  paidByMembershipId: z.string().min(1).optional(),
-  notes: z.string().max(500).nullable().optional(),
+  categoryId: z.string("Pick a valid category").nullable().optional(),
+  amountMinor: z
+    .number("Enter a valid amount")
+    .int("Enter a valid amount")
+    .nonnegative("Amount cannot be negative")
+    .optional(),
+  date: z.coerce.date("Enter a valid date").optional(),
+  paidByMembershipId: z.string("Pick who pays").min(1, "Pick who pays").optional(),
+  notes: z
+    .string("Enter a description")
+    .max(500, "Description must be at most 500 characters")
+    .nullable()
+    .optional(),
   weights: weightsSchema.optional(),
 });
 

@@ -14,7 +14,11 @@ const { data, status, refresh } = useFetch("/api/account");
 const account = computed(() => (isSuccessResponse(data.value) ? data.value.data : null));
 
 const nameSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(80, "Keep it under 80 characters"),
+  name: z
+    .string("Name is required")
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Keep it under 80 characters"),
 });
 type NameSchema = z.output<typeof nameSchema>;
 
@@ -141,12 +145,16 @@ async function uploadAvatar(file: File) {
 
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Current password is required"),
+    currentPassword: z
+      .string("Current password is required")
+      .min(1, "Current password is required"),
     newPassword: z
-      .string()
+      .string("New password is required")
       .min(8, "Password must be at least 8 characters")
       .max(128, "Keep it under 128 characters"),
-    confirmPassword: z.string().min(8, "Please confirm your password"),
+    confirmPassword: z
+      .string("Please confirm your password")
+      .min(8, "Please confirm your password"),
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
     message: "Passwords do not match",
@@ -176,7 +184,7 @@ async function onSaveName(event: FormSubmitEvent<NameSchema>) {
       icon: "i-lucide-circle-x",
       title: "Error",
       color: "error",
-      description: e instanceof Error ? e.message : "Could not update your name.",
+      description: getErrorMessage(e, "Could not update your name."),
     });
   } finally {
     interaction.savingName = false;

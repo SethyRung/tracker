@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 const bodySchema = z.object({
-  name: z.string().trim().min(1).max(80),
+  name: z
+    .string("Name is required")
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Name must be at most 80 characters"),
 });
 
 export default defineEventHandler(async (event) => {

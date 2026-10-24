@@ -4,7 +4,15 @@ import { user } from "#auth/schema";
 import { z } from "zod";
 
 const createInviteSchema = z.object({
-  emails: z.array(z.email().max(254)).min(1).max(20),
+  emails: z
+    .array(
+      z
+        .email("Enter a valid email address")
+        .max(254, "Email addresses must be at most 254 characters"),
+      "Add at least one email address",
+    )
+    .min(1, "Add at least one email address")
+    .max(20, "Invite up to 20 people at a time"),
 });
 
 export default defineEventHandler(async (event) => {

@@ -3,9 +3,14 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const bodySchema = z.object({
-  name: z.string().trim().min(1).max(80).optional(),
-  usdEnabled: z.boolean().optional(),
-  khrEnabled: z.boolean().optional(),
+  name: z
+    .string("Name is required")
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Name must be at most 80 characters")
+    .optional(),
+  usdEnabled: z.boolean("Choose whether to enable USD").optional(),
+  khrEnabled: z.boolean("Choose whether to enable KHR").optional(),
 });
 
 export default defineEventHandler(async (event) => {

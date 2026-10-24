@@ -9,7 +9,10 @@ const firstName = computed(() => user.value?.name?.trim().split(/\s+/)[0] || "th
 const createOpen = ref(false);
 
 const schema = z.object({
-  inviteInput: z.string().trim().min(1, "Paste your invite code or link"),
+  inviteInput: z
+    .string("Paste your invite code or link")
+    .trim()
+    .min(1, "Paste your invite code or link"),
 });
 type Schema = z.output<typeof schema>;
 

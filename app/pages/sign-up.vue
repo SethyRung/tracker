@@ -27,11 +27,11 @@ const authError = computed(() => humaniseAuthError(signUp.error.value));
 const isSubmitting = computed(() => signUp.status.value === "pending");
 
 const schema = z.object({
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().trim().min(1, "Last name is required"),
+  firstName: z.string("First name is required").trim().min(1, "First name is required"),
+  lastName: z.string("Last name is required").trim().min(1, "Last name is required"),
   email: z.email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  terms: z.boolean().refine((val) => val === true, {
+  password: z.string("Password is required").min(8, "Password must be at least 8 characters"),
+  terms: z.boolean("You must agree to the terms to continue").refine((val) => val === true, {
     message: "You must agree to the terms to continue",
   }),
 });

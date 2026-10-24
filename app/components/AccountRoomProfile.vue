@@ -20,8 +20,11 @@ const toast = useToast();
 const saving = ref(false);
 
 const schema = z.object({
-  nickname: z.string().trim().max(80, "Keep it under 80 characters"),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Pick a color"),
+  nickname: z
+    .string("Enter a nickname or leave it blank")
+    .trim()
+    .max(80, "Keep it under 80 characters"),
+  color: z.string("Pick a color").regex(/^#[0-9a-fA-F]{6}$/, "Pick a color"),
 });
 type Schema = z.output<typeof schema>;
 
@@ -70,7 +73,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       icon: "i-lucide-circle-x",
       title: "Could not update room profile",
       color: "error",
-      description: e instanceof Error ? e.message : "Please try again.",
+      description: getErrorMessage(e, "Please try again."),
     });
   } finally {
     saving.value = false;

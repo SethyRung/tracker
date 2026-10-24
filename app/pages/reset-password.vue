@@ -34,8 +34,10 @@ const hasToken = computed(() => token.value.trim().length > 0);
 
 const schema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(8, "Please confirm your password"),
+    password: z.string("Password is required").min(8, "Password must be at least 8 characters"),
+    confirmPassword: z
+      .string("Please confirm your password")
+      .min(8, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

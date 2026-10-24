@@ -89,7 +89,7 @@ function webmailUrl(email: string) {
 </script>
 
 <template>
-  <UContainer v-if="visible" class="max-w-6xl">
+  <UContainer v-if="visible">
     <div
       class="flex flex-col gap-3 rounded-xl border p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-4"
       :class="
@@ -144,8 +144,8 @@ function webmailUrl(email: string) {
               <code
                 class="rounded border border-warning/30 bg-elevated px-1.5 py-0.5 font-mono text-xs text-warning"
               >
-                {{ user?.email }}
-              </code>.
+                {{ user?.email }} </code
+              >.
             </template>
           </p>
         </div>

@@ -3,10 +3,13 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const bodySchema = z.object({
-  token: z.string().min(1).max(64),
+  token: z
+    .string("Paste your invite code or link")
+    .min(1, "Paste your invite code or link")
+    .max(64, "This invite code is too long"),
   color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
+    .string("Pick a color")
+    .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
     .optional(),
 });
 

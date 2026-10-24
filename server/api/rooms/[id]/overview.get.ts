@@ -5,7 +5,10 @@ import { z } from "zod";
 import { buildOverviewSettlement } from "#shared/utils/overview";
 
 const querySchema = z.object({
-  month: z.string().refine(isValidMonthKey, "Invalid month key").optional(),
+  month: z
+    .string("Choose a valid month")
+    .refine(isValidMonthKey, "Choose a month in YYYY-MM format")
+    .optional(),
 });
 
 export default defineEventHandler(async (event) => {

@@ -9,8 +9,14 @@ const lastRoomId = useLastRoomId();
 const toast = useToast();
 
 const schema = z.object({
-  name: z.string().min(1, "Give your room a name").max(80, "Keep it under 80 characters"),
-  currencies: z.array(z.string()).min(1, "Pick at least one currency"),
+  name: z
+    .string("Give your room a name")
+    .trim()
+    .min(1, "Give your room a name")
+    .max(80, "Keep it under 80 characters"),
+  currencies: z
+    .array(z.enum(["USD", "KHR"], "Choose USD or KHR"), "Pick at least one currency")
+    .min(1, "Pick at least one currency"),
 });
 
 type Schema = z.output<typeof schema>;
@@ -42,13 +48,6 @@ const steps = [
     value: "review" as const,
     slot: "review" as const,
   },
-  {
-    icon: "i-lucide-user-plus",
-    title: "Invite",
-    description: "Bring in housemates",
-    value: "invite" as const,
-    slot: "invite" as const,
-  },
 ];
 
 type StepValue = (typeof steps)[number]["value"];
@@ -58,7 +57,6 @@ const stepper = useTemplateRef("stepper");
 const form = useTemplateRef("form");
 const submitting = ref(false);
 const roomId = ref<string | null>(null);
-const inviteOpen = ref(false);
 
 const roomCreated = computed(() => roomId.value !== null);
 
@@ -87,8 +85,6 @@ const overlayDescription = computed(() => {
       return "USD and KHR stay as parallel ledgers. No conversion.";
     case "review":
       return "Check these details, then create the room.";
-    case "invite":
-      return "Invite housemates now, or skip and do it later.";
     default:
       return "";
   }
@@ -97,7 +93,6 @@ const overlayDescription = computed(() => {
 const continueLabel = computed(() => {
   if (currentStep.value === "currencies") return "Continue to review";
   if (currentStep.value === "review") return "Create room";
-  if (currentStep.value === "invite") return "Go to room";
   return "Continue";
 });
 
@@ -111,7 +106,6 @@ function reset() {
   state.currencies = ["USD", "KHR"];
   currentStep.value = "name";
   roomId.value = null;
-  inviteOpen.value = false;
   submitting.value = false;
 }
 
@@ -141,7 +135,7 @@ async function createRoom() {
     toast.add({
       icon: "i-lucide-circle-x",
       title: "Error",
-      description: e instanceof Error ? e.message : "Could not create this room.",
+      description: getErrorMessage(e, "Could not create this room."),
     });
     return false;
   } finally {
@@ -158,7 +152,7 @@ async function goToRoom() {
 
 async function goNext() {
   if (currentStep.value === "review") {
-    if (await createRoom()) stepper.value?.next();
+    if (await createRoom()) await goToRoom();
     return;
   }
 
@@ -169,7 +163,6 @@ async function goNext() {
   }
 
   if (stepper.value?.hasNext) stepper.value.next();
-  else await goToRoom();
 }
 </script>
 
@@ -269,30 +262,6 @@ async function goNext() {
               </div>
             </UCard>
           </template>
-
-          <template #invite>
-            <div class="space-y-4">
-              <p class="text-sm text-muted">
-                Share an invite link now, or skip and send it from the room later.
-              </p>
-              <UAlert
-                v-if="user?.emailVerified === false"
-                color="warning"
-                variant="subtle"
-                icon="i-lucide-mail"
-                title="Verify your email to invite roommates"
-                description="You can finish creating the room. Invites stay locked until your email is confirmed."
-              />
-              <UButton
-                icon="i-lucide-user-plus"
-                label="Invite roommates"
-                color="neutral"
-                variant="outline"
-                :disabled="!roomId || user?.emailVerified === false"
-                @click="inviteOpen = true"
-              />
-            </div>
-          </template>
         </UStepper>
       </UForm>
     </template>
@@ -308,6 +277,7 @@ async function goNext() {
           color="neutral"
           variant="ghost"
           :disabled="roomCreated || submitting"
+          class="justify-center"
           @click="stepper?.prev()"
         />
 
@@ -321,6 +291,4 @@ async function goNext() {
       </div>
     </template>
   </Panel>
-
-  <MembersInviteModal v-if="roomId" v-model:open="inviteOpen" :room-id="roomId" />
 </template>

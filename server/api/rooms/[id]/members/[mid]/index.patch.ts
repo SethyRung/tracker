@@ -3,14 +3,27 @@ import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
 
 const updateMemberSchema = z.object({
-  nickname: z.string().max(80).nullable().optional(),
-  avatarUrl: z.string().url().nullable().optional(),
-  color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
+  nickname: z
+    .string("Enter a nickname or leave it blank")
+    .max(80, "Nickname must be at most 80 characters")
     .nullable()
     .optional(),
-  sharePercentBps: z.number().int().min(0).max(10000).optional(),
+  avatarUrl: z
+    .string("Enter a valid avatar URL")
+    .url("Enter a valid avatar URL")
+    .nullable()
+    .optional(),
+  color: z
+    .string("Pick a color")
+    .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
+    .nullable()
+    .optional(),
+  sharePercentBps: z
+    .number("Enter a valid share percentage")
+    .int("Use at most two decimal places for shares")
+    .min(0, "Shares cannot be negative")
+    .max(10000, "A share cannot exceed 100%")
+    .optional(),
 });
 
 export default defineEventHandler(async (event) => {

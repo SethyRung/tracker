@@ -4,16 +4,28 @@ import { z } from "zod";
 
 const bodySchema = z.strictObject({
   nickname: z
-    .union([z.string().trim().max(80), z.literal("")])
+    .union(
+      [
+        z
+          .string("Enter a nickname or leave it blank")
+          .trim()
+          .max(80, "Nickname must be at most 80 characters"),
+        z.literal(""),
+      ],
+      "Enter a nickname or leave it blank",
+    )
     .nullable()
     .optional(),
   avatarUrl: z
-    .union([z.string().url(), z.literal("")])
+    .union(
+      [z.string("Enter a valid avatar URL").url("Enter a valid avatar URL"), z.literal("")],
+      "Enter a valid avatar URL or leave it blank",
+    )
     .nullable()
     .optional(),
   color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
+    .string("Pick a color")
+    .regex(/^#[0-9a-fA-F]{6}$/, "Pick a valid color")
     .nullable()
     .optional(),
 });

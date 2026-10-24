@@ -27,8 +27,8 @@ const isSubmitting = computed(() => signIn.status.value === "pending");
 
 const schema = z.object({
   email: z.email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  remember: z.boolean(),
+  password: z.string("Password is required").min(8, "Password must be at least 8 characters"),
+  remember: z.boolean("Choose whether to stay signed in"),
 });
 
 type Schema = z.output<typeof schema>;
@@ -175,6 +175,5 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         Create account
       </NuxtLink>
     </section>
-
   </div>
 </template>
