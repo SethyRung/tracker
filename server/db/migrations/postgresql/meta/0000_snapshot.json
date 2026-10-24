@@ -1,5 +1,5 @@
 {
-  "id": "8ffee1b6-feca-4f8a-a74e-c7651f8945ce",
+  "id": "40a6bfcb-6f30-4f63-bcc1-48054aa40620",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -110,8 +110,12 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -151,6 +155,13 @@
           "notNull": true,
           "default": 0
         },
+        "recurring_type": {
+          "name": "recurring_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unlimited'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -165,8 +176,12 @@
           "name": "categories_room_id_rooms_id_fk",
           "tableFrom": "categories",
           "tableTo": "rooms",
-          "columnsFrom": ["room_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -269,8 +284,12 @@
           "name": "entries_room_id_rooms_id_fk",
           "tableFrom": "entries",
           "tableTo": "rooms",
-          "columnsFrom": ["room_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -278,8 +297,12 @@
           "name": "entries_category_id_categories_id_fk",
           "tableFrom": "entries",
           "tableTo": "categories",
-          "columnsFrom": ["category_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -287,17 +310,38 @@
           "name": "entries_paid_by_membership_id_room_memberships_id_fk",
           "tableFrom": "entries",
           "tableTo": "room_memberships",
-          "columnsFrom": ["paid_by_membership_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "paid_by_membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "entries_template_id_recurring_templates_id_fk": {
+          "name": "entries_template_id_recurring_templates_id_fk",
+          "tableFrom": "entries",
+          "tableTo": "recurring_templates",
+          "columnsFrom": [
+            "template_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "entries_created_by_user_id_user_id_fk": {
           "name": "entries_created_by_user_id_user_id_fk",
           "tableFrom": "entries",
           "tableTo": "user",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -337,8 +381,12 @@
           "name": "entry_weights_entry_id_entries_id_fk",
           "tableFrom": "entry_weights",
           "tableTo": "entries",
-          "columnsFrom": ["entry_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "entry_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -346,8 +394,12 @@
           "name": "entry_weights_membership_id_room_memberships_id_fk",
           "tableFrom": "entry_weights",
           "tableTo": "room_memberships",
-          "columnsFrom": ["membership_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -355,7 +407,10 @@
       "compositePrimaryKeys": {
         "entry_weights_entry_id_membership_id_pk": {
           "name": "entry_weights_entry_id_membership_id_pk",
-          "columns": ["entry_id", "membership_id"]
+          "columns": [
+            "entry_id",
+            "membership_id"
+          ]
         }
       },
       "uniqueConstraints": {},
@@ -417,8 +472,12 @@
           "name": "invite_links_room_id_rooms_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "rooms",
-          "columnsFrom": ["room_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -426,8 +485,12 @@
           "name": "invite_links_created_by_membership_id_room_memberships_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "room_memberships",
-          "columnsFrom": ["created_by_membership_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -435,8 +498,235 @@
           "name": "invite_links_used_by_membership_id_room_memberships_id_fk",
           "tableFrom": "invite_links",
           "tableTo": "room_memberships",
-          "columnsFrom": ["used_by_membership_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "used_by_membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.month_snapshots": {
+      "name": "month_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "room_id": {
+          "name": "room_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "yyyymm": {
+          "name": "yyyymm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "month_snapshots_room_id_rooms_id_fk": {
+          "name": "month_snapshots_room_id_rooms_id_fk",
+          "tableFrom": "month_snapshots",
+          "tableTo": "rooms",
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "month_snapshots_closed_by_user_id_user_id_fk": {
+          "name": "month_snapshots_closed_by_user_id_user_id_fk",
+          "tableFrom": "month_snapshots",
+          "tableTo": "user",
+          "columnsFrom": [
+            "closed_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "month_snapshots_room_yyyymm_unique": {
+          "name": "month_snapshots_room_yyyymm_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "room_id",
+            "yyyymm"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.recurring_templates": {
+      "name": "recurring_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "room_id": {
+          "name": "room_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_of_month": {
+          "name": "day_of_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "paid_by_membership_id": {
+          "name": "paid_by_membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "member_snapshot": {
+          "name": "member_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "recurring_templates_room_id_rooms_id_fk": {
+          "name": "recurring_templates_room_id_rooms_id_fk",
+          "tableFrom": "recurring_templates",
+          "tableTo": "rooms",
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "recurring_templates_category_id_categories_id_fk": {
+          "name": "recurring_templates_category_id_categories_id_fk",
+          "tableFrom": "recurring_templates",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "recurring_templates_paid_by_membership_id_room_memberships_id_fk": {
+          "name": "recurring_templates_paid_by_membership_id_room_memberships_id_fk",
+          "tableFrom": "recurring_templates",
+          "tableTo": "room_memberships",
+          "columnsFrom": [
+            "paid_by_membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -475,12 +765,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'member'"
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
         },
         "nickname": {
           "name": "nickname",
@@ -534,8 +818,12 @@
           "name": "room_memberships_room_id_rooms_id_fk",
           "tableFrom": "room_memberships",
           "tableTo": "rooms",
-          "columnsFrom": ["room_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "room_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -543,8 +831,12 @@
           "name": "room_memberships_user_id_user_id_fk",
           "tableFrom": "room_memberships",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -597,16 +889,61 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_by_user_id": {
+          "name": "deleted_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "rooms_deleted_at_idx": {
+          "name": "rooms_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "rooms_created_by_user_id_user_id_fk": {
           "name": "rooms_created_by_user_id_user_id_fk",
           "tableFrom": "rooms",
           "tableTo": "user",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "rooms_deleted_by_user_id_user_id_fk": {
+          "name": "rooms_deleted_by_user_id_user_id_fk",
+          "tableFrom": "rooms",
+          "tableTo": "user",
+          "columnsFrom": [
+            "deleted_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -693,8 +1030,12 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -704,7 +1045,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -768,7 +1111,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},

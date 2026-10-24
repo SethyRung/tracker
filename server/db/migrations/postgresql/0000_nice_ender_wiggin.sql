@@ -19,6 +19,7 @@ CREATE TABLE "categories" (
 	"room_id" text NOT NULL,
 	"name" text NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
+	"recurring_type" text DEFAULT 'unlimited' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -55,12 +56,37 @@ CREATE TABLE "invite_links" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "month_snapshots" (
+	"id" text PRIMARY KEY NOT NULL,
+	"room_id" text NOT NULL,
+	"yyyymm" text NOT NULL,
+	"status" text DEFAULT 'open' NOT NULL,
+	"closed_at" timestamp,
+	"closed_by_user_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "month_snapshots_room_yyyymm_unique" UNIQUE("room_id","yyyymm")
+);
+--> statement-breakpoint
+CREATE TABLE "recurring_templates" (
+	"id" text PRIMARY KEY NOT NULL,
+	"room_id" text NOT NULL,
+	"category_id" text NOT NULL,
+	"currency" text NOT NULL,
+	"amount_minor" bigint NOT NULL,
+	"day_of_month" integer DEFAULT 1 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"paid_by_membership_id" text,
+	"member_snapshot" jsonb NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "room_memberships" (
 	"id" text PRIMARY KEY NOT NULL,
 	"room_id" text NOT NULL,
 	"user_id" text NOT NULL,
 	"role" text DEFAULT 'member' NOT NULL,
-	"display_name" text NOT NULL,
 	"nickname" text,
 	"avatar_url" text,
 	"color" text,
@@ -76,7 +102,9 @@ CREATE TABLE "rooms" (
 	"created_by_user_id" text NOT NULL,
 	"usd_enabled" boolean DEFAULT true NOT NULL,
 	"khr_enabled" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"deleted_at" timestamp,
+	"deleted_by_user_id" text
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -116,16 +144,24 @@ ALTER TABLE "categories" ADD CONSTRAINT "categories_room_id_rooms_id_fk" FOREIGN
 ALTER TABLE "entries" ADD CONSTRAINT "entries_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entries" ADD CONSTRAINT "entries_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entries" ADD CONSTRAINT "entries_paid_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("paid_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entries" ADD CONSTRAINT "entries_template_id_recurring_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."recurring_templates"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entries" ADD CONSTRAINT "entries_created_by_user_id_user_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_weights" ADD CONSTRAINT "entry_weights_entry_id_entries_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_weights" ADD CONSTRAINT "entry_weights_membership_id_room_memberships_id_fk" FOREIGN KEY ("membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_created_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("created_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invite_links" ADD CONSTRAINT "invite_links_used_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("used_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "month_snapshots" ADD CONSTRAINT "month_snapshots_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "month_snapshots" ADD CONSTRAINT "month_snapshots_closed_by_user_id_user_id_fk" FOREIGN KEY ("closed_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recurring_templates" ADD CONSTRAINT "recurring_templates_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recurring_templates" ADD CONSTRAINT "recurring_templates_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recurring_templates" ADD CONSTRAINT "recurring_templates_paid_by_membership_id_room_memberships_id_fk" FOREIGN KEY ("paid_by_membership_id") REFERENCES "public"."room_memberships"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "room_memberships" ADD CONSTRAINT "room_memberships_room_id_rooms_id_fk" FOREIGN KEY ("room_id") REFERENCES "public"."rooms"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "room_memberships" ADD CONSTRAINT "room_memberships_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rooms" ADD CONSTRAINT "rooms_created_by_user_id_user_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rooms" ADD CONSTRAINT "rooms_deleted_by_user_id_user_id_fk" FOREIGN KEY ("deleted_by_user_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "rooms_deleted_at_idx" ON "rooms" USING btree ("deleted_at");--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");

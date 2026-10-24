@@ -1,1 +1,0 @@
-ALTER TABLE "categories" ADD COLUMN "recurring_type" text DEFAULT 'none' NOT NULL;
