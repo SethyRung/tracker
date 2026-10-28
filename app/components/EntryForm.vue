@@ -37,8 +37,12 @@ interface EntryFormProps {
   members: Member[];
   categories: Category[];
   blockedCategoryIds?: string[];
+  blockedCategoryMonth?: string;
   initialDate?: string;
   entry?: Entry | null;
+  loading?: boolean;
+  loadError?: boolean;
+  monthClosed?: boolean;
 }
 
 type Weight = { membershipId: string; weightBps: number };
@@ -190,13 +194,23 @@ const ledgerNote = computed(
 );
 
 const displayCategories = computed(() => {
-  if (props.entry) return props.categories;
-  const blocked = new Set(props.blockedCategoryIds);
+  const blocked = new Set(
+    state.date && monthKey(new Date(state.date)) === props.blockedCategoryMonth
+      ? props.blockedCategoryIds
+      : [],
+  );
   return props.categories.filter(
     (category) =>
-      category.recurringType !== "recurring" &&
-      !(category.recurringType === "once" && blocked.has(category.id)),
+      category.id === props.entry?.categoryId ||
+      (category.recurringType !== "recurring" &&
+        !(category.recurringType === "once" && blocked.has(category.id))),
   );
+});
+
+watch(displayCategories, (categories) => {
+  if (state.categoryId && !categories.some((category) => category.id === state.categoryId)) {
+    state.categoryId = undefined;
+  }
 });
 
 const title = computed(() => (isEdit.value ? "Edit Bill Entry" : "New Bill Entry"));
@@ -386,6 +400,48 @@ watch(
   },
 );
 
+watch(
+  () => props.loading,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading && open.value && !isEdit.value && !props.loadError) reset();
+  },
+);
+
+watch(
+  [open, () => props.loadError, () => props.monthClosed],
+  ([isOpen, loadError, monthClosed]) => {
+    if (!isOpen || import.meta.server || (!loadError && !monthClosed)) return;
+    open.value = false;
+    if (loadError) {
+      toast.add({
+        title: "Could not load bill form",
+        description: "Your room data is unavailable. Please try again.",
+        color: "error",
+        icon: "i-lucide-circle-alert",
+        duration: 0,
+        actions: [
+          {
+            label: "Try again",
+            onClick: async () => {
+              emit("refresh");
+              await nextTick();
+              open.value = true;
+            },
+          },
+        ],
+      });
+    } else {
+      toast.add({
+        title: "This month is closed",
+        description: "Bills cannot be added to a closed month.",
+        color: "warning",
+        icon: "i-lucide-lock",
+      });
+    }
+  },
+  { immediate: true },
+);
+
 watch(enabledCurrencies, (items) => {
   if (!canAutofill() || (state.currency && items.includes(state.currency))) return;
   state.currency = defaultCurrency();
@@ -400,7 +456,8 @@ function showError(error: unknown, fallback: string) {
 }
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (!props.roomId || submitting.value) return;
+  if (!props.roomId || submitting.value || props.loading || props.loadError || props.monthClosed)
+    return;
   if (!shareState.value.valid) {
     toast.add({
       icon: "i-lucide-circle-x",
@@ -493,7 +550,11 @@ async function resetToTemplate() {
     <slot />
 
     <template #body>
+      <div v-if="loading" class="space-y-5" role="status" aria-label="Loading bill form">
+        <USkeleton v-for="index in 4" :key="index" class="h-14 rounded-lg" />
+      </div>
       <UTheme
+        v-else-if="!loadError && !monthClosed"
         :props="{
           button: {
             size: 'lg',
@@ -728,6 +789,7 @@ async function resetToTemplate() {
         />
 
         <UButton
+          v-if="!loading && !loadError && !monthClosed"
           type="submit"
           form="entry-form"
           :label="saveLabel"

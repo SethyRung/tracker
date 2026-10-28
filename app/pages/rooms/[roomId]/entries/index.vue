@@ -18,6 +18,11 @@ const month = computed(() => {
     label: toDayJS(key, "YYYY-MM").format("MMM YYYY"),
   };
 });
+const initialDate = computed(() =>
+  month.value.key === currentMonth
+    ? now().startOf("day").toISOString()
+    : monthRange(month.value.key).start.toISOString(),
+);
 const maxMonth = today(PHNOM_PENH_TZ);
 
 function toMonthDate(key: string) {
@@ -125,13 +130,6 @@ const ledger = computed(() => {
     entries,
     totals,
     monthClosed: result.snapshot.status === "closed",
-    initialDate:
-      month.value.key === currentMonth
-        ? now().startOf("day").toISOString()
-        : monthRange(month.value.key).start.toISOString(),
-    blockedCategoryIds: entries.flatMap((entry) =>
-      entry.categoryId && entry.status === "published" ? [entry.categoryId] : [],
-    ),
     currencyItems: [
       { label: "All entries", value: "all" },
       { label: "USD", value: "USD" },
@@ -198,6 +196,11 @@ const interaction = shallowReactive({
     if (!open) this.entryToRemove = null;
   },
 });
+const blockedCategoryIds = computed(() =>
+  (ledger.value?.entries ?? []).flatMap((entry) =>
+    entry.categoryId && entry.id !== interaction.editing?.id ? [entry.categoryId] : [],
+  ),
+);
 
 function canEdit(entry: Entry) {
   return (
@@ -214,7 +217,7 @@ function editEntry(entry: Entry) {
 }
 
 function addEntry() {
-  if (!permissions.value.canAddEntry) return;
+  if (status.value === "success" && ledger.value?.monthClosed) return;
   interaction.editing = null;
   interaction.formOpen = true;
 }
@@ -257,11 +260,12 @@ watch(
 watch(
   [() => route.query.new, () => route.query.edit, ledger, status],
   () => {
-    if (status.value !== "success" || !ledger.value) return;
     const editId = route.query.edit;
     if (route.query.new != null && route.query.new !== "false") {
-      addEntry();
+      interaction.editing = null;
+      interaction.formOpen = true;
     } else if (typeof editId === "string") {
+      if (status.value !== "success" || !ledger.value) return;
       const entry = ledger.value.entries.find((entry) => entry.id === editId);
       if (!entry) return;
       editEntry(entry);
@@ -277,7 +281,7 @@ watch(
 watch(
   () => status.value === "error" || (status.value === "success" && !ledger.value),
   (failed) => {
-    if (!failed || import.meta.server) return;
+    if (!failed || import.meta.server || interaction.formOpen) return;
     toast.add({
       title: "Could not load ledger",
       description: "Your room data is unavailable. Please try again.",
@@ -447,7 +451,7 @@ const columns: TableColumn<Entry>[] = [
           class="hidden lg:inline-flex"
           icon="i-lucide-plus"
           label="Add bill"
-          :disabled="!permissions.canAddEntry"
+          :disabled="status === 'success' && !!ledger?.monthClosed"
           @click="addEntry"
         />
       </div>
@@ -795,18 +799,22 @@ const columns: TableColumn<Entry>[] = [
           </NuxtLink>
         </UCard>
       </section>
-
-      <EntryForm
-        v-model:open="interaction.formOpen"
-        :room-id="roomId"
-        :members="ledger.members"
-        :categories="ledger.categories"
-        :blocked-category-ids="ledger.blockedCategoryIds"
-        :initial-date="ledger.initialDate"
-        :entry="interaction.editing"
-        @refresh="refresh"
-      />
     </template>
+
+    <EntryForm
+      v-model:open="interaction.formOpen"
+      :room-id="roomId"
+      :members="ledger?.members ?? []"
+      :categories="ledger?.categories ?? []"
+      :blocked-category-ids="blockedCategoryIds"
+      :blocked-category-month="month.key"
+      :initial-date="initialDate"
+      :entry="interaction.editing"
+      :loading="status === 'idle' || status === 'pending'"
+      :load-error="status === 'error' || (status === 'success' && !ledger)"
+      :month-closed="status === 'success' && !!ledger?.monthClosed"
+      @refresh="refresh"
+    />
 
     <RemoveModal
       v-model:open="interaction.removeOpen"

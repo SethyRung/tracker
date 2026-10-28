@@ -86,7 +86,19 @@ export default defineEventHandler(async (event) => {
       columns: { recurringType: true },
       where: (c, { eq, and }) => and(eq(c.id, categoryId), eq(c.roomId, roomId)),
     });
-    if (cat?.recurringType === "once") {
+    if (!cat) {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "Category not found in this room.",
+      });
+    }
+    if (cat.recurringType === "recurring") {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "Recurring bills are managed through category templates.",
+      });
+    }
+    if (cat.recurringType === "once") {
       const { start, end } = monthRange(monthKey(body.date));
       const existing = await db.query.entries.findFirst({
         columns: { id: true },

@@ -84,6 +84,46 @@ export default defineEventHandler(async (event) => {
     if (nextClosed) return nextClosed;
   }
 
+  const categoryId = body.categoryId === undefined ? entry.categoryId : body.categoryId;
+  if (categoryId) {
+    const category = await db.query.categories.findFirst({
+      columns: { recurringType: true },
+      where: (c, { eq, and }) => and(eq(c.id, categoryId), eq(c.roomId, roomId)),
+    });
+    if (!category) {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "Category not found in this room.",
+      });
+    }
+    if (category.recurringType === "recurring" && categoryId !== entry.categoryId) {
+      return createResponse({
+        code: ApiResponseCode.InvalidRequest,
+        message: "Recurring bills are managed through category templates.",
+      });
+    }
+    if (category.recurringType === "once") {
+      const { start, end } = monthRange(monthKey(body.date ?? entry.date));
+      const existing = await db.query.entries.findFirst({
+        columns: { id: true },
+        where: (e, { eq, ne, and, gte, lt }) =>
+          and(
+            eq(e.roomId, roomId),
+            eq(e.categoryId, categoryId),
+            ne(e.id, eid),
+            gte(e.date, start.toDate()),
+            lt(e.date, end.toDate()),
+          ),
+      });
+      if (existing) {
+        return createResponse({
+          code: ApiResponseCode.InvalidRequest,
+          message: "This category allows only one entry per month. Edit the existing entry instead.",
+        });
+      }
+    }
+  }
+
   if (
     body.weights &&
     !(await areActiveAttendees(
