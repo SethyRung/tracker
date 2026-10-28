@@ -24,6 +24,7 @@ const items = computed<DropdownMenuItem[]>(() => {
     }
     list.push({ type: "separator" });
   }
+  list.push({ label: "All rooms", icon: "i-lucide-layout-grid", to: "/rooms" });
   if (currentRoom.value?.role === "admin" && currentRoomId.value) {
     list.push({
       label: "Room settings",
