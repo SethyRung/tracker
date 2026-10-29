@@ -2,7 +2,7 @@
 useHead({ title: "Settle · Tricker" });
 
 const { roomId } = useScopedRoom();
-const { currentRole } = useRoomMemberships();
+const { currentRole, currentRoom } = useRoomMemberships();
 const isAdmin = computed(() => currentRole.value === "admin");
 
 const route = useRoute();
@@ -44,6 +44,16 @@ function signedBalance(balance: number, formatted: string) {
   if (balance > 0) return `+${formatted}`;
   if (balance < 0) return formatted.replace("-", "−");
   return formatted;
+}
+
+function transferTotal(plan: SettleData["usd"]) {
+  return formatMoney({
+    amount_minor: plan.suggestTransfer.reduce(
+      (total: number, transfer: { amountMinor: number }) => total + transfer.amountMinor,
+      0,
+    ),
+    currency: plan.currency,
+  });
 }
 
 const monthClosed = computed(() => data.value?.snapshot?.status === "closed");
@@ -91,26 +101,44 @@ async function runMonthAction(action: "close" | "reopen") {
 </script>
 
 <template>
-  <UContainer class="max-w-4xl space-y-6 py-6">
-    <div class="flex items-end justify-between gap-4">
-      <div class="space-y-1">
-        <p class="font-mono text-xs tracking-wider text-toned uppercase">Settlement</p>
-        <h1 class="font-pixel-circle text-2xl text-primary">{{ monthLabel }}</h1>
+  <UContainer class="max-w-6xl space-y-5">
+    <div
+      class="flex flex-col justify-between gap-4 border-b border-default pb-5 lg:flex-row lg:items-end"
+    >
+      <div class="min-w-0 space-y-1.5">
+        <p class="flex items-center gap-2 font-mono text-xs tracking-wider text-muted uppercase">
+          Household <span>·</span>
+          <span class="truncate normal-case">{{ currentRoom?.name ?? "Room" }}</span>
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-2xl font-bold tracking-tight text-highlighted sm:text-3xl">Settlement</h1>
+          <UBadge
+            v-if="data?.snapshot && data?.settle"
+            :label="monthClosed ? 'Closed' : 'Open'"
+            :color="monthClosed ? 'neutral' : 'success'"
+            variant="subtle"
+            :icon="monthClosed ? 'i-lucide-lock' : 'i-lucide-circle-dot'"
+            class="rounded-full"
+          />
+        </div>
+        <p class="text-sm text-muted">
+          {{ monthLabel }} · Review balances and suggested transfers.
+        </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <UBadge
-          :label="monthClosed ? 'Closed' : 'Open'"
-          :color="monthClosed ? 'neutral' : 'primary'"
-          :variant="monthClosed ? 'subtle' : 'soft'"
-          :icon="monthClosed ? 'i-lucide-lock' : 'i-lucide-circle-dot'"
-        />
-
+      <div class="flex flex-wrap gap-2">
         <UButton
-          v-if="isAdmin"
+          icon="i-lucide-arrow-left"
+          label="Back to overview"
+          color="neutral"
+          variant="subtle"
+          :to="`/rooms/${roomId}/dashboard`"
+        />
+        <UButton
+          v-if="isAdmin && data?.snapshot && data?.settle"
           :icon="monthClosed ? 'i-lucide-lock-open' : 'i-lucide-lock'"
-          :color="monthClosed ? 'primary' : 'error'"
-          size="xs"
+          :label="monthClosed ? 'Reopen month' : 'Close month'"
+          color="neutral"
           variant="outline"
           :loading="closingMonth"
           @click="onMonthAction"
@@ -118,99 +146,162 @@ async function runMonthAction(action: "close" | "reopen") {
       </div>
     </div>
 
-    <div v-if="settleStatus === 'pending'" class="grid gap-4 md:grid-cols-2">
-      <USkeleton v-for="i in 2" :key="i" class="h-72 rounded-xl" />
+    <div
+      v-if="settleStatus === 'pending' || settleStatus === 'idle'"
+      class="grid gap-5 lg:grid-cols-2"
+      role="status"
+      aria-label="Loading settlement"
+    >
+      <USkeleton v-for="i in 2" :key="i" class="h-96 rounded-lg" />
     </div>
 
-    <p v-else-if="settleStatus === 'error'" class="py-12 text-center text-sm text-toned">
-      Could not load settlement.
-    </p>
+    <UAlert
+      v-else-if="settleStatus === 'error' || !data?.snapshot || !data?.settle"
+      title="Could not load settlement"
+      description="Your room data is unavailable. Please try again."
+      color="error"
+      variant="subtle"
+      icon="i-lucide-circle-alert"
+      :actions="[
+        { label: 'Try again', color: 'error', variant: 'outline', onClick: () => refresh() },
+      ]"
+    />
 
-    <div v-else class="grid gap-4 md:grid-cols-2">
-      <UCard v-for="plan in plans" :key="plan.currency" variant="outline">
+    <div v-else class="grid items-start gap-5 lg:grid-cols-2">
+      <UCard
+        v-for="plan in plans"
+        :key="plan.currency"
+        :ui="{ header: 'p-4 sm:px-5 sm:py-4', body: 'p-0 sm:p-0' }"
+      >
         <template #header>
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <UIcon :name="currencyIcon(plan.currency as Currency)" class="size-4 text-toned" />
-              <h2 class="font-mono text-xs font-semibold tracking-wider text-toned uppercase">
-                {{ plan.currency }}
-              </h2>
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-3">
+              <span
+                class="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-toned"
+              >
+                <UIcon :name="currencyIcon(plan.currency as Currency)" class="size-5" />
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-sm font-semibold text-highlighted">
+                  {{ plan.currency }} settlement
+                </h2>
+                <p class="mt-0.5 text-xs text-muted">
+                  {{ plan.currency === "USD" ? "US dollar ledger" : "Cambodian riel ledger" }}
+                </p>
+              </div>
             </div>
-            <UBadge v-if="monthClosed" color="neutral" variant="subtle" size="xs">locked</UBadge>
+            <UBadge
+              v-if="monthClosed"
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-lock"
+              label="Closed"
+            />
           </div>
         </template>
 
-        <div v-if="!plan.hasActivity" class="space-y-1 py-6 text-center">
-          <UIcon name="i-lucide-receipt" class="mx-auto size-6 text-dimmed" />
-          <p class="text-sm text-muted">No {{ plan.currency }} activity this month</p>
+        <div v-if="!plan.hasActivity" class="space-y-3 px-4 py-14 text-center sm:px-5">
+          <UIcon name="i-lucide-receipt-text" class="size-8 text-dimmed" />
+          <h3 class="text-sm font-semibold text-highlighted">No {{ plan.currency }} activity</h3>
+          <p class="text-sm text-muted">
+            Balances will appear when bills are published this month.
+          </p>
         </div>
 
         <template v-else>
-          <p v-if="plan.suggestTransfer.length > 0" class="mb-3 text-xs text-toned">
-            {{ plan.suggestTransfer.length }} transfer{{
-              plan.suggestTransfer.length === 1 ? "" : "s"
-            }}
-            · {{ plan.totalImbalanceFormatted }} to move
-          </p>
+          <div class="border-b border-default px-4 py-4 sm:px-5">
+            <p class="font-mono text-xs font-medium tracking-wider text-muted uppercase">
+              To settle
+            </p>
+            <div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p
+                class="font-mono text-2xl font-semibold tracking-tight text-highlighted tabular-nums"
+              >
+                {{ transferTotal(plan) }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ plan.suggestTransfer.length }} suggested transfer{{
+                  plan.suggestTransfer.length === 1 ? "" : "s"
+                }}
+              </p>
+            </div>
+          </div>
 
-          <p class="mb-2 text-xs font-semibold text-toned">Balances</p>
-          <ul class="mb-4 space-y-1.5">
-            <li
-              v-for="m in plan.members"
-              :key="m.membershipId"
-              class="flex items-center justify-between gap-2"
-            >
-              <div class="flex min-w-0 items-center gap-2">
-                <span
-                  class="size-2 shrink-0 rounded-full"
-                  :style="{ backgroundColor: m.color ?? '#a1a1aa' }"
-                />
-                <span class="truncate text-sm">{{ m.name }}</span>
-              </div>
-              <div class="flex shrink-0 items-center gap-1.5">
-                <span v-if="m.balance > 0" class="text-xs text-toned">gets</span>
-                <span v-else-if="m.balance < 0" class="text-xs text-toned">owes</span>
-                <span v-else class="text-xs text-dimmed">even</span>
-                <span
-                  class="text-sm font-medium tabular-nums"
+          <section class="border-b border-default">
+            <div class="flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
+              <h3 class="font-mono text-xs font-medium tracking-wider text-muted uppercase">
+                Roommate balances
+              </h3>
+              <span class="text-xs text-dimmed">{{ monthLabel }}</span>
+            </div>
+            <ul class="divide-y divide-default">
+              <li
+                v-for="member in plan.members"
+                :key="member.membershipId"
+                class="flex items-center justify-between gap-3 px-4 py-3 sm:px-5"
+              >
+                <div class="flex min-w-0 items-center gap-3">
+                  <UAvatar
+                    :text="payerInitials(member.name)"
+                    :alt="member.name"
+                    color="neutral"
+                    size="sm"
+                  />
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-highlighted">{{ member.name }}</p>
+                    <p class="text-xs text-muted">
+                      {{ member.balance > 0 ? "Gets back" : member.balance < 0 ? "Owes" : "Even" }}
+                    </p>
+                  </div>
+                </div>
+                <p
+                  class="shrink-0 font-mono text-sm font-semibold tabular-nums"
                   :class="
-                    m.balance > 0 ? 'text-success' : m.balance < 0 ? 'text-error' : 'text-toned'
+                    member.balance > 0
+                      ? 'text-success'
+                      : member.balance < 0
+                        ? 'text-error'
+                        : 'text-muted'
                   "
                 >
-                  {{ signedBalance(m.balance, m.balanceFormatted) }}
-                </span>
-              </div>
-            </li>
-          </ul>
-
-          <div v-if="plan.suggestTransfer.length > 0" class="border-t border-default pt-3">
-            <p class="text-xs font-semibold text-toned">Suggested transfers</p>
-            <p class="mb-2 text-[10px] text-toned">(minimum to settle)</p>
-            <ul class="space-y-1.5">
-              <li
-                v-for="t in plan.suggestTransfer"
-                :key="`${t.fromMembershipId}-${t.toMembershipId}`"
-                class="flex items-center justify-between gap-2 text-sm"
-              >
-                <div class="flex min-w-0 items-center gap-1.5">
-                  <span class="truncate">{{ t.fromName }}</span>
-                  <UIcon name="i-lucide-arrow-right" class="size-3.5 shrink-0 text-dimmed" />
-                  <span class="truncate">{{ t.toName }}</span>
-                </div>
-                <span class="shrink-0 font-medium text-primary tabular-nums">{{
-                  t.amountFormatted
-                }}</span>
+                  {{ signedBalance(member.balance, member.balanceFormatted) }}
+                </p>
               </li>
             </ul>
-          </div>
+          </section>
 
-          <div v-else class="space-y-1 py-4 text-center">
-            <UIcon name="i-lucide-circle-check" class="mx-auto size-6 text-success" />
-            <p class="text-sm text-default">Everyone is settled up</p>
-            <p v-if="plan.isSettled" class="text-xs text-dimmed">
-              Everyone paid exactly their own share — no transfers needed.
+          <section class="space-y-3 p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="font-mono text-xs font-medium tracking-wider text-muted uppercase">
+                Suggested transfers
+              </h3>
+              <UIcon name="i-lucide-arrow-right-left" class="size-4 text-dimmed" />
+            </div>
+            <ul v-if="plan.suggestTransfer.length" class="space-y-2">
+              <li
+                v-for="transfer in plan.suggestTransfer"
+                :key="`${transfer.fromMembershipId}-${transfer.toMembershipId}`"
+                class="flex items-start gap-2.5 rounded-md border border-default bg-muted/50 p-3"
+              >
+                <UIcon name="i-lucide-arrow-right" class="mt-0.5 size-4 shrink-0 text-muted" />
+                <p class="min-w-0 text-sm leading-relaxed wrap-break-word">
+                  <span class="font-medium text-highlighted">{{ transfer.fromName }}</span>
+                  pays <span class="font-medium text-highlighted">{{ transfer.toName }}</span>
+                  {{ " "
+                  }}<span class="font-mono font-semibold text-highlighted">{{
+                    transfer.amountFormatted
+                  }}</span>
+                </p>
+              </li>
+            </ul>
+            <div v-else class="flex items-start gap-2 text-sm text-muted">
+              <UIcon name="i-lucide-circle-check" class="mt-0.5 size-4 shrink-0 text-success" />
+              <p>Everyone is even. No transfers needed.</p>
+            </div>
+            <p class="text-xs leading-relaxed text-muted">
+              Suggested transfers are calculated from published bills and their splits.
             </p>
-          </div>
+          </section>
         </template>
       </UCard>
     </div>

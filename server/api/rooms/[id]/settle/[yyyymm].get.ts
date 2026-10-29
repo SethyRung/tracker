@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
   await requireRoomContext(event, roomId);
 
-  const [plans, memberRows] = await Promise.all([
+  const [plans, memberRows, mergedMembers] = await Promise.all([
     settleRoom({ roomId, yyyymm }),
     db
       .select({
@@ -57,9 +57,14 @@ export default defineEventHandler(async (event) => {
       .leftJoin(user, eq(user.id, schema.roomMemberships.userId))
       .where(eq(schema.roomMemberships.roomId, roomId))
       .orderBy(asc(schema.roomMemberships.joinedAt)),
+    db.query.memberMerges.findMany({
+      columns: { sourceMembershipId: true },
+      where: (merge, { eq }) => eq(merge.roomId, roomId),
+    }),
   ]);
 
   const memberById = new Map(memberRows.map((m) => [m.id, m]));
+  const mergedMemberIds = new Set(mergedMembers.map((member) => member.sourceMembershipId));
   const nameOf = (membershipId: string) => {
     const m = memberById.get(membershipId);
     return m ? (m.nickname ?? m.userName ?? "Removed member") : "Removed member";
@@ -79,6 +84,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const members = result.balances
+      .filter(
+        (balance) =>
+          !mergedMemberIds.has(balance.membershipId) || balance.paid !== 0 || balance.owed !== 0,
+      )
       .map((b): SettleMemberView => {
         const newBalance = b.net + (settledDelta.get(b.membershipId) ?? 0);
         return {

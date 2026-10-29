@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { ApiResponseCode } from "../../shared/types/response";
 import { isValidMonthKey, monthRange } from "../../shared/utils/date";
 import { alreadyMaterialized, planDraftForTemplate } from "../../shared/utils/recurring";
+import { formatMoney } from "../../shared/types/money";
 
 const context = vi.hoisted(() => ({ db: null as unknown, schema: null as unknown }));
 const joiningUser = {
@@ -33,6 +34,7 @@ vi.mock("#auth/schema", async () => {
   };
 });
 vi.mock("#shared/utils/overview", async () => import("../../shared/utils/overview"));
+vi.mock("~~/shared/utils/settle", async () => import("../../shared/utils/settle"));
 
 let merge: typeof import("../../server/api/rooms/[id]/members/merge.post").default;
 let list: typeof import("../../server/api/rooms/[id]/members.get").default;
@@ -41,6 +43,7 @@ let join: typeof import("../../server/api/rooms/join.post").default;
 let templates: typeof import("../../server/api/rooms/[id]/templates/index.get").default;
 let createCategory: typeof import("../../server/api/rooms/[id]/categories/index.post").default;
 let createMember: typeof import("../../server/api/rooms/[id]/members/index.post").default;
+let settlement: typeof import("../../server/api/rooms/[id]/settle/[yyyymm].get").default;
 let client: PGlite;
 
 beforeAll(async () => {
@@ -78,15 +81,19 @@ beforeAll(async () => {
   vi.stubGlobal("isValidMonthKey", isValidMonthKey);
   vi.stubGlobal("monthRange", monthRange);
   vi.stubGlobal("monthKey", () => "2026-06");
+  vi.stubGlobal("getMonthKeyParam", () => "2026-06");
+  vi.stubGlobal("formatMoney", formatMoney);
   vi.stubGlobal("getMonthSnapshot", async () => null);
   vi.stubGlobal("BPS_TOTAL", 10000);
   vi.stubGlobal("alreadyMaterialized", alreadyMaterialized);
   vi.stubGlobal("planDraftForTemplate", planDraftForTemplate);
   const roomUtils = await import("../../server/utils/room");
   const recurringUtils = await import("../../server/utils/recurring");
+  const settlementUtils = await import("../../server/utils/settle");
   vi.stubGlobal("isRoomActiveCondition", roomUtils.isRoomActiveCondition);
   vi.stubGlobal("findActiveRoomMember", roomUtils.findActiveRoomMember);
   vi.stubGlobal("materializeRecurringDrafts", recurringUtils.materializeRecurringDrafts);
+  vi.stubGlobal("settleRoom", settlementUtils.settleRoom);
   vi.stubGlobal("newId", () => crypto.randomUUID());
   vi.stubGlobal("ApiResponseCode", ApiResponseCode);
   vi.stubGlobal("createResponse", (status: unknown, data?: unknown) => ({ status, data }));
@@ -97,6 +104,7 @@ beforeAll(async () => {
   templates = (await import("../../server/api/rooms/[id]/templates/index.get")).default;
   createCategory = (await import("../../server/api/rooms/[id]/categories/index.post")).default;
   createMember = (await import("../../server/api/rooms/[id]/members/index.post")).default;
+  settlement = (await import("../../server/api/rooms/[id]/settle/[yyyymm].get")).default;
 });
 afterAll(async () => {
   vi.unstubAllGlobals();
@@ -240,6 +248,34 @@ describe("merge room members", () => {
       view.data.settlement.usd.members.find((member) => member.membershipId === "member-a")
         ?.balance,
     ).toBe(0);
+  });
+
+  it("hides a merged placeholder while retaining a former member with a balance", async () => {
+    await client.exec(`INSERT INTO room_memberships (id, room_id, user_id, nickname, joined_at, left_at, is_active) VALUES ('former-a', 'room-a', 'admin', 'Former', '2026-01-02', '2026-06-30', false);
+      INSERT INTO entries (id, room_id, currency, amount_minor, date, paid_by_membership_id, status, created_by_user_id) VALUES ('bill-a', 'room-a', 'USD', 600, '2026-06-10', 'former-a', 'published', 'admin');
+      INSERT INTO entry_weights (entry_id, membership_id, weight_bps) VALUES ('bill-a', 'member-a', 10000);`);
+    const merged = await merge({
+      body: { sourceId: "placeholder-a", targetId: "member-a" },
+    } as never);
+    expect(merged.status.code).toBe(ApiResponseCode.Success);
+    const result = await settlement({} as never);
+    expect(result.data.usd.members.map((member) => member.membershipId)).toEqual([
+      "former-a",
+      "member-a",
+    ]);
+    expect(result.data.usd.suggestTransfer).toMatchObject([
+      { fromMembershipId: "member-a", toMembershipId: "former-a", amountMinor: 600 },
+    ]);
+  });
+
+  it("retains a merged placeholder if it still has financial activity", async () => {
+    await merge({ body: { sourceId: "placeholder-a", targetId: "member-a" } } as never);
+    await client.exec(`INSERT INTO entries (id, room_id, currency, amount_minor, date, paid_by_membership_id, status, created_by_user_id) VALUES ('bill-a', 'room-a', 'USD', 100, '2026-06-10', 'placeholder-a', 'published', 'admin');
+      INSERT INTO entry_weights (entry_id, membership_id, weight_bps) VALUES ('bill-a', 'member-a', 10000);`);
+    const result = await settlement({} as never);
+    expect(
+      result.data.usd.members.find((member) => member.membershipId === "placeholder-a")?.balance,
+    ).toBe(100);
   });
 
   it("rejects a merge if rounding would change another member's historical balance", async () => {
