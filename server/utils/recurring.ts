@@ -31,6 +31,7 @@ export async function materializeRecurringDrafts(
       amountMinor: schema.recurringTemplates.amountMinor,
       paidByMembershipId: schema.recurringTemplates.paidByMembershipId,
       memberSnapshot: schema.recurringTemplates.memberSnapshot,
+      roomCreatedByUserId: schema.rooms.createdByUserId,
     })
     .from(schema.recurringTemplates)
     .innerJoin(schema.categories, eq(schema.categories.id, schema.recurringTemplates.categoryId))
@@ -71,7 +72,7 @@ export async function materializeRecurringDrafts(
     )
     .orderBy(schema.roomMemberships.joinedAt);
 
-  const membersByRoom = new Map<string, Array<{ id: string; userId: string }>>();
+  const membersByRoom = new Map<string, Array<{ id: string; userId: string | null }>>();
   for (const row of memberRows) {
     const list = membersByRoom.get(row.roomId) ?? [];
     list.push({ id: row.id, userId: row.userId });
@@ -146,7 +147,7 @@ export async function materializeRecurringDrafts(
 
     await db.insert(schema.entries).values({
       ...planned.draft,
-      createdByUserId: payer.userId,
+      createdByUserId: payer.userId ?? t.roomCreatedByUserId,
     });
     await db.insert(schema.entryWeights).values(
       planned.weights.map((w) => ({

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { ApiResponse } from "#shared/types/response";
 
 const props = defineProps<{
   roomId: string;
@@ -31,10 +32,13 @@ async function onSubmit(event: FormSubmitEvent<z.output<typeof schema>>) {
   if (!member || saving.value) return;
   saving.value = true;
   try {
-    const res = await $fetch(`/api/rooms/${props.roomId}/members/${member.id}`, {
-      method: "PATCH",
-      body: { nickname: event.data.nickname.trim() || null },
-    });
+    const res = await $fetch<ApiResponse<unknown>>(
+      `/api/rooms/${props.roomId}/members/${member.id}`,
+      {
+        method: "PATCH",
+        body: { nickname: event.data.nickname.trim() || null },
+      },
+    );
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     open.value = false;
     toast.add({ icon: "i-lucide-circle-check", title: "Nickname updated", color: "success" });

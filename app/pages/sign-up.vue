@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
+import { normalizePhone } from "#shared/utils/contact";
 import * as z from "zod";
 
 definePageMeta({
@@ -30,6 +31,7 @@ const schema = z.object({
   firstName: z.string("First name is required").trim().min(1, "First name is required"),
   lastName: z.string("Last name is required").trim().min(1, "Last name is required"),
   email: z.email("Please enter a valid email address"),
+  phone: z.string().refine((value) => !!normalizePhone(value), "Use an international phone number"),
   password: z.string("Password is required").min(8, "Password must be at least 8 characters"),
   terms: z.boolean("You must agree to the terms to continue").refine((val) => val === true, {
     message: "You must agree to the terms to continue",
@@ -42,6 +44,7 @@ const state = reactive<Partial<Schema>>({
   firstName: "",
   lastName: "",
   email: "",
+  phone: "",
   password: "",
   terms: false,
 });
@@ -62,6 +65,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     email: data.email,
     password: data.password,
     name: fullName,
+    phone: normalizePhone(data.phone)!,
   });
 
   if (signUp.error.value) return;
@@ -140,6 +144,26 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             color="neutral"
             variant="outline"
             autocomplete="email"
+            class="w-full"
+            :ui="inputUi"
+          />
+        </UFormField>
+
+        <UFormField
+          name="phone"
+          label="Phone number"
+          required
+          :ui="fieldUi"
+          description="Include the country code, for example +855."
+        >
+          <UInput
+            v-model="state.phone"
+            type="tel"
+            placeholder="+855 12 345 678"
+            size="lg"
+            color="neutral"
+            variant="outline"
+            autocomplete="tel"
             class="w-full"
             :ui="inputUi"
           />

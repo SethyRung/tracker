@@ -2,11 +2,12 @@
 type MemberRow = {
   id: string;
   roomId: string;
-  userId: string;
+  userId: string | null;
   role: string;
   nickname: string | null;
   userName: string;
   email: string;
+  contactPhone: string | null;
   emailDisplay: string;
   avatarUrl: string | null;
   color: string | null;
@@ -35,6 +36,7 @@ type MemberRow = {
 
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from "@nuxt/ui";
+import type { ApiResponse } from "#shared/types/response";
 
 useHead({ title: "Members · Tricker" });
 
@@ -131,14 +133,14 @@ const directory = computed(() => {
         avatarUi: isYou ? AVATAR_UI.you : AVATAR_UI.other,
         joinedLabel: toDayJS(member.joinedAt).tz(PHNOM_PENH_TZ).format("MMM DD, YYYY"),
         positions,
-        roleLabel: member.role === "admin" ? "Admin" : "Member",
+        roleLabel: !member.userId ? "Not joined" : member.role === "admin" ? "Admin" : "Member",
         roleColor: member.role === "admin" ? ("primary" as const) : ("neutral" as const),
         actions: [],
       };
 
       if (canEdit) {
         row.actions.push({
-          label: "Edit nickname",
+          label: row.userId ? "Edit nickname" : "Edit roommate",
           icon: "i-lucide-pencil",
           onSelect: () => openNickname(row),
         });
@@ -150,6 +152,16 @@ const directory = computed(() => {
           color: "error",
           onSelect: () => {
             interaction.memberToRemove = row;
+          },
+        });
+      }
+
+      if (permissions.value.isAdmin && !row.userId) {
+        row.actions.push({
+          label: "Merge with roommate",
+          icon: "i-lucide-merge",
+          onSelect: () => {
+            interaction.memberToMerge = row;
           },
         });
       }
@@ -188,13 +200,21 @@ const emptyState = computed(() => {
 const interaction = shallowReactive({
   editing: null as MemberRow | null,
   nicknameOpen: false,
+  placeholderOpen: false,
   inviteOpen: false,
   memberToRemove: null as MemberRow | null,
+  memberToMerge: null as MemberRow | null,
   get removeOpen(): boolean {
     return this.memberToRemove !== null;
   },
   set removeOpen(open: boolean) {
     if (!open) this.memberToRemove = null;
+  },
+  get mergeOpen(): boolean {
+    return this.memberToMerge !== null;
+  },
+  set mergeOpen(open: boolean) {
+    if (!open) this.memberToMerge = null;
   },
 });
 
@@ -203,18 +223,28 @@ const removeTitle = computed(() => `Remove ${interaction.memberToRemove?.name ??
 function openNickname(row: MemberRow) {
   if (!row.canEdit) return;
   interaction.editing = row;
-  interaction.nicknameOpen = true;
+  if (row.userId) interaction.nicknameOpen = true;
+  else interaction.placeholderOpen = true;
 }
 
 watch(roomId, () => {
   filters.search = "";
   interaction.nicknameOpen = false;
+  interaction.placeholderOpen = false;
   interaction.inviteOpen = false;
   interaction.memberToRemove = null;
+  interaction.memberToMerge = null;
 });
 
 watch(
   () => interaction.nicknameOpen,
+  (open) => {
+    if (!open) interaction.editing = null;
+  },
+);
+
+watch(
+  () => interaction.placeholderOpen,
   (open) => {
     if (!open) interaction.editing = null;
   },
@@ -251,9 +281,12 @@ async function onRemoveMember(close: () => void) {
   const member = interaction.memberToRemove;
   if (!member || !member.canRemove) return;
   try {
-    const res = await $fetch(`/api/rooms/${roomId.value}/members/${member.id}`, {
-      method: "DELETE",
-    });
+    const res = await $fetch<ApiResponse<unknown>>(
+      `/api/rooms/${roomId.value}/members/${member.id}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     close();
     await refreshAll();
@@ -295,16 +328,28 @@ const columns: TableColumn<MemberRow>[] = [
         </p>
       </div>
 
-      <UTooltip v-if="permissions.isAdmin" :text="inviteTooltip">
-        <div class="hidden lg:inline-flex">
-          <UButton
-            icon="i-lucide-user-plus"
-            label="Invite roommate"
-            :disabled="!permissions.canInvite"
-            @click="interaction.inviteOpen = true"
-          />
-        </div>
-      </UTooltip>
+      <div v-if="permissions.isAdmin" class="hidden gap-2 lg:flex">
+        <UButton
+          icon="i-lucide-plus"
+          label="Add roommate"
+          color="neutral"
+          variant="outline"
+          @click="
+            interaction.editing = null;
+            interaction.placeholderOpen = true;
+          "
+        />
+        <UTooltip :text="inviteTooltip">
+          <div class="hidden lg:inline-flex">
+            <UButton
+              icon="i-lucide-user-plus"
+              label="Invite roommate"
+              :disabled="!permissions.canInvite"
+              @click="interaction.inviteOpen = true"
+            />
+          </div>
+        </UTooltip>
+      </div>
     </div>
 
     <div v-if="!directory && (pending || status === 'pending')" class="space-y-5" role="status">
@@ -319,6 +364,18 @@ const columns: TableColumn<MemberRow>[] = [
           icon="i-lucide-search"
           placeholder="Filter members or emails…"
           class="min-w-0 flex-1 sm:w-56 sm:flex-none"
+        />
+        <UButton
+          v-if="permissions.isAdmin"
+          icon="i-lucide-plus"
+          label="Add"
+          color="neutral"
+          variant="outline"
+          class="lg:hidden"
+          @click="
+            interaction.editing = null;
+            interaction.placeholderOpen = true;
+          "
         />
         <UTooltip v-if="permissions.isAdmin" :text="inviteTooltip">
           <div class="inline-flex lg:hidden">
@@ -372,9 +429,24 @@ const columns: TableColumn<MemberRow>[] = [
                     >
                   </component>
                   <p class="truncate font-mono text-xs text-muted">{{ row.emailDisplay }}</p>
-                  <p class="font-mono text-[11px] text-dimmed">Joined {{ row.joinedLabel }}</p>
+                  <p class="font-mono text-[11px] text-dimmed">
+                    {{ row.userId ? `Joined ${row.joinedLabel}` : "Not joined" }}
+                  </p>
                 </div>
                 <div class="max-w-28 shrink-0 space-y-1 text-right">
+                  <UDropdownMenu
+                    v-if="row.actions.length"
+                    :items="row.actions"
+                    :content="{ align: 'end' }"
+                  >
+                    <UButton
+                      icon="i-lucide-ellipsis"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      aria-label="Member actions"
+                    />
+                  </UDropdownMenu>
                   <UBadge
                     :label="row.roleLabel"
                     :color="row.roleColor"
@@ -445,7 +517,9 @@ const columns: TableColumn<MemberRow>[] = [
             </template>
 
             <template #joined-cell="{ row }">
-              <span class="font-mono text-xs text-muted">{{ row.original.joinedLabel }}</span>
+              <span class="font-mono text-xs text-muted">{{
+                row.original.userId ? row.original.joinedLabel : "Not joined"
+              }}</span>
             </template>
 
             <template #position-cell="{ row }">
@@ -492,10 +566,30 @@ const columns: TableColumn<MemberRow>[] = [
       @refresh="refreshMembers"
     />
 
+    <PlaceholderMemberForm
+      v-if="permissions.isAdmin"
+      v-model:open="interaction.placeholderOpen"
+      :room-id="roomId"
+      :member="interaction.editing"
+      @refresh="refreshAll"
+    />
+    <MergeMemberForm
+      v-if="permissions.isAdmin"
+      v-model:open="interaction.mergeOpen"
+      :room-id="roomId"
+      :source="interaction.memberToMerge"
+      :members="directory?.rows ?? []"
+      @refresh="refreshAll"
+    />
+
     <RemoveModal
       v-model:open="interaction.removeOpen"
       :title="removeTitle"
-      description="They'll lose access to this room and can rejoin with a new invite."
+      :description="
+        interaction.memberToRemove?.userId
+          ? `They'll lose access to this room and can rejoin with a new invite.`
+          : 'They will no longer appear in new bills. Their past bills will be kept.'
+      "
       :on-delete="onRemoveMember"
     />
   </UContainer>

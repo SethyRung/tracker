@@ -7,7 +7,7 @@ import type { text } from "drizzle-orm/sqlite-core";
 
 interface Member {
   id: string;
-  userId: string;
+  userId: string | null;
   nickname: string | null;
   userName: string;
   avatarUrl?: string | null;

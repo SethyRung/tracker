@@ -31,7 +31,7 @@ interface EntryRow {
 
 interface MemberRow {
   id: string;
-  userId: string;
+  userId: string | null;
   nickname: string | null;
   userName: string;
   color: string | null;

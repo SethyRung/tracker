@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
+import { normalizeEmail, normalizePhone } from "../../../shared/utils/contact";
 
 const bodySchema = z.object({
   token: z
@@ -23,39 +24,86 @@ export default defineEventHandler(async (event) => {
   }
   const { link } = found;
 
-  const existing = await db.query.roomMemberships.findFirst({
-    where: (m, { eq, and }) =>
-      and(eq(m.roomId, link.roomId), eq(m.userId, session.user.id), eq(m.isActive, true)),
+  return db.transaction(async (tx) => {
+    await tx
+      .select({ id: schema.rooms.id })
+      .from(schema.rooms)
+      .where(eq(schema.rooms.id, link.roomId))
+      .for("update");
+    const existing = await tx.query.roomMemberships.findFirst({
+      where: (m, { eq, and }) =>
+        and(eq(m.roomId, link.roomId), eq(m.userId, session.user.id), eq(m.isActive, true)),
+    });
+
+    if (existing) {
+      return createResponse(
+        { code: ApiResponseCode.Success },
+        { roomId: link.roomId, membershipId: existing.id, alreadyMember: true },
+      );
+    }
+
+    const phone = session.user.phone ? normalizePhone(session.user.phone) : null;
+    if (session.user.emailVerified && phone) {
+      const candidates = await tx.query.roomMemberships.findMany({
+        where: (member, { and, eq, isNull }) =>
+          and(
+            eq(member.roomId, link.roomId),
+            eq(member.isActive, true),
+            isNull(member.userId),
+            eq(member.contactEmail, normalizeEmail(session.user.email)),
+            eq(member.contactPhone, phone),
+          ),
+      });
+      if (candidates.length === 1) {
+        const [claimed] = await tx
+          .update(schema.roomMemberships)
+          .set({ userId: session.user.id })
+          .where(
+            and(
+              eq(schema.roomMemberships.id, candidates[0]!.id),
+              eq(schema.roomMemberships.roomId, link.roomId),
+              isNull(schema.roomMemberships.userId),
+              eq(schema.roomMemberships.isActive, true),
+              eq(schema.roomMemberships.contactEmail, normalizeEmail(session.user.email)),
+              eq(schema.roomMemberships.contactPhone, phone),
+            ),
+          )
+          .returning({ id: schema.roomMemberships.id });
+        if (claimed) {
+          await tx
+            .update(schema.inviteLinks)
+            .set({ usedAt: new Date(), usedByMembershipId: claimed.id })
+            .where(eq(schema.inviteLinks.tokenHash, link.tokenHash));
+          return createResponse(
+            { code: ApiResponseCode.Success },
+            { roomId: link.roomId, membershipId: claimed.id },
+          );
+        }
+      }
+    }
+
+    const usedColors = await tx.query.roomMemberships.findMany({
+      columns: { color: true },
+      where: (m, { eq }) => eq(m.roomId, link.roomId),
+    });
+
+    const color =
+      body.color ?? nextMemberColor(usedColors.map((c) => c.color).filter((c): c is string => !!c));
+
+    const membershipId = newId();
+    await tx.insert(schema.roomMemberships).values({
+      id: membershipId,
+      roomId: link.roomId,
+      userId: session.user.id,
+      role: "member",
+      color,
+      sharePercentBps: Math.floor(10000 / Math.max(1, usedColors.length + 1)),
+    });
+    await tx
+      .update(schema.inviteLinks)
+      .set({ usedAt: new Date(), usedByMembershipId: membershipId })
+      .where(eq(schema.inviteLinks.tokenHash, link.tokenHash));
+
+    return createResponse({ code: ApiResponseCode.Success }, { roomId: link.roomId, membershipId });
   });
-
-  if (existing) {
-    return createResponse(
-      { code: ApiResponseCode.Success },
-      { roomId: link.roomId, membershipId: existing.id, alreadyMember: true },
-    );
-  }
-
-  const usedColors = await db.query.roomMemberships.findMany({
-    columns: { color: true },
-    where: (m, { eq }) => eq(m.roomId, link.roomId),
-  });
-
-  const color =
-    body.color ?? nextMemberColor(usedColors.map((c) => c.color).filter((c): c is string => !!c));
-
-  const membershipId = newId();
-  await db.insert(schema.roomMemberships).values({
-    id: membershipId,
-    roomId: link.roomId,
-    userId: session.user.id,
-    role: "member",
-    color,
-    sharePercentBps: Math.floor(10000 / Math.max(1, usedColors.length + 1)),
-  });
-  await db
-    .update(schema.inviteLinks)
-    .set({ usedAt: new Date(), usedByMembershipId: membershipId })
-    .where(eq(schema.inviteLinks.tokenHash, link.tokenHash));
-
-  return createResponse({ code: ApiResponseCode.Success }, { roomId: link.roomId, membershipId });
 });

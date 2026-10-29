@@ -1,8 +1,15 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 import { z } from "zod";
+import { normalizeEmail, normalizePhone } from "../../../../../../shared/utils/contact";
 
 const updateMemberSchema = z.object({
+  contactEmail: z.string().trim().email().nullable().optional(),
+  contactPhone: z
+    .string()
+    .refine((value) => !!normalizePhone(value), "Use an international phone number")
+    .nullable()
+    .optional(),
   nickname: z
     .string("Enter a nickname or leave it blank")
     .max(80, "Nickname must be at most 80 characters")
@@ -42,21 +49,49 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const updates: Record<string, unknown> = {};
-  if (body.nickname !== undefined) updates.nickname = body.nickname;
-  if (body.avatarUrl !== undefined) updates.avatarUrl = body.avatarUrl;
-  if (body.color !== undefined) updates.color = body.color;
-  if (body.sharePercentBps !== undefined) updates.sharePercentBps = body.sharePercentBps;
+  return db.transaction(async (tx) => {
+    await tx
+      .select({ id: schema.rooms.id })
+      .from(schema.rooms)
+      .where(eq(schema.rooms.id, roomId))
+      .for("update");
+    const target = await tx.query.roomMemberships.findFirst({
+      where: (member, { and, eq }) =>
+        and(eq(member.id, mid), eq(member.roomId, roomId), eq(member.isActive, true)),
+    });
+    if (!target)
+      return createResponse({ code: ApiResponseCode.NotFound, message: "Member not found" });
+    if (body.contactEmail !== undefined || body.contactPhone !== undefined) {
+      if (!isAdmin || target.userId)
+        return createResponse({
+          code: ApiResponseCode.Forbidden,
+          message: "Only admins can edit placeholder contact details",
+        });
+    }
+    if (!target.userId && body.nickname !== undefined && !body.nickname?.trim()) {
+      return createResponse({ code: ApiResponseCode.InvalidRequest, message: "Name is required" });
+    }
 
-  if (Object.keys(updates).length > 0) {
-    await db
-      .update(schema.roomMemberships)
-      .set(updates)
-      .where(and(eq(schema.roomMemberships.id, mid), eq(schema.roomMemberships.roomId, roomId)));
-  }
+    const updates: Record<string, unknown> = {};
+    if (body.nickname !== undefined) updates.nickname = body.nickname;
+    if (body.avatarUrl !== undefined) updates.avatarUrl = body.avatarUrl;
+    if (body.color !== undefined) updates.color = body.color;
+    if (body.sharePercentBps !== undefined) updates.sharePercentBps = body.sharePercentBps;
+    if (body.contactEmail !== undefined)
+      updates.contactEmail = body.contactEmail ? normalizeEmail(body.contactEmail) : null;
+    if (body.contactPhone !== undefined)
+      updates.contactPhone = body.contactPhone ? normalizePhone(body.contactPhone) : null;
 
-  const member = await db.query.roomMemberships.findFirst({
-    where: (m, { eq }) => eq(m.id, mid),
+    if (Object.keys(updates).length > 0) {
+      await tx
+        .update(schema.roomMemberships)
+        .set(updates)
+        .where(and(eq(schema.roomMemberships.id, mid), eq(schema.roomMemberships.roomId, roomId)));
+    }
+
+    const member = await tx.query.roomMemberships.findFirst({
+      where: (m, { eq }) => eq(m.id, mid),
+    });
+    return createResponse({ code: ApiResponseCode.Success }, member);
   });
-  return createResponse({ code: ApiResponseCode.Success }, member);
 });

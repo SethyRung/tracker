@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
     {
       name: session.user.name,
       email: session.user.email,
+      phone: session.user.phone ?? null,
       image: session.user.image ?? null,
       memberships: roomProfiles,
     },

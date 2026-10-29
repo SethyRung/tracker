@@ -2,6 +2,7 @@
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { ApiResponse } from "#shared/types/response";
+import { normalizePhone } from "#shared/utils/contact";
 
 useHead({ title: "Account Settings · Tricker" });
 
@@ -19,10 +20,13 @@ const nameSchema = z.object({
     .trim()
     .min(1, "Name is required")
     .max(80, "Keep it under 80 characters"),
+  phone: z
+    .string()
+    .refine((value) => !value || !!normalizePhone(value), "Use an international phone number"),
 });
 type NameSchema = z.output<typeof nameSchema>;
 
-const nameState = reactive<NameSchema>({ name: "" });
+const nameState = reactive<NameSchema>({ name: "", phone: "" });
 const interaction = reactive({
   savingName: false,
   savingPassword: false,
@@ -33,9 +37,12 @@ const interaction = reactive({
 });
 
 watch(
-  () => account.value?.name,
-  (name) => {
-    if (name) nameState.name = name;
+  () => account.value,
+  (value) => {
+    if (value) {
+      nameState.name = value.name;
+      nameState.phone = value.phone ?? "";
+    }
   },
   { immediate: true, flush: "sync" },
 );
@@ -46,7 +53,9 @@ const profile = computed(() => {
     role: rooms.value.find((room) => room.id === membership.roomId)?.role,
   }));
   return {
-    nameDirty: nameState.name.trim() !== (account.value?.name ?? ""),
+    nameDirty:
+      nameState.name.trim() !== (account.value?.name ?? "") ||
+      nameState.phone.trim() !== (account.value?.phone ?? ""),
     memberships,
     roomsCountLabel: `${memberships.length} room${memberships.length === 1 ? "" : "s"}`,
     roomsListLabel: memberships.map((membership) => membership.roomName).join(", "),
@@ -174,7 +183,7 @@ async function onSaveName(event: FormSubmitEvent<NameSchema>) {
   try {
     const res = await $fetch<ApiResponse<{ name: string }>>("/api/account", {
       method: "PATCH",
-      body: { name: event.data.name },
+      body: { name: event.data.name, phone: event.data.phone || null },
     });
     if (!isSuccessResponse(res)) throw new Error(res.status.message);
     await Promise.all([refresh(), fetchSession({ force: true })]);
@@ -374,9 +383,24 @@ async function signOutAllDevices() {
                 :disabled="interaction.savingName"
               />
             </UFormField>
+            <UFormField
+              label="Phone number"
+              name="phone"
+              description="Include the country code, for example +855."
+            >
+              <UInput
+                v-model="nameState.phone"
+                type="tel"
+                autocomplete="tel"
+                placeholder="+855 12 345 678"
+                class="w-full sm:max-w-md"
+                size="lg"
+                :disabled="interaction.savingName"
+              />
+            </UFormField>
             <UButton
               type="submit"
-              label="Save name changes"
+              label="Save changes"
               icon="i-lucide-check"
               :loading="interaction.savingName"
               :disabled="!profile.nameDirty"

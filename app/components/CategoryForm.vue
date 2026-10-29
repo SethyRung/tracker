@@ -6,7 +6,7 @@ import { bpsToPercent, equalSplitBps, percentToBps, splitRemainderBps } from "#s
 
 interface Member {
   id: string;
-  userId: string;
+  userId: string | null;
   nickname: string | null;
   userName: string;
   avatarUrl?: string | null;

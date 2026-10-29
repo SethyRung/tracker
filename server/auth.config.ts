@@ -1,12 +1,28 @@
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { defineServerAuth } from "@nuxtjs/better-auth/config";
+import { normalizePhone } from "../shared/utils/contact";
 
 export default defineServerAuth({
+  user: {
+    additionalFields: { phone: { type: "string", required: false } },
+  },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email") return;
+      if (ctx.path !== "/sign-up/email" && ctx.path !== "/update-user") return;
 
       const body = ctx.body;
+      const phoneInput =
+        body && typeof body === "object" && "phone" in body ? body.phone : undefined;
+      const phone = typeof phoneInput === "string" ? normalizePhone(phoneInput) : null;
+      if (
+        (ctx.path === "/sign-up/email" || (phoneInput !== undefined && phoneInput !== null)) &&
+        !phone
+      ) {
+        throw new APIError("BAD_REQUEST", { message: "Use a valid international phone number" });
+      }
+      if (ctx.path === "/update-user") {
+        return phoneInput !== undefined ? { context: { body: { ...body, phone } } } : undefined;
+      }
       const name =
         body && typeof body === "object" && "name" in body && typeof body.name === "string"
           ? body.name.trim()
@@ -17,7 +33,7 @@ export default defineServerAuth({
 
       return {
         context: {
-          body: { ...body, name },
+          body: { ...body, name, phone },
         },
       };
     }),

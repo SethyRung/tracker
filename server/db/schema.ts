@@ -9,7 +9,9 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "#auth/schema";
 
 export const rooms = pgTable(
@@ -31,24 +33,49 @@ export const rooms = pgTable(
   (t) => [index("rooms_deleted_at_idx").on(t.deletedAt)],
 );
 
-export const roomMemberships = pgTable("room_memberships", {
+export const roomMemberships = pgTable(
+  "room_memberships",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["admin", "member"] })
+      .notNull()
+      .default("member"),
+    nickname: text("nickname"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    avatarUrl: text("avatar_url"),
+    color: text("color"),
+    sharePercentBps: integer("share_percent_bps").notNull().default(0),
+    joinedAt: timestamp("joined_at").notNull().defaultNow(),
+    leftAt: timestamp("left_at"),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (t) => [
+    uniqueIndex("room_memberships_active_user_unique")
+      .on(t.roomId, t.userId)
+      .where(sql`${t.isActive} = true AND ${t.userId} IS NOT NULL`),
+  ],
+);
+
+export const memberMerges = pgTable("member_merges", {
   id: text("id").primaryKey(),
   roomId: text("room_id")
     .notNull()
     .references(() => rooms.id, { onDelete: "cascade" }),
-  userId: text("user_id")
+  sourceMembershipId: text("source_membership_id")
     .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role", { enum: ["admin", "member"] })
+    .references(() => roomMemberships.id, { onDelete: "cascade" }),
+  targetMembershipId: text("target_membership_id")
     .notNull()
-    .default("member"),
-  nickname: text("nickname"),
-  avatarUrl: text("avatar_url"),
-  color: text("color"),
-  sharePercentBps: integer("share_percent_bps").notNull().default(0),
-  joinedAt: timestamp("joined_at").notNull().defaultNow(),
-  leftAt: timestamp("left_at"),
-  isActive: boolean("is_active").notNull().default(true),
+    .references(() => roomMemberships.id, { onDelete: "cascade" }),
+  mergedByUserId: text("merged_by_user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const categories = pgTable("categories", {

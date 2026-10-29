@@ -1,5 +1,5 @@
 import type { H3Event } from "h3";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db, schema } from "@nuxthub/db";
 
 export function newId(): string {
@@ -85,6 +85,7 @@ export async function promoteAdminOnDeparture(roomId: string) {
         eq(schema.roomMemberships.roomId, roomId),
         eq(schema.roomMemberships.role, "member"),
         eq(schema.roomMemberships.isActive, true),
+        isNotNull(schema.roomMemberships.userId),
       ),
     );
   const next = pickNextAdmin(remaining);
